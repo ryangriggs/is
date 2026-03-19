@@ -1,0 +1,10 @@
+{% extends "layouts/base.njk" %}
+{% block title %}Access Denied — {{ siteName }}{% endblock %}
+{% block content %}
+<div class="flex-center" style="min-height:60vh; flex-direction:column; text-align:center; gap:16px;">
+  <div style="font-size:5rem;">🚫</div>
+  <h1 style="font-size:2rem; font-weight:700;">Access Denied</h1>
+  <p class="text-muted">{{ message or "You don't have permission to view this page." }}</p>
+  <a href="/" class="btn btn-secondary">Go home</a>
+</div>
+{% endblock %}

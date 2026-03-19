@@ -1,0 +1,10 @@
+{% extends "layouts/base.njk" %}
+{% block title %}Not Found — {{ siteName }}{% endblock %}
+{% block content %}
+<div class="flex-center" style="min-height:60vh; flex-direction:column; text-align:center; gap:16px;">
+  <div style="font-size:5rem;">🔍</div>
+  <h1 style="font-size:2rem; font-weight:700;">Link not found</h1>
+  <p class="text-muted">This short link doesn't exist or has been removed.</p>
+  <a href="/" class="btn btn-primary">Create a new link</a>
+</div>
+{% endblock %}

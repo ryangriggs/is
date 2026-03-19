@@ -1,0 +1,65 @@
+{% extends "layouts/base.njk" %}
+{% block title %}Admin — {{ siteName }}{% endblock %}
+{% block content %}
+<div class="container">
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Admin Dashboard</h1>
+      <p class="page-subtitle">Site overview and management</p>
+    </div>
+  </div>
+
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-value">{{ stats.totalLinks }}</div>
+      <div class="stat-label">Total Links</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value">{{ stats.totalUsers }}</div>
+      <div class="stat-label">Users</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value">{{ stats.totalVisits }}</div>
+      <div class="stat-label">Total Visits</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value">{{ stats.visitsToday }}</div>
+      <div class="stat-label">Visits Today</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value {% if stats.pendingReports > 0 %}text-warning{% endif %}">{{ stats.pendingReports }}</div>
+      <div class="stat-label">Pending Reports</div>
+    </div>
+  </div>
+
+  <div style="display:grid; grid-template-columns:1fr 1fr; gap:24px;">
+    <div class="card">
+      <h2 class="card-title mb-3">Quick Access</h2>
+      <div style="display:flex; flex-direction:column; gap:8px;">
+        <a href="/admin/links" class="btn btn-secondary">🔗 Manage Links</a>
+        <a href="/admin/users" class="btn btn-secondary">👥 Manage Users</a>
+        <a href="/admin/reports" class="btn btn-secondary {% if stats.pendingReports > 0 %}btn-warning{% endif %}">
+          🚩 Reports {% if stats.pendingReports > 0 %}<span class="badge badge-warning">{{ stats.pendingReports }}</span>{% endif %}
+        </a>
+        <a href="/admin/blocked-ips" class="btn btn-secondary">🛡 Blocked IPs</a>
+        <a href="/admin/settings" class="btn btn-secondary">⚙️ Settings</a>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2 class="card-title mb-3">Recent Links</h2>
+      {% if recentLinks.length == 0 %}
+        <p class="text-muted text-sm">No links yet.</p>
+      {% else %}
+        {% for link in recentLinks %}
+        <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid var(--color-border);">
+          <span class="font-mono text-sm text-primary">{{ baseDomain }}/{{ link.code }}</span>
+          <span class="text-xs text-muted">{{ link.createdAt | date }}</span>
+        </div>
+        {% endfor %}
+        <a href="/admin/links" class="btn btn-ghost btn-sm mt-2">View all →</a>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

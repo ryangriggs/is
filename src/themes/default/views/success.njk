@@ -1,0 +1,73 @@
+{% extends "layouts/base.njk" %}
+
+{% block title %}Link Created — {{ siteName }}{% endblock %}
+
+{% block content %}
+<section class="section">
+  <div class="container">
+    <div class="link-display">
+      <div class="mb-2">
+        <span class="badge badge-success">✓ Link Created</span>
+      </div>
+
+      <h1 class="hero-title" style="font-size:1.25rem; margin-bottom:8px;">Your short link is ready</h1>
+
+      <div class="link-short-url">
+        <a href="{{ shortUrl }}" target="_blank" rel="noopener">{{ shortUrl }}</a>
+      </div>
+
+      <div class="flex-center gap-1 mt-2 mb-3">
+        <button class="btn btn-primary" data-copy="{{ shortUrl }}">📋 Copy Link</button>
+        <a href="{{ shortUrl }}" class="btn btn-secondary" target="_blank" rel="noopener">↗ Visit</a>
+      </div>
+
+      {% if link.destination %}
+      <p class="text-muted text-sm truncate mb-3" title="{{ link.destination }}">
+        → <a href="{{ link.destination }}" target="_blank" rel="noopener nofollow" class="text-muted">{{ link.destination }}</a>
+      </p>
+      {% endif %}
+
+      {% if qrDataUrl %}
+      <div class="qr-code">
+        <img src="{{ qrDataUrl }}" alt="QR Code for {{ shortUrl }}" width="160" height="160">
+      </div>
+      <p class="text-xs text-muted mt-1">Scan to visit</p>
+      {% endif %}
+
+      <hr class="divider">
+
+      {% if manageUrl %}
+      <div class="manage-token-box mb-3">
+        <strong>⚠️ Save this management link — it won't be shown again</strong>
+        <div class="font-mono text-sm">{{ manageUrl }}</div>
+        <div class="mt-1">
+          <button class="btn btn-ghost btn-sm" data-copy="{{ manageUrl }}">📋 Copy</button>
+        </div>
+      </div>
+      {% endif %}
+
+      {% if not user %}
+      <div class="alert alert-info">
+        <div>
+          <strong>Create a free account</strong> to save your links, view analytics, and more.
+          <div class="mt-1">
+            <a href="/register" class="btn btn-primary btn-sm">Sign up free</a>
+            <a href="/login" class="btn btn-ghost btn-sm">Log in</a>
+          </div>
+        </div>
+      </div>
+      {% endif %}
+
+      <div class="flex-center gap-1 mt-3">
+        <a href="/" class="btn btn-secondary btn-sm">+ Create another</a>
+        {% if manageUrl %}
+        <a href="{{ manageUrl }}" class="btn btn-ghost btn-sm">Manage this link</a>
+        {% endif %}
+        {% if user %}
+        <a href="/dashboard" class="btn btn-ghost btn-sm">Dashboard</a>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}

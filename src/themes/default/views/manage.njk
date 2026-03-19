@@ -1,0 +1,88 @@
+{% extends "layouts/base.njk" %}
+
+{% block title %}Manage {{ link.code }} — {{ siteName }}{% endblock %}
+
+{% block content %}
+<div class="container">
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Manage Link</h1>
+      <p class="page-subtitle">
+        <a href="{{ shortUrl }}" class="font-mono" target="_blank" rel="noopener">{{ shortUrl }}</a>
+      </p>
+    </div>
+    <form method="POST" action="/manage/{{ link.code }}">
+      <input type="hidden" name="token" value="{{ token }}">
+      <input type="hidden" name="action" value="delete">
+      <button type="submit" class="btn btn-danger btn-sm"
+        data-confirm="Delete this link permanently?">
+        🗑 Delete Link
+      </button>
+    </form>
+  </div>
+
+  <div style="display:grid; grid-template-columns: 1fr 1fr; gap:24px; max-width:800px;">
+    <div>
+      <div class="card mb-3">
+        <h2 class="card-title">Statistics</h2>
+        <div class="stats-grid mt-2" style="grid-template-columns:1fr 1fr;">
+          <div class="stat-card">
+            <div class="stat-value">{{ stats.total }}</div>
+            <div class="stat-label">Total Visits</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value">{{ stats.today }}</div>
+            <div class="stat-label">Today</div>
+          </div>
+        </div>
+        <p class="text-xs text-muted mt-2">
+          Created: {{ link.createdAt | date }}{% if link.createdIp %} · from {{ link.createdIp }}{% endif %}
+        </p>
+      </div>
+
+      {% if link.type == 'url' and qrDataUrl %}
+      <div class="card">
+        <h2 class="card-title mb-2">QR Code</h2>
+        <div style="background:#fff; display:inline-block; padding:10px; border-radius:8px;">
+          <img src="{{ qrDataUrl }}" alt="QR Code" width="140" height="140">
+        </div>
+        <p class="text-xs text-muted mt-1">
+          <a href="{{ qrDataUrl }}" download="qr-{{ link.code }}.png">Download</a>
+        </p>
+      </div>
+      {% endif %}
+    </div>
+
+    <div>
+      <div class="card">
+        <h2 class="card-title mb-3">Edit Link</h2>
+        <form method="POST" action="/manage/{{ link.code }}">
+          <input type="hidden" name="token" value="{{ token }}">
+          <input type="hidden" name="action" value="update">
+          <div class="form-group">
+            <label class="label">Destination URL</label>
+            <input
+              type="url"
+              name="destination"
+              class="input"
+              value="{{ link.destination }}"
+              required
+            >
+          </div>
+          <div class="form-group">
+            <label class="label">Title (optional)</label>
+            <input type="text" name="title" class="input" value="{{ link.title }}" placeholder="My link">
+          </div>
+          <button type="submit" class="btn btn-primary btn-block">Save Changes</button>
+        </form>
+      </div>
+
+      <div class="card mt-3">
+        <h2 class="card-title mb-1">Report</h2>
+        <p class="text-sm text-muted mb-2">Something wrong with this link?</p>
+        <a href="/report/{{ link.code }}" class="btn btn-ghost btn-sm">Report this link</a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

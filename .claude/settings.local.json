@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git -C /c/temp/is.am log --oneline -20)",
+      "Bash(npm install:*)",
+      "Bash(where cl.exe)",
+      "Bash(where msbuild.exe)",
+      "Bash(curl -s http://localhost:3000/)",
+      "Bash(node --experimental-sqlite src/server.js)",
+      "Bash(echo \"EXIT:$?\")",
+      "Bash(node --experimental-sqlite -e \":*)",
+      "Bash(node --experimental-sqlite:*)",
+      "Bash(curl -s -o /dev/null -w \"HTTP %{http_code}\\\\n\" http://localhost:3000/ 2)",
+      "Bash(1 curl:*)",
+      "Bash(node:*)",
+      "Bash(powershell -Command \"node -e 'console.log\\(42\\)'\")"
+    ]
+  }
+}

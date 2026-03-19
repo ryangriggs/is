@@ -1,0 +1,102 @@
+{% extends "layouts/base.njk" %}
+{% block title %}Users — Admin — {{ siteName }}{% endblock %}
+{% block content %}
+<div class="container">
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Users</h1>
+      <p class="page-subtitle">{{ pagination.total }} registered users</p>
+    </div>
+    <a href="/admin" class="btn btn-ghost btn-sm">← Admin</a>
+  </div>
+
+  <form method="GET" class="card mb-3" style="padding:16px;">
+    <div class="input-group">
+      <input type="text" name="q" class="input" placeholder="Search by username or email..." value="{{ query.q }}">
+      <button type="submit" class="btn btn-secondary">Search</button>
+      <a href="/admin/users" class="btn btn-ghost">Reset</a>
+    </div>
+  </form>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Username</th>
+          <th>Email</th>
+          <th>Role</th>
+          <th>Tier</th>
+          <th>Joined</th>
+          <th>Links</th>
+          <th>Status</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if users.length == 0 %}
+        <tr><td colspan="8" class="text-center text-muted" style="padding:32px;">No users found.</td></tr>
+        {% endif %}
+        {% for u in users %}
+        <tr>
+          <td><strong>{{ u.username }}</strong></td>
+          <td class="text-muted text-sm">{{ u.email or '—' }}</td>
+          <td>
+            {% if u.role == 'admin' %}
+              <span class="badge badge-warning">Admin</span>
+            {% else %}
+              <span class="badge badge-neutral">User</span>
+            {% endif %}
+          </td>
+          <td><span class="badge badge-info">{{ u.subscriptionTier }}</span></td>
+          <td class="text-muted text-sm">{{ u.createdAt | date }}</td>
+          <td>{{ u.linkCount or 0 }}</td>
+          <td>
+            {% if u.isBlocked %}
+              <span class="badge badge-danger">Blocked</span>
+            {% else %}
+              <span class="badge badge-success">Active</span>
+            {% endif %}
+          </td>
+          <td class="td-actions">
+            {% if u.id != currentUserId %}
+              {% if u.isBlocked %}
+                <form method="POST" action="/admin/users/{{ u.id }}/unblock" style="display:inline;">
+                  <button type="submit" class="btn btn-ghost btn-sm" title="Unblock">✅</button>
+                </form>
+              {% else %}
+                <form method="POST" action="/admin/users/{{ u.id }}/block" style="display:inline;">
+                  <button type="submit" class="btn btn-ghost btn-sm"
+                    data-confirm="Block this user?" title="Block">🚫</button>
+                </form>
+              {% endif %}
+              <form method="POST" action="/admin/users/{{ u.id }}/delete" style="display:inline;">
+                <button type="submit" class="btn btn-danger btn-sm"
+                  data-confirm="Delete this user and ALL their links?" title="Delete">🗑</button>
+              </form>
+            {% else %}
+              <span class="text-xs text-muted">(you)</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% if pagination.totalPages > 1 %}
+  <div class="pagination">
+    {% if pagination.page > 1 %}
+      <a href="?page={{ pagination.page - 1 }}&q={{ query.q }}">‹ Prev</a>
+    {% else %}
+      <span class="disabled">‹ Prev</span>
+    {% endif %}
+    <span>Page {{ pagination.page }} of {{ pagination.totalPages }}</span>
+    {% if pagination.page < pagination.totalPages %}
+      <a href="?page={{ pagination.page + 1 }}&q={{ query.q }}">Next ›</a>
+    {% else %}
+      <span class="disabled">Next ›</span>
+    {% endif %}
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

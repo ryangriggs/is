@@ -1,0 +1,110 @@
+{% extends "layouts/base.njk" %}
+
+{% block title %}Dashboard — {{ siteName }}{% endblock %}
+
+{% block content %}
+<div class="container">
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Dashboard</h1>
+      <p class="page-subtitle">Welcome back, <strong>{{ user.username }}</strong></p>
+    </div>
+    <a href="/" class="btn btn-primary">+ New Link</a>
+  </div>
+
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-value">{{ stats.totalLinks }}</div>
+      <div class="stat-label">My Links</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value">{{ stats.totalVisits }}</div>
+      <div class="stat-label">Total Visits</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value">{{ stats.visitsToday }}</div>
+      <div class="stat-label">Visits Today</div>
+    </div>
+  </div>
+
+  {% if links.length == 0 %}
+  <div class="card text-center" style="padding:48px;">
+    <div style="font-size:3rem;margin-bottom:16px;">🔗</div>
+    <h3 class="card-title">No links yet</h3>
+    <p class="card-body mb-3">Create your first short link to get started.</p>
+    <a href="/" class="btn btn-primary">Create a link</a>
+  </div>
+  {% else %}
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Short Link</th>
+          <th>Destination</th>
+          <th>Created</th>
+          <th>Visits</th>
+          <th>Status</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for link in links %}
+        <tr>
+          <td class="td-code">
+            <a href="https://{{ baseDomain }}/{{ link.code }}" target="_blank" rel="noopener">
+              {{ baseDomain }}/{{ link.code }}
+            </a>
+          </td>
+          <td class="td-url" title="{{ link.destination }}">
+            <a href="{{ link.destination }}" target="_blank" rel="noopener nofollow" class="text-muted">
+              {{ link.destination }}
+            </a>
+          </td>
+          <td class="text-muted text-sm">{{ link.createdAt | date }}</td>
+          <td>{{ link.visitCount or 0 }}</td>
+          <td>
+            {% if link.isActive %}
+              <span class="badge badge-success">Active</span>
+            {% else %}
+              <span class="badge badge-danger">Inactive</span>
+            {% endif %}
+          </td>
+          <td class="td-actions">
+            <button class="btn btn-ghost btn-sm" data-copy="https://{{ baseDomain }}/{{ link.code }}" title="Copy">📋</button>
+            <form method="POST" action="/dashboard/delete/{{ link.id }}" style="display:inline">
+              <button type="submit" class="btn btn-danger btn-sm" data-confirm="Delete this link?"
+                title="Delete">🗑</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% if pagination.totalPages > 1 %}
+  <div class="pagination">
+    {% if pagination.page > 1 %}
+      <a href="?page={{ pagination.page - 1 }}">‹ Prev</a>
+    {% else %}
+      <span class="disabled">‹ Prev</span>
+    {% endif %}
+
+    {% for p in range(1, pagination.totalPages + 1) %}
+      {% if p == pagination.page %}
+        <span class="active">{{ p }}</span>
+      {% else %}
+        <a href="?page={{ p }}">{{ p }}</a>
+      {% endif %}
+    {% endfor %}
+
+    {% if pagination.page < pagination.totalPages %}
+      <a href="?page={{ pagination.page + 1 }}">Next ›</a>
+    {% else %}
+      <span class="disabled">Next ›</span>
+    {% endif %}
+  </div>
+  {% endif %}
+  {% endif %}
+</div>
+{% endblock %}

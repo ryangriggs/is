@@ -1,0 +1,92 @@
+{% extends "layouts/base.njk" %}
+{% block title %}Settings — Admin — {{ siteName }}{% endblock %}
+{% block content %}
+<div class="container">
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Site Settings</h1>
+      <p class="page-subtitle">Global configuration</p>
+    </div>
+    <a href="/admin" class="btn btn-ghost btn-sm">← Admin</a>
+  </div>
+
+  <div style="display:grid; grid-template-columns:1fr 1fr; gap:24px; max-width:900px;">
+    <div class="card">
+      <h2 class="card-title mb-3">Site Settings</h2>
+      <form method="POST" action="/admin/settings">
+        <div class="form-group">
+          <label class="label">Site Name</label>
+          <input type="text" name="site_name" class="input" value="{{ settings.site_name }}">
+        </div>
+        <div class="form-group">
+          <label class="label">Site Tagline</label>
+          <input type="text" name="site_tagline" class="input" value="{{ settings.site_tagline }}">
+        </div>
+        <div class="form-group">
+          <label class="label">Registration</label>
+          <select name="registration_open" class="select">
+            <option value="true" {% if settings.registration_open == 'true' %}selected{% endif %}>Open</option>
+            <option value="false" {% if settings.registration_open == 'false' %}selected{% endif %}>Closed</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="label">Require login to create links</label>
+          <select name="require_login_to_create" class="select">
+            <option value="false" {% if settings.require_login_to_create != 'true' %}selected{% endif %}>No (anyone can create)</option>
+            <option value="true" {% if settings.require_login_to_create == 'true' %}selected{% endif %}>Yes (login required)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="label">Max anonymous links (0 = unlimited)</label>
+          <input type="number" name="max_links_anonymous" class="input" value="{{ settings.max_links_anonymous }}" min="0">
+        </div>
+        <button type="submit" class="btn btn-primary btn-block">Save Settings</button>
+      </form>
+    </div>
+
+    <div>
+      <div class="card mb-3">
+        <h2 class="card-title mb-3">Upload Limits</h2>
+        <form method="POST" action="/admin/settings">
+          <div class="form-group">
+            <label class="label">Max file size (MB)</label>
+            <input type="number" name="max_file_size_mb" class="input" value="{{ settings.max_file_size_mb }}" min="1">
+          </div>
+          <div class="form-group">
+            <label class="label">Allowed image types</label>
+            <input type="text" name="allowed_image_types" class="input" value="{{ settings.allowed_image_types }}"
+              placeholder="image/jpeg,image/png,image/gif">
+          </div>
+          <button type="submit" class="btn btn-primary btn-block">Save</button>
+        </form>
+      </div>
+
+      <div class="card">
+        <h2 class="card-title mb-3">Blocked IPs</h2>
+        <form method="POST" action="/admin/blocked-ips" class="mb-3">
+          <div class="input-group">
+            <input type="text" name="cidr" class="input" placeholder="192.168.1.0/24 or 1.2.3.4">
+            <input type="text" name="reason" class="input" placeholder="Reason (optional)">
+            <button type="submit" class="btn btn-danger" title="Block IP">Block</button>
+          </div>
+        </form>
+        {% if blockedIps.length == 0 %}
+          <p class="text-sm text-muted">No blocked IPs.</p>
+        {% else %}
+          {% for entry in blockedIps %}
+          <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid var(--color-border);">
+            <div>
+              <span class="font-mono text-sm">{{ entry.cidr }}</span>
+              {% if entry.reason %}<span class="text-xs text-muted ml-1">{{ entry.reason }}</span>{% endif %}
+            </div>
+            <form method="POST" action="/admin/blocked-ips/{{ entry.id }}/delete" style="display:inline;">
+              <button type="submit" class="btn btn-ghost btn-sm" title="Unblock">✕</button>
+            </form>
+          </div>
+          {% endfor %}
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

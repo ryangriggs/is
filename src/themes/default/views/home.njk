@@ -1,0 +1,95 @@
+{% extends "layouts/base.njk" %}
+
+{% block title %}{{ siteName }} — {{ siteTagline }}{% endblock %}
+
+{% block content %}
+<section class="hero">
+  <div class="container">
+    <h1 class="hero-title">
+      <span class="gradient-text">Shorten.</span> Share.
+      <span class="gradient-text">Track.</span>
+    </h1>
+    <p class="hero-subtitle">{{ siteTagline or "The fastest way to shorten URLs, share files, and manage your links." }}</p>
+
+    <form id="hero-form" method="POST" action="/" class="hero-form">
+      <input
+        id="hero-url"
+        type="url"
+        name="destination"
+        class="input"
+        placeholder="https://your-long-url.com/paste-here"
+        required
+        autocomplete="off"
+        autofocus
+      >
+      <button type="submit" class="btn btn-primary">Shorten</button>
+    </form>
+
+    <div class="hero-features">
+      <a href="http://t.{{ baseDomain }}" class="btn-feature"><span class="feat-icon">📝</span> Text Paste</a>
+      <a href="http://h.{{ baseDomain }}" class="btn-feature"><span class="feat-icon">🌐</span> HTML Paste</a>
+      <a href="http://i.{{ baseDomain }}" class="btn-feature"><span class="feat-icon">🖼️</span> Image Upload</a>
+      <a href="http://b.{{ baseDomain }}" class="btn-feature"><span class="feat-icon">🔖</span> Bookmarks</a>
+      <a href="http://d.{{ baseDomain }}" class="btn-feature"><span class="feat-icon">🌍</span> Dynamic DNS</a>
+      <a href="http://q.{{ baseDomain }}" class="btn-feature"><span class="feat-icon">⬛</span> QR Codes</a>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="container">
+    {% if stats %}
+    <div class="stats-grid mb-4">
+      <div class="stat-card">
+        <div class="stat-value">{{ stats.totalLinks | default(0) }}</div>
+        <div class="stat-label">Links Created</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value">{{ stats.totalVisits | default(0) }}</div>
+        <div class="stat-label">Total Visits</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value">{{ stats.totalUsers | default(0) }}</div>
+        <div class="stat-label">Users</div>
+      </div>
+    </div>
+    {% endif %}
+
+    <h2 class="section-title">Everything you need</h2>
+    <p class="section-subtitle">Powerful tools, one domain.</p>
+
+    <div class="features-grid">
+      <div class="feature-card">
+        <div class="feature-icon">🔗</div>
+        <div class="feature-title">URL Shortener</div>
+        <div class="feature-desc">Create short links instantly. No account needed. Custom codes for registered users.</div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">📊</div>
+        <div class="feature-title">Link Analytics</div>
+        <div class="feature-desc">Track visits, referrers, and geographic data for every link you create.</div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">📋</div>
+        <div class="feature-title">Pastebins</div>
+        <div class="feature-desc">Share text, HTML, and images with a single short link. Supports syntax highlighting.</div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">🔖</div>
+        <div class="feature-title">Bookmarks</div>
+        <div class="feature-desc">Save and organize your bookmarks. Create shareable bookmark collections.</div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">🌍</div>
+        <div class="feature-title">Dynamic DNS</div>
+        <div class="feature-desc">Get a custom subdomain that follows your dynamic IP. Perfect for home servers.</div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">⬛</div>
+        <div class="feature-title">QR Codes</div>
+        <div class="feature-desc">Generate high-resolution QR codes for any URL. Download for print.</div>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}

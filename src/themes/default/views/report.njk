@@ -1,0 +1,33 @@
+{% extends "layouts/base.njk" %}
+
+{% block title %}Report Link — {{ siteName }}{% endblock %}
+
+{% block content %}
+<div class="container" style="max-width:520px; padding-top:48px;">
+  <div class="card">
+    <h1 class="card-title" style="font-size:1.25rem; margin-bottom:4px;">Report a Link</h1>
+    <p class="text-muted text-sm mb-3">
+      Reporting: <span class="font-mono text-sm">{{ baseDomain }}/{{ code }}</span>
+    </p>
+
+    <form method="POST" action="/report/{{ code }}">
+      <div class="form-group">
+        <label class="label" for="reason">Reason for report</label>
+        <textarea
+          id="reason"
+          name="reason"
+          class="textarea"
+          placeholder="Describe why this link should be reviewed (spam, malware, abuse, etc.)"
+          rows="4"
+          required
+        ></textarea>
+      </div>
+      <button type="submit" class="btn btn-danger btn-block">Submit Report</button>
+    </form>
+
+    <p class="text-xs text-muted mt-3 text-center">
+      Reports are reviewed by administrators. <a href="/">Back to home</a>
+    </p>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}{{ siteName }}{% endblock %}</title>
+  <meta name="description" content="{{ siteTagline }}">
+  <link rel="stylesheet" href="/static/theme.css">
+  {% if siteLogo %}<link rel="icon" href="{{ siteLogo }}">{% endif %}
+  {% block head %}{% endblock %}
+</head>
+<body class="{% block bodyClass %}{% endblock %}">
+
+  <nav class="nav">
+    <div class="container nav-inner">
+      <a href="/" class="nav-logo">
+        {% if siteLogo %}<img src="{{ siteLogo }}" alt="{{ siteName }}">{% endif %}
+        <span class="nav-logo-text">{{ siteName }}</span>
+      </a>
+      <ul class="nav-links">
+        {% if user %}
+          <li><a href="/dashboard" class="{% if currentPath == '/dashboard' %}active{% endif %}">Dashboard</a></li>
+          {% if user.role == 'admin' %}
+            <li><a href="/admin" class="{% if '/admin' in currentPath %}active{% endif %}">Admin</a></li>
+          {% endif %}
+          <li>
+            <form method="POST" action="/logout" style="margin:0">
+              <button type="submit" class="btn btn-ghost btn-sm">Logout</button>
+            </form>
+          </li>
+        {% else %}
+          <li class="nav-link-hide"><a href="/login">Login</a></li>
+          <li><a href="/register" class="btn btn-primary btn-sm">Sign up</a></li>
+        {% endif %}
+      </ul>
+    </div>
+  </nav>
+
+  <main class="page-content">
+    {% if flash %}
+      <div class="container mt-2">
+        <div class="alert alert-{{ flash.type }} flash-auto">{{ flash.message }}</div>
+      </div>
+    {% endif %}
+
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="footer">
+    <div class="container">
+      <p>
+        &copy; {{ siteName }} &mdash;
+        <a href="https://github.com/your-repo/is.am" target="_blank" rel="noopener">Open Source</a>
+        &nbsp;&bull;&nbsp;
+        <a href="/report">Report a link</a>
+      </p>
+    </div>
+  </footer>
+
+  <script src="https://unpkg.com/htmx.org@1.9.12/dist/htmx.min.js" defer></script>
+  <script src="/static/app.js" defer></script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

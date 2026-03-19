@@ -1,0 +1,29 @@
+{
+  "name": "is.am",
+  "version": "1.0.0",
+  "description": "URL shortener, pastebin, bookmarks, and dynamic DNS hub",
+  "type": "module",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node --experimental-sqlite src/server.js",
+    "dev": "node --experimental-sqlite --watch src/server.js"
+  },
+  "dependencies": {
+    "@fastify/cookie": "^9.3.1",
+    "@fastify/formbody": "^7.4.0",
+    "@fastify/multipart": "^8.3.0",
+    "@fastify/rate-limit": "^9.1.0",
+    "@fastify/session": "^10.9.0",
+    "@fastify/static": "^7.0.4",
+    "@fastify/view": "^9.1.0",
+    "bcryptjs": "^2.4.3",
+    "dns2": "^2.1.0",
+    "dotenv": "^16.4.5",
+    "fastify": "^4.28.0",
+    "fastify-plugin": "^4.5.1",
+    "mysql2": "^3.9.7",
+    "nanoid": "^5.0.7",
+    "nunjucks": "^3.2.4",
+    "qrcode": "^1.5.3"
+  }
+}

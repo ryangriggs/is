@@ -1,0 +1,77 @@
+{% extends "layouts/base.njk" %}
+{% block title %}Reports — Admin — {{ siteName }}{% endblock %}
+{% block content %}
+<div class="container">
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Reports</h1>
+      <p class="page-subtitle">Reported links needing review</p>
+    </div>
+    <div class="flex gap-1">
+      <a href="?status=pending" class="btn btn-sm {% if query.status == 'pending' or not query.status %}btn-primary{% else %}btn-ghost{% endif %}">Pending</a>
+      <a href="?status=all" class="btn btn-sm {% if query.status == 'all' %}btn-primary{% else %}btn-ghost{% endif %}">All</a>
+      <a href="/admin" class="btn btn-ghost btn-sm">← Admin</a>
+    </div>
+  </div>
+
+  {% if reports.length == 0 %}
+  <div class="card text-center" style="padding:48px;">
+    <div style="font-size:3rem;margin-bottom:16px;">✅</div>
+    <h3 class="card-title">No reports</h3>
+    <p class="card-body">No pending reports to review.</p>
+  </div>
+  {% else %}
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Short Link</th>
+          <th>Destination</th>
+          <th>Reason</th>
+          <th>Reporter IP</th>
+          <th>Reported</th>
+          <th>Status</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for report in reports %}
+        <tr>
+          <td class="td-code">
+            <a href="https://{{ baseDomain }}/{{ report.linkCode }}" target="_blank" rel="noopener">
+              {{ baseDomain }}/{{ report.linkCode }}
+            </a>
+          </td>
+          <td class="td-url" title="{{ report.linkDestination }}">{{ report.linkDestination }}</td>
+          <td class="text-sm">{{ report.reason or '—' }}</td>
+          <td class="text-muted text-sm font-mono">{{ report.reporterIp }}</td>
+          <td class="text-muted text-sm">{{ report.createdAt | date }}</td>
+          <td>
+            {% if report.status == 'pending' %}
+              <span class="badge badge-warning">Pending</span>
+            {% elif report.status == 'actioned' %}
+              <span class="badge badge-success">Actioned</span>
+            {% else %}
+              <span class="badge badge-neutral">Ignored</span>
+            {% endif %}
+          </td>
+          <td class="td-actions">
+            {% if report.status == 'pending' %}
+            <form method="POST" action="/admin/reports/{{ report.id }}/ignore" style="display:inline;">
+              <button type="submit" class="btn btn-ghost btn-sm" title="Ignore">👍 Ignore</button>
+            </form>
+            <form method="POST" action="/admin/reports/{{ report.id }}/action" style="display:inline;">
+              <button type="submit" class="btn btn-danger btn-sm"
+                data-confirm="Deactivate this link and mark report as actioned?"
+                title="Action">🚫 Action</button>
+            </form>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
