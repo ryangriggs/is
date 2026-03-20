@@ -114,3 +114,22 @@ CREATE TABLE IF NOT EXISTS bookmark_items (
 );
 
 CREATE INDEX IF NOT EXISTS idx_bookmark_items_link ON bookmark_items(link_id);
+
+CREATE TABLE IF NOT EXISTS messages (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT,
+  email TEXT,
+  subject TEXT,
+  body TEXT NOT NULL,
+  ip TEXT,
+  is_read INTEGER NOT NULL DEFAULT 0,
+  created_at INTEGER NOT NULL DEFAULT (strftime('%s','now') * 1000)
+);
+
+CREATE TABLE IF NOT EXISTS scan_words (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  word TEXT NOT NULL,
+  scope TEXT NOT NULL DEFAULT 'url',
+  active INTEGER NOT NULL DEFAULT 1,
+  created_at INTEGER NOT NULL DEFAULT (strftime('%s','now') * 1000)
+);

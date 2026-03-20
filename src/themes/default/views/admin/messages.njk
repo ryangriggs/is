@@ -1,0 +1,48 @@
+{% extends "layouts/base.njk" %}
+{% block title %}Messages — Admin — {{ siteName }}{% endblock %}
+{% block content %}
+<div class="container" style="max-width:860px">
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Messages</h1>
+      <p class="page-subtitle">{{ messages.length }} total</p>
+    </div>
+    <a href="/admin" class="btn btn-ghost btn-sm">← Admin</a>
+  </div>
+
+  {% if messages.length == 0 %}
+  <div class="card text-center text-muted" style="padding:48px">No messages yet.</div>
+  {% else %}
+  <div style="display:flex;flex-direction:column;gap:.75rem">
+    {% for m in messages %}
+    <div class="card" style="{% if not m.isRead %}border-left:3px solid var(--primary){% endif %}">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:1rem">
+        <div style="flex:1;min-width:0">
+          <div style="display:flex;gap:.75rem;align-items:center;flex-wrap:wrap;margin-bottom:.35rem">
+            {% if not m.isRead %}<span class="badge badge-info">New</span>{% endif %}
+            <strong>{{ m.subject or '(no subject)' }}</strong>
+            <span class="text-muted text-xs">{{ m.createdAt | date }}</span>
+          </div>
+          <p class="text-sm text-muted" style="margin:0 0 .5rem">
+            From: {{ m.name or 'Anonymous' }}{% if m.email %} &lt;{{ m.email }}&gt;{% endif %}
+            &nbsp;·&nbsp; IP: <code>{{ m.ip or '—' }}</code>
+          </p>
+          <p class="text-sm" style="white-space:pre-wrap;margin:0">{{ m.body }}</p>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:.4rem">
+          {% if not m.isRead %}
+          <form method="POST" action="/admin/messages/{{ m.id }}/read">
+            <button type="submit" class="btn btn-ghost btn-sm">✓ Mark read</button>
+          </form>
+          {% endif %}
+          <form method="POST" action="/admin/messages/{{ m.id }}/delete">
+            <button type="submit" class="btn btn-danger btn-sm" data-confirm="Delete this message?">🗑</button>
+          </form>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

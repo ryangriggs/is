@@ -139,7 +139,16 @@ async function shortlinksPlugin(fastify) {
     const code = normalizeCode(req.params.code)
     const link = db.get('SELECT * FROM links WHERE code = ?', code)
 
-    if (!link || !link.is_active) {
+    if (!link) {
+      reply.code(404)
+      return reply.view('errors/404.njk', {})
+    }
+    if (!link.is_active) {
+      // Show disabled page to owner so they can request re-enable
+      if (req.session.userId && link.owner_id === req.session.userId) {
+        reply.code(410)
+        return reply.view('link-disabled.njk', { link, code })
+      }
       reply.code(404)
       return reply.view('errors/404.njk', {})
     }

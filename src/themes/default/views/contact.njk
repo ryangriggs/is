@@ -1,0 +1,34 @@
+{% extends "layouts/base.njk" %}
+{% block title %}Contact — {{ siteName }}{% endblock %}
+{% block content %}
+<section class="section">
+  <div class="container" style="max-width:560px">
+    <h1 class="section-title">Contact</h1>
+    <p class="section-subtitle">Send a message to the site admin.</p>
+
+    {% if error %}<div class="alert alert-error mb-3">{{ error }}</div>{% endif %}
+
+    <div class="card">
+      <form method="POST" action="/contact">
+        <div class="form-group">
+          <label class="label">Name <span class="text-muted">(optional)</span></label>
+          <input type="text" name="name" class="input" value="{{ name }}" placeholder="Your name">
+        </div>
+        <div class="form-group">
+          <label class="label">Email <span class="text-muted">(optional)</span></label>
+          <input type="email" name="email" class="input" value="{{ email }}" placeholder="your@email.com">
+        </div>
+        <div class="form-group">
+          <label class="label">Subject <span class="text-muted">(optional)</span></label>
+          <input type="text" name="subject" class="input" value="{{ subject }}" placeholder="What is this about?">
+        </div>
+        <div class="form-group">
+          <label class="label">Message</label>
+          <textarea name="body" class="input" rows="6" required placeholder="Your message...">{{ body }}</textarea>
+        </div>
+        <button type="submit" class="btn btn-primary btn-block">Send Message</button>
+      </form>
+    </div>
+  </div>
+</section>
+{% endblock %}

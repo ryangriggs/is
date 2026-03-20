@@ -44,6 +44,7 @@ export async function initDb() {
     // Additive column migrations — try/catch because SQLite has no ADD COLUMN IF NOT EXISTS
     const addColumns = [
       'ALTER TABLE dns_records ADD COLUMN ttl INTEGER NOT NULL DEFAULT 300',
+      'ALTER TABLE blocked_ips ADD COLUMN type TEXT NOT NULL DEFAULT \'block\'',
     ]
     for (const stmt of addColumns) {
       try { sqlite.prepare(stmt).run() } catch (_) { /* column already exists */ }

@@ -276,6 +276,18 @@ async function usersPlugin(fastify) {
     req.session.flash = { type: 'success', message: 'Token revoked.' }
     return reply.redirect('/tokens')
   })
+
+  fastify.post('/return-to-admin', { preHandler: requireAuth }, async (req, reply) => {
+    if (!req.session.impersonatingAdminId) return reply.redirect('/dashboard')
+    req.session.userId = req.session.impersonatingAdminId
+    req.session.username = req.session.impersonatingAdminUsername
+    req.session.role = req.session.impersonatingAdminRole
+    delete req.session.impersonatingAdminId
+    delete req.session.impersonatingAdminUsername
+    delete req.session.impersonatingAdminRole
+    req.session.flash = { type: 'success', message: 'Returned to admin account.' }
+    return reply.redirect('/admin/users')
+  })
 }
 
 export default fp(usersPlugin, { name: 'users' })

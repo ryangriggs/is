@@ -1,9 +1,44 @@
 import fp from 'fastify-plugin'
 import { requireAdmin } from '../../core/auth.js'
 import config from '../../config.js'
+import { ipMatchesCidr } from '../../core/cidr.js'
+import { invalidateIpCache } from '../../core/ipblock.js'
+import { scanUrl, scanUrlContent } from '../../core/scanner.js'
 
 async function adminPlugin(fastify) {
   const db = fastify.db
+
+  function blockIp(cidr, reason) {
+    const normalized = cidr.trim()
+    if (!normalized) return false
+    db.run(`DELETE FROM blocked_ips WHERE cidr = ? AND type = 'unblock'`, normalized)
+    const exists = db.get(`SELECT id FROM blocked_ips WHERE cidr = ? AND type = 'block'`, normalized)
+    if (exists) return false
+    db.run(
+      `INSERT INTO blocked_ips(cidr, reason, type, created_at) VALUES(?,?,?,?)`,
+      normalized, reason || null, 'block', Date.now()
+    )
+    invalidateIpCache()
+    return true
+  }
+
+  function unblockIp(cidr) {
+    const normalized = cidr.trim()
+    if (!normalized) return
+    db.run(`DELETE FROM blocked_ips WHERE cidr = ? AND type = 'block'`, normalized)
+    const netmasks = db.all(`SELECT cidr FROM blocked_ips WHERE type = 'block' AND cidr LIKE '%/%'`)
+    const coveredByNetmask = netmasks.some(r => ipMatchesCidr(normalized, r.cidr))
+    if (coveredByNetmask) {
+      const exists = db.get(`SELECT id FROM blocked_ips WHERE cidr = ? AND type = 'unblock'`, normalized)
+      if (!exists) {
+        db.run(
+          `INSERT INTO blocked_ips(cidr, reason, type, created_at) VALUES(?,?,?,?)`,
+          normalized, 'Explicitly unblocked', 'unblock', Date.now()
+        )
+      }
+    }
+    invalidateIpCache()
+  }
 
   // Guard all /admin routes
   fastify.addHook('preHandler', async (req, reply) => {
@@ -79,10 +114,15 @@ async function adminPlugin(fastify) {
       totalRow = db.get(`SELECT COUNT(*) as n FROM links`)
     }
 
+    const blockedIps = new Set(
+      db.all(`SELECT cidr FROM blocked_ips WHERE type = 'block' AND cidr NOT LIKE '%/%'`).map(r => r.cidr)
+    )
+
     return reply.view('admin/links.njk', {
       links: rows.map(l => ({
         ...l, createdAt: l.created_at,
         isActive: Boolean(l.is_active), visitCount: l.visit_count,
+        creatorIpBlocked: l.created_ip ? blockedIps.has(l.created_ip) : false,
       })),
       pagination: { page, totalPages: Math.ceil(totalRow.n / perPage), total: totalRow.n },
       query: { q, sort, dir: dir.toLowerCase() },
@@ -181,7 +221,7 @@ async function adminPlugin(fastify) {
   fastify.post('/admin/users/:id/delete', async (req, reply) => {
     if (req.subdomain !== '') return reply.callNotFound()
     if (Number(req.params.id) === req.session.userId) {
-      req.session.flash = { type: 'error', message: "You can't delete your own account." }
+      req.session.flash = { type: 'error', message: "You can't delete your own account. Have another admin do it." }
       return reply.redirect('/admin/users')
     }
     db.run('DELETE FROM users WHERE id = ?', Number(req.params.id))
@@ -198,21 +238,37 @@ async function adminPlugin(fastify) {
 
     const reports = status
       ? db.all(`
-          SELECT r.*, l.code as link_code, l.destination as link_destination
-          FROM reports r LEFT JOIN links l ON l.id = r.link_id
+          SELECT r.*,
+            l.code as link_code, l.destination as link_destination, l.created_ip as link_creator_ip, l.is_active as link_is_active,
+            u.id as owner_id, u.username as owner_username, u.is_blocked as owner_is_blocked
+          FROM reports r
+          LEFT JOIN links l ON l.id = r.link_id
+          LEFT JOIN users u ON u.id = l.owner_id
           WHERE r.status = ? ORDER BY r.created_at DESC LIMIT 100
         `, status)
       : db.all(`
-          SELECT r.*, l.code as link_code, l.destination as link_destination
-          FROM reports r LEFT JOIN links l ON l.id = r.link_id
+          SELECT r.*,
+            l.code as link_code, l.destination as link_destination, l.created_ip as link_creator_ip, l.is_active as link_is_active,
+            u.id as owner_id, u.username as owner_username, u.is_blocked as owner_is_blocked
+          FROM reports r
+          LEFT JOIN links l ON l.id = r.link_id
+          LEFT JOIN users u ON u.id = l.owner_id
           ORDER BY r.created_at DESC LIMIT 100
         `)
+
+    const blockedIps = new Set(
+      db.all(`SELECT cidr FROM blocked_ips WHERE type = 'block' AND cidr NOT LIKE '%/%'`).map(r => r.cidr)
+    )
 
     return reply.view('admin/reports.njk', {
       reports: reports.map(r => ({
         ...r, createdAt: r.created_at,
         linkCode: r.link_code, linkDestination: r.link_destination,
+        linkCreatorIp: r.link_creator_ip, linkIsActive: Boolean(r.link_is_active),
         reporterIp: r.reporter_ip,
+        ownerId: r.owner_id, ownerUsername: r.owner_username, ownerIsBlocked: Boolean(r.owner_is_blocked),
+        creatorIpBlocked: r.link_creator_ip ? blockedIps.has(r.link_creator_ip) : false,
+        isReenableRequest: (r.reason || '').startsWith('[re-enable request]'),
       })),
       query: { status: req.query.status || 'pending' },
     })
@@ -224,14 +280,57 @@ async function adminPlugin(fastify) {
     return reply.redirect('/admin/reports')
   })
 
-  fastify.post('/admin/reports/:id/action', async (req, reply) => {
+  fastify.post('/admin/reports/:id/disable', async (req, reply) => {
     if (req.subdomain !== '') return reply.callNotFound()
     const report = db.get('SELECT * FROM reports WHERE id = ?', Number(req.params.id))
     if (report) {
       db.run(`UPDATE reports SET status = 'actioned' WHERE id = ?`, report.id)
       db.run('UPDATE links SET is_active = 0 WHERE id = ?', report.link_id)
     }
-    req.session.flash = { type: 'success', message: 'Link deactivated.' }
+    req.session.flash = { type: 'success', message: 'Link disabled.' }
+    return reply.redirect('/admin/reports')
+  })
+
+  fastify.post('/admin/reports/:id/enable', async (req, reply) => {
+    if (req.subdomain !== '') return reply.callNotFound()
+    const report = db.get('SELECT * FROM reports WHERE id = ?', Number(req.params.id))
+    if (report) {
+      db.run(`UPDATE reports SET status = 'actioned' WHERE id = ?`, report.id)
+      db.run('UPDATE links SET is_active = 1 WHERE id = ?', report.link_id)
+    }
+    req.session.flash = { type: 'success', message: 'Link re-enabled.' }
+    return reply.redirect('/admin/reports')
+  })
+
+  fastify.post('/admin/reports/:id/block-user', async (req, reply) => {
+    if (req.subdomain !== '') return reply.callNotFound()
+    const report = db.get(`SELECT r.*, l.owner_id FROM reports r LEFT JOIN links l ON l.id = r.link_id WHERE r.id = ?`, Number(req.params.id))
+    if (report?.owner_id) db.run('UPDATE users SET is_blocked = 1 WHERE id = ?', report.owner_id)
+    req.session.flash = { type: 'success', message: 'User blocked.' }
+    return reply.redirect('/admin/reports')
+  })
+
+  fastify.post('/admin/reports/:id/unblock-user', async (req, reply) => {
+    if (req.subdomain !== '') return reply.callNotFound()
+    const report = db.get(`SELECT r.*, l.owner_id FROM reports r LEFT JOIN links l ON l.id = r.link_id WHERE r.id = ?`, Number(req.params.id))
+    if (report?.owner_id) db.run('UPDATE users SET is_blocked = 0 WHERE id = ?', report.owner_id)
+    req.session.flash = { type: 'success', message: 'User unblocked.' }
+    return reply.redirect('/admin/reports')
+  })
+
+  fastify.post('/admin/reports/:id/block-ip', async (req, reply) => {
+    if (req.subdomain !== '') return reply.callNotFound()
+    const report = db.get(`SELECT r.*, l.created_ip FROM reports r LEFT JOIN links l ON l.id = r.link_id WHERE r.id = ?`, Number(req.params.id))
+    if (report?.created_ip) blockIp(report.created_ip, `Blocked from report #${report.id}`)
+    req.session.flash = { type: 'success', message: 'IP blocked.' }
+    return reply.redirect('/admin/reports')
+  })
+
+  fastify.post('/admin/reports/:id/unblock-ip', async (req, reply) => {
+    if (req.subdomain !== '') return reply.callNotFound()
+    const report = db.get(`SELECT r.*, l.created_ip FROM reports r LEFT JOIN links l ON l.id = r.link_id WHERE r.id = ?`, Number(req.params.id))
+    if (report?.created_ip) unblockIp(report.created_ip)
+    req.session.flash = { type: 'success', message: 'IP unblocked.' }
     return reply.redirect('/admin/reports')
   })
 
@@ -265,8 +364,7 @@ async function adminPlugin(fastify) {
     if (req.subdomain !== '') return reply.callNotFound()
     const rows = db.all('SELECT key, value FROM settings')
     const settingsMap = Object.fromEntries(rows.map(r => [r.key, r.value]))
-    const blockedIps = db.all('SELECT * FROM blocked_ips ORDER BY created_at DESC')
-    return reply.view('admin/settings.njk', { settings: settingsMap, blockedIps })
+    return reply.view('admin/settings.njk', { settings: settingsMap })
   })
 
   fastify.post('/admin/settings', async (req, reply) => {
@@ -289,22 +387,148 @@ async function adminPlugin(fastify) {
     return reply.redirect('/admin/settings')
   })
 
+  // ----------------------------------------------------------------
+  // GET /admin/blocked-ips
+  // ----------------------------------------------------------------
+  fastify.get('/admin/blocked-ips', async (req, reply) => {
+    if (req.subdomain !== '') return reply.callNotFound()
+    const q = (req.query.q || '').trim()
+    const typeFilter = req.query.type || ''
+    let rows
+    if (q) {
+      rows = db.all(`SELECT * FROM blocked_ips WHERE cidr LIKE ? ORDER BY created_at DESC`, `%${q}%`)
+    } else {
+      rows = db.all(`SELECT * FROM blocked_ips ORDER BY created_at DESC`)
+    }
+    if (typeFilter) rows = rows.filter(r => r.type === typeFilter)
+    return reply.view('admin/blocked-ips.njk', {
+      entries: rows.map(r => ({ ...r, createdAt: r.created_at })),
+      query: { q, type: typeFilter },
+    })
+  })
+
   fastify.post('/admin/blocked-ips', async (req, reply) => {
     if (req.subdomain !== '') return reply.callNotFound()
-    const { cidr, reason } = req.body
-    if (cidr?.trim()) {
-      db.run(
-        `INSERT INTO blocked_ips(cidr, reason, blocked_by, created_at) VALUES(?,?,?,?)`,
-        cidr.trim(), reason || null, req.session.userId, Date.now()
-      )
+    const { cidr, reason, type = 'block' } = req.body
+    if (!cidr?.trim()) return reply.redirect('/admin/blocked-ips')
+    if (type === 'unblock') {
+      unblockIp(cidr)
+    } else {
+      const added = blockIp(cidr, reason)
+      if (!added) {
+        req.session.flash = { type: 'info', message: `${cidr} is already blocked.` }
+      }
     }
-    return reply.redirect('/admin/settings')
+    return reply.redirect('/admin/blocked-ips')
   })
 
   fastify.post('/admin/blocked-ips/:id/delete', async (req, reply) => {
     if (req.subdomain !== '') return reply.callNotFound()
     db.run('DELETE FROM blocked_ips WHERE id = ?', Number(req.params.id))
-    return reply.redirect('/admin/settings')
+    invalidateIpCache()
+    return reply.redirect('/admin/blocked-ips')
+  })
+
+  // Block/unblock IP from any admin page (used by links + reports)
+  fastify.post('/admin/ip/block', async (req, reply) => {
+    if (req.subdomain !== '') return reply.callNotFound()
+    const { ip, reason, redirect = '/admin/links' } = req.body
+    if (ip?.trim()) blockIp(ip.trim(), reason)
+    req.session.flash = { type: 'success', message: `${ip} blocked.` }
+    return reply.redirect(redirect)
+  })
+
+  fastify.post('/admin/ip/unblock', async (req, reply) => {
+    if (req.subdomain !== '') return reply.callNotFound()
+    const { ip, redirect = '/admin/links' } = req.body
+    if (ip?.trim()) unblockIp(ip.trim())
+    req.session.flash = { type: 'success', message: `${ip} unblocked.` }
+    return reply.redirect(redirect)
+  })
+
+  fastify.post('/admin/users/:id/tier', async (req, reply) => {
+    if (req.subdomain !== '') return reply.callNotFound()
+    const { tier } = req.body
+    if (['free', 'paid'].includes(tier)) {
+      db.run('UPDATE users SET subscription_tier = ? WHERE id = ?', tier, Number(req.params.id))
+    }
+    req.session.flash = { type: 'success', message: 'Tier updated.' }
+    return reply.redirect('/admin/users')
+  })
+
+  fastify.post('/admin/users/:id/impersonate', async (req, reply) => {
+    if (req.subdomain !== '') return reply.callNotFound()
+    const user = db.get('SELECT * FROM users WHERE id = ?', Number(req.params.id))
+    if (!user) {
+      req.session.flash = { type: 'error', message: 'User not found.' }
+      return reply.redirect('/admin/users')
+    }
+    req.session.impersonatingAdminId = req.session.userId
+    req.session.impersonatingAdminUsername = req.session.username
+    req.session.impersonatingAdminRole = req.session.role
+    req.session.userId = user.id
+    req.session.username = user.username
+    req.session.role = user.role
+    req.session.flash = { type: 'info', message: `Now logged in as ${user.username}` }
+    return reply.redirect('/dashboard')
+  })
+
+  // ----------------------------------------------------------------
+  // GET /admin/messages
+  // ----------------------------------------------------------------
+  fastify.get('/admin/messages', async (req, reply) => {
+    if (req.subdomain !== '') return reply.callNotFound()
+    const messages = db.all('SELECT * FROM messages ORDER BY created_at DESC LIMIT 200')
+    return reply.view('admin/messages.njk', {
+      messages: messages.map(m => ({ ...m, createdAt: m.created_at, isRead: Boolean(m.is_read) })),
+    })
+  })
+
+  fastify.post('/admin/messages/:id/read', async (req, reply) => {
+    if (req.subdomain !== '') return reply.callNotFound()
+    db.run('UPDATE messages SET is_read = 1 WHERE id = ?', Number(req.params.id))
+    return reply.redirect('/admin/messages')
+  })
+
+  fastify.post('/admin/messages/:id/delete', async (req, reply) => {
+    if (req.subdomain !== '') return reply.callNotFound()
+    db.run('DELETE FROM messages WHERE id = ?', Number(req.params.id))
+    return reply.redirect('/admin/messages')
+  })
+
+  // ----------------------------------------------------------------
+  // GET /admin/scan-words
+  // ----------------------------------------------------------------
+  fastify.get('/admin/scan-words', async (req, reply) => {
+    if (req.subdomain !== '') return reply.callNotFound()
+    const words = db.all('SELECT * FROM scan_words ORDER BY created_at DESC')
+    return reply.view('admin/scan-words.njk', { words: words.map(w => ({ ...w, isActive: Boolean(w.active) })) })
+  })
+
+  fastify.post('/admin/scan-words', async (req, reply) => {
+    if (req.subdomain !== '') return reply.callNotFound()
+    const { word, scope = 'url' } = req.body
+    if (word?.trim()) {
+      const validScope = ['url', 'domain', 'content'].includes(scope) ? scope : 'url'
+      db.run(
+        `INSERT INTO scan_words(word, scope, active, created_at) VALUES(?,?,1,?)`,
+        word.trim().toLowerCase(), validScope, Date.now()
+      )
+    }
+    return reply.redirect('/admin/scan-words')
+  })
+
+  fastify.post('/admin/scan-words/:id/delete', async (req, reply) => {
+    if (req.subdomain !== '') return reply.callNotFound()
+    db.run('DELETE FROM scan_words WHERE id = ?', Number(req.params.id))
+    return reply.redirect('/admin/scan-words')
+  })
+
+  fastify.post('/admin/scan-words/:id/toggle', async (req, reply) => {
+    if (req.subdomain !== '') return reply.callNotFound()
+    const w = db.get('SELECT id, active FROM scan_words WHERE id = ?', Number(req.params.id))
+    if (w) db.run('UPDATE scan_words SET active = ? WHERE id = ?', w.active ? 0 : 1, w.id)
+    return reply.redirect('/admin/scan-words')
   })
 }
 

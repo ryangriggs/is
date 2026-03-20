@@ -1,0 +1,83 @@
+{% extends "layouts/base.njk" %}
+{% block title %}Blocked IPs — Admin — {{ siteName }}{% endblock %}
+{% block content %}
+<div class="container">
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Blocked IPs</h1>
+      <p class="page-subtitle">{{ entries.length }} entries</p>
+    </div>
+    <a href="/admin" class="btn btn-ghost btn-sm">← Admin</a>
+  </div>
+
+  <div class="card mb-4">
+    <h2 style="font-size:1rem;margin:0 0 1rem">Add Entry</h2>
+    <form method="POST" action="/admin/blocked-ips">
+      <div style="display:flex;gap:.75rem;flex-wrap:wrap;align-items:flex-end">
+        <div class="form-group" style="flex:1;min-width:180px;margin:0">
+          <label class="label">CIDR / IP</label>
+          <input type="text" name="cidr" class="input" placeholder="1.2.3.4 or 1.2.3.0/24" required>
+        </div>
+        <div class="form-group" style="flex:1;min-width:180px;margin:0">
+          <label class="label">Reason</label>
+          <input type="text" name="reason" class="input" placeholder="Optional reason">
+        </div>
+        <div class="form-group" style="min-width:120px;margin:0">
+          <label class="label">Action</label>
+          <select name="type" class="select">
+            <option value="block">Block</option>
+            <option value="unblock">Explicit Unblock</option>
+          </select>
+        </div>
+        <button type="submit" class="btn btn-danger" style="align-self:flex-end">Add</button>
+      </div>
+    </form>
+  </div>
+
+  <form method="GET" class="card mb-3" style="padding:12px">
+    <div class="input-group">
+      <input type="text" name="q" class="input" placeholder="Search CIDR..." value="{{ query.q }}">
+      <select name="type" class="select" style="width:140px">
+        <option value="" {% if not query.type %}selected{% endif %}>All types</option>
+        <option value="block" {% if query.type == 'block' %}selected{% endif %}>Blocked</option>
+        <option value="unblock" {% if query.type == 'unblock' %}selected{% endif %}>Unblocked</option>
+      </select>
+      <button type="submit" class="btn btn-secondary">Filter</button>
+      <a href="/admin/blocked-ips" class="btn btn-ghost">Reset</a>
+    </div>
+  </form>
+
+  {% if entries.length == 0 %}
+  <div class="card text-center text-muted" style="padding:48px">No entries found.</div>
+  {% else %}
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>CIDR / IP</th><th>Type</th><th>Reason</th><th>Added</th><th></th></tr>
+      </thead>
+      <tbody>
+        {% for e in entries %}
+        <tr>
+          <td class="font-mono">{{ e.cidr }}</td>
+          <td>
+            {% if e.type == 'unblock' %}
+              <span class="badge badge-success">Unblocked</span>
+            {% else %}
+              <span class="badge badge-danger">Blocked</span>
+            {% endif %}
+          </td>
+          <td class="text-muted text-sm">{{ e.reason or '—' }}</td>
+          <td class="text-muted text-sm">{{ e.createdAt | date }}</td>
+          <td>
+            <form method="POST" action="/admin/blocked-ips/{{ e.id }}/delete" style="margin:0">
+              <button class="btn btn-ghost btn-sm" data-confirm="Remove this entry?">✕</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

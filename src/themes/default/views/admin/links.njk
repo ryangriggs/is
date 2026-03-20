@@ -7,9 +7,7 @@
       <h1 class="page-title">Links</h1>
       <p class="page-subtitle">{{ pagination.total }} total links</p>
     </div>
-    <div class="flex gap-1">
-      <a href="/admin" class="btn btn-ghost btn-sm">← Admin</a>
-    </div>
+    <a href="/admin" class="btn btn-ghost btn-sm">← Admin</a>
   </div>
 
   <form method="GET" action="/admin/links" class="card mb-3" style="padding:16px;">
@@ -36,6 +34,7 @@
           <th>Destination</th>
           <th>Owner</th>
           <th>Type</th>
+          <th>Creator IP</th>
           <th>Created</th>
           <th>Visits</th>
           <th>Status</th>
@@ -44,16 +43,34 @@
       </thead>
       <tbody>
         {% if links.length == 0 %}
-        <tr><td colspan="8" class="text-center text-muted" style="padding:32px;">No links found.</td></tr>
+        <tr><td colspan="9" class="text-center text-muted" style="padding:32px;">No links found.</td></tr>
         {% endif %}
         {% for link in links %}
         <tr>
           <td class="td-code">
             <a href="https://{{ baseDomain }}/{{ link.code }}" target="_blank" rel="noopener">{{ link.code }}</a>
           </td>
-          <td class="td-url" title="{{ link.destination }}">{{ link.destination }}</td>
+          <td class="td-url" title="{{ link.destination }}">{{ link.destination | truncate(40) }}</td>
           <td class="text-muted text-sm">{{ link.username or '—' }}</td>
           <td><span class="badge badge-neutral">{{ link.type }}</span></td>
+          <td class="text-sm font-mono">
+            {% if link.created_ip %}
+              {{ link.created_ip }}
+              {% if link.creatorIpBlocked %}
+                <form method="POST" action="/admin/ip/unblock" style="display:inline">
+                  <input type="hidden" name="ip" value="{{ link.created_ip }}">
+                  <input type="hidden" name="redirect" value="/admin/links">
+                  <button type="submit" class="btn btn-ghost btn-sm" title="Unblock IP">✅</button>
+                </form>
+              {% else %}
+                <form method="POST" action="/admin/ip/block" style="display:inline">
+                  <input type="hidden" name="ip" value="{{ link.created_ip }}">
+                  <input type="hidden" name="redirect" value="/admin/links">
+                  <button type="submit" class="btn btn-ghost btn-sm" data-confirm="Block IP {{ link.created_ip }}?" title="Block IP">🚫</button>
+                </form>
+              {% endif %}
+            {% else %}—{% endif %}
+          </td>
           <td class="text-muted text-sm">{{ link.createdAt | date }}</td>
           <td>{{ link.visitCount or 0 }}</td>
           <td>

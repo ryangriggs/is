@@ -13,6 +13,7 @@ import nunjucks from 'nunjucks'
 
 import config from './config.js'
 import { initDb } from './core/db/index.js'
+import { checkIpBlocked } from './core/ipblock.js'
 import { HookRegistry } from './core/hooks.js'
 import { extractSubdomain } from './core/subdomain.js'
 import { SqliteSessionStore } from './core/auth.js'
@@ -42,6 +43,17 @@ export async function buildApp() {
   app.decorate('db', db)
   app.decorate('hooks', new HookRegistry())
   app.decorate('config', config)
+
+  // Earliest possible IP block check — plain text response, no template
+  app.addHook('onRequest', async (req, reply) => {
+    if (req.url.startsWith('/static/') || req.url.startsWith('/uploads/')) return
+    try {
+      if (checkIpBlocked(req.ip, db)) {
+        reply.code(403).header('Content-Type', 'text/plain; charset=utf-8')
+        return reply.send('Your IP address has been blocked. Contact the site administrator if you believe this is an error.')
+      }
+    } catch (_) {}
+  })
 
   // Cookies (must be before session)
   await app.register(cookie, { secret: config.SESSION_SECRET })
@@ -139,6 +151,9 @@ export async function buildApp() {
     reply.locals = {
       user: req.session.userId
         ? { id: req.session.userId, username: req.session.username, role: req.session.role }
+        : null,
+      impersonating: req.session.impersonatingAdminId
+        ? { adminId: req.session.impersonatingAdminId, adminUsername: req.session.impersonatingAdminUsername }
         : null,
       siteName,
       siteTagline,

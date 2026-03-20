@@ -58,7 +58,18 @@
             {% endif %}
           </td>
           <td class="td-actions">
+            <form method="POST" action="/admin/users/{{ u.id }}/tier" style="display:inline;margin-right:.25rem">
+              <select name="tier" class="select" style="width:80px;padding:.2rem .3rem;font-size:.8rem"
+                onchange="this.form.submit()">
+                <option value="free" {% if u.subscriptionTier == 'free' or not u.subscriptionTier %}selected{% endif %}>Free</option>
+                <option value="paid" {% if u.subscriptionTier == 'paid' %}selected{% endif %}>Paid</option>
+              </select>
+            </form>
             {% if u.id != currentUserId %}
+              <form method="POST" action="/admin/users/{{ u.id }}/impersonate" style="display:inline;">
+                <button type="submit" class="btn btn-ghost btn-sm" title="Login as this user"
+                  data-confirm="Login as {{ u.username }}?">👤</button>
+              </form>
               {% if u.isBlocked %}
                 <form method="POST" action="/admin/users/{{ u.id }}/unblock" style="display:inline;">
                   <button type="submit" class="btn btn-ghost btn-sm" title="Unblock">✅</button>
@@ -72,12 +83,12 @@
               {% if u.role == 'admin' %}
                 <form method="POST" action="/admin/users/{{ u.id }}/remove-admin" style="display:inline;">
                   <button type="submit" class="btn btn-ghost btn-sm"
-                    data-confirm="Remove admin role from this user?" title="Remove admin">👤</button>
+                    data-confirm="Remove admin role from this user?" title="Remove admin">⭐</button>
                 </form>
               {% else %}
                 <form method="POST" action="/admin/users/{{ u.id }}/make-admin" style="display:inline;">
                   <button type="submit" class="btn btn-ghost btn-sm"
-                    data-confirm="Grant admin role to this user?" title="Make admin">⭐</button>
+                    data-confirm="Grant admin role to this user?" title="Make admin">👑</button>
                 </form>
               {% endif %}
               <form method="POST" action="/admin/users/{{ u.id }}/delete" style="display:inline;">

@@ -21,32 +21,12 @@
     <p class="card-body">No pending reports to review.</p>
   </div>
   {% else %}
-  <div class="table-wrap">
-    <table>
-      <thead>
-        <tr>
-          <th>Short Link</th>
-          <th>Destination</th>
-          <th>Reason</th>
-          <th>Reporter IP</th>
-          <th>Reported</th>
-          <th>Status</th>
-          <th>Actions</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for report in reports %}
-        <tr>
-          <td class="td-code">
-            <a href="https://{{ baseDomain }}/{{ report.linkCode }}" target="_blank" rel="noopener">
-              {{ baseDomain }}/{{ report.linkCode }}
-            </a>
-          </td>
-          <td class="td-url" title="{{ report.linkDestination }}">{{ report.linkDestination }}</td>
-          <td class="text-sm">{{ report.reason or '—' }}</td>
-          <td class="text-muted text-sm font-mono">{{ report.reporterIp }}</td>
-          <td class="text-muted text-sm">{{ report.createdAt | date }}</td>
-          <td>
+  <div style="display:flex;flex-direction:column;gap:1rem">
+    {% for report in reports %}
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;flex-wrap:wrap">
+        <div style="flex:1;min-width:0">
+          <div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;margin-bottom:.5rem">
             {% if report.status == 'pending' %}
               <span class="badge badge-warning">Pending</span>
             {% elif report.status == 'actioned' %}
@@ -54,23 +34,81 @@
             {% else %}
               <span class="badge badge-neutral">Ignored</span>
             {% endif %}
-          </td>
-          <td class="td-actions">
-            {% if report.status == 'pending' %}
-            <form method="POST" action="/admin/reports/{{ report.id }}/ignore" style="display:inline;">
-              <button type="submit" class="btn btn-ghost btn-sm" title="Ignore">👍 Ignore</button>
-            </form>
-            <form method="POST" action="/admin/reports/{{ report.id }}/action" style="display:inline;">
-              <button type="submit" class="btn btn-danger btn-sm"
-                data-confirm="Deactivate this link and mark report as actioned?"
-                title="Action">🚫 Action</button>
-            </form>
+            {% if report.isReenableRequest %}
+              <span class="badge badge-info">Re-enable Request</span>
             {% endif %}
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
+            <a href="https://{{ baseDomain }}/{{ report.linkCode }}" target="_blank" class="font-mono text-sm">
+              {{ baseDomain }}/{{ report.linkCode }}
+            </a>
+            <span class="text-muted text-xs">{{ report.createdAt | date }}</span>
+          </div>
+          <p class="text-sm" style="margin:0 0 .5rem"><strong>Reason:</strong> {{ report.reason or '—' }}</p>
+          {% if report.linkDestination %}
+            <p class="text-sm text-muted" style="margin:0 0 .5rem;word-break:break-all">{{ report.linkDestination | truncate(80) }}</p>
+          {% endif %}
+          <div style="display:flex;gap:1.5rem;flex-wrap:wrap">
+            {% if report.ownerUsername %}
+            <div class="text-sm">
+              <strong>User:</strong> {{ report.ownerUsername }}
+              {% if report.ownerIsBlocked %}<span class="badge badge-danger" style="font-size:.7rem">Blocked</span>{% endif %}
+            </div>
+            {% endif %}
+            {% if report.linkCreatorIp %}
+            <div class="text-sm">
+              <strong>Creator IP:</strong> <code>{{ report.linkCreatorIp }}</code>
+              {% if report.creatorIpBlocked %}<span class="badge badge-danger" style="font-size:.7rem">Blocked</span>{% endif %}
+            </div>
+            {% endif %}
+            <div class="text-sm text-muted"><strong>Reporter IP:</strong> <code>{{ report.reporterIp }}</code></div>
+          </div>
+        </div>
+        {% if report.status == 'pending' %}
+        <div style="display:flex;flex-direction:column;gap:.4rem;align-items:flex-end">
+          <div style="display:flex;gap:.4rem;flex-wrap:wrap">
+            <form method="POST" action="/admin/reports/{{ report.id }}/ignore" style="display:inline;">
+              <button type="submit" class="btn btn-ghost btn-sm">👍 Ignore</button>
+            </form>
+            {% if report.isReenableRequest %}
+              <form method="POST" action="/admin/reports/{{ report.id }}/enable" style="display:inline;">
+                <button type="submit" class="btn btn-success btn-sm" data-confirm="Re-enable this link?">✅ Enable</button>
+              </form>
+            {% else %}
+              <form method="POST" action="/admin/reports/{{ report.id }}/disable" style="display:inline;">
+                <button type="submit" class="btn btn-danger btn-sm" data-confirm="Disable this link?">🚫 Disable</button>
+              </form>
+            {% endif %}
+          </div>
+          {% if report.ownerId %}
+          <div style="display:flex;gap:.4rem;flex-wrap:wrap">
+            {% if report.ownerIsBlocked %}
+              <form method="POST" action="/admin/reports/{{ report.id }}/unblock-user" style="display:inline;">
+                <button type="submit" class="btn btn-ghost btn-sm">✅ Unblock User</button>
+              </form>
+            {% else %}
+              <form method="POST" action="/admin/reports/{{ report.id }}/block-user" style="display:inline;">
+                <button type="submit" class="btn btn-ghost btn-sm" data-confirm="Block this user?">🚫 Block User</button>
+              </form>
+            {% endif %}
+          </div>
+          {% endif %}
+          {% if report.linkCreatorIp %}
+          <div style="display:flex;gap:.4rem">
+            {% if report.creatorIpBlocked %}
+              <form method="POST" action="/admin/reports/{{ report.id }}/unblock-ip" style="display:inline;">
+                <button type="submit" class="btn btn-ghost btn-sm">✅ Unblock IP</button>
+              </form>
+            {% else %}
+              <form method="POST" action="/admin/reports/{{ report.id }}/block-ip" style="display:inline;">
+                <button type="submit" class="btn btn-ghost btn-sm" data-confirm="Block IP {{ report.linkCreatorIp }}?">🚫 Block IP</button>
+              </form>
+            {% endif %}
+          </div>
+          {% endif %}
+        </div>
+        {% endif %}
+      </div>
+    </div>
+    {% endfor %}
   </div>
   {% endif %}
 </div>

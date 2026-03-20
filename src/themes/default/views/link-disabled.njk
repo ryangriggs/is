@@ -1,0 +1,26 @@
+{% extends "layouts/base.njk" %}
+{% block title %}Link Disabled — {{ siteName }}{% endblock %}
+{% block content %}
+<section class="section">
+  <div class="container" style="max-width:560px;text-align:center">
+    <div style="font-size:3rem;margin-bottom:1rem">🚫</div>
+    <h1 class="section-title">This link has been disabled</h1>
+    <p class="section-subtitle">Your link <code>{{ baseDomain }}/{{ code }}</code> has been deactivated, possibly due to a policy violation.</p>
+
+    <div class="card" style="text-align:left">
+      <h2 style="font-size:1rem;margin:0 0 .75rem">Request Re-enable</h2>
+      <p class="text-muted text-sm mb-3">If you believe this was done in error, submit a request for review.</p>
+      <form method="POST" action="/report/{{ code }}">
+        <input type="hidden" name="reason" value="[re-enable request] Owner is requesting this link be re-enabled.">
+        <div class="form-group">
+          <label class="label">Additional context <span class="text-muted">(optional)</span></label>
+          <textarea name="extra" class="input" rows="3" placeholder="Explain why this link should be re-enabled..."></textarea>
+        </div>
+        <button type="submit" class="btn btn-primary btn-block">Submit Re-enable Request</button>
+      </form>
+    </div>
+
+    <a href="/dashboard" class="btn btn-ghost mt-3">← Back to Dashboard</a>
+  </div>
+</section>
+{% endblock %}

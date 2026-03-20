@@ -1,0 +1,67 @@
+{% extends "layouts/base.njk" %}
+{% block title %}Scan Words — Admin — {{ siteName }}{% endblock %}
+{% block content %}
+<div class="container" style="max-width:720px">
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Scan Words</h1>
+      <p class="page-subtitle">Block links containing prohibited words or domains</p>
+    </div>
+    <a href="/admin" class="btn btn-ghost btn-sm">← Admin</a>
+  </div>
+
+  <div class="card mb-4">
+    <h2 style="font-size:1rem;margin:0 0 1rem">Add Word / Domain</h2>
+    <form method="POST" action="/admin/scan-words">
+      <div style="display:flex;gap:.75rem;flex-wrap:wrap;align-items:flex-end">
+        <div class="form-group" style="flex:1;min-width:180px;margin:0">
+          <label class="label">Word or domain</label>
+          <input type="text" name="word" class="input" placeholder="casino or spamsite.com" required>
+        </div>
+        <div class="form-group" style="min-width:160px;margin:0">
+          <label class="label">Scope</label>
+          <select name="scope" class="select">
+            <option value="url">URL (check full URL)</option>
+            <option value="domain">Domain only</option>
+            <option value="content">Content (fetch &amp; scan)</option>
+          </select>
+        </div>
+        <button type="submit" class="btn btn-primary" style="align-self:flex-end">Add</button>
+      </div>
+    </form>
+  </div>
+
+  {% if words.length == 0 %}
+  <div class="card text-center text-muted" style="padding:48px">No scan words yet.</div>
+  {% else %}
+  <div class="card">
+    <table class="table">
+      <thead><tr><th>Word</th><th>Scope</th><th>Status</th><th></th></tr></thead>
+      <tbody>
+        {% for w in words %}
+        <tr>
+          <td class="font-mono">{{ w.word }}</td>
+          <td><span class="badge badge-neutral">{{ w.scope }}</span></td>
+          <td>
+            {% if w.isActive %}
+              <span class="badge badge-success">Active</span>
+            {% else %}
+              <span class="badge badge-neutral">Disabled</span>
+            {% endif %}
+          </td>
+          <td class="td-actions">
+            <form method="POST" action="/admin/scan-words/{{ w.id }}/toggle" style="display:inline">
+              <button type="submit" class="btn btn-ghost btn-sm">{{ '⏸' if w.isActive else '▶️' }}</button>
+            </form>
+            <form method="POST" action="/admin/scan-words/{{ w.id }}/delete" style="display:inline">
+              <button type="submit" class="btn btn-danger btn-sm" data-confirm="Delete this word?">🗑</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
