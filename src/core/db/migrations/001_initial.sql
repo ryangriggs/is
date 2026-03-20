@@ -114,6 +114,3 @@ CREATE TABLE IF NOT EXISTS bookmark_items (
 );
 
 CREATE INDEX IF NOT EXISTS idx_bookmark_items_link ON bookmark_items(link_id);
-
--- Upgrade existing databases (IF NOT EXISTS makes these safe to re-run)
-ALTER TABLE dns_records ADD COLUMN IF NOT EXISTS ttl INTEGER NOT NULL DEFAULT 300;

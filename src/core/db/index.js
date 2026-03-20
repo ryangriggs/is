@@ -34,12 +34,20 @@ export async function initDb() {
     sqlite.exec('PRAGMA journal_mode = WAL')
     sqlite.exec('PRAGMA foreign_keys = ON')
 
-    // Run migration
+    // Run initial schema (all statements are CREATE ... IF NOT EXISTS, safe to re-run)
     const sql = readFileSync(
       join(__dirname, 'migrations', '001_initial.sql'),
       'utf8'
     )
     sqlite.exec(sql)
+
+    // Additive column migrations — try/catch because SQLite has no ADD COLUMN IF NOT EXISTS
+    const addColumns = [
+      'ALTER TABLE dns_records ADD COLUMN ttl INTEGER NOT NULL DEFAULT 300',
+    ]
+    for (const stmt of addColumns) {
+      try { sqlite.prepare(stmt).run() } catch (_) { /* column already exists */ }
+    }
 
     _db = createSqliteDb(sqlite)
   }
