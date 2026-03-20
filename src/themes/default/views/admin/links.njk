@@ -174,8 +174,10 @@ th.resizable { position: relative; }
       <span class="pg disabled">«</span><span class="pg disabled">‹</span>
     {% endif %}
 
-    {% set ws = [1, pagination.page - 4] | max %}
-    {% set we = [pagination.totalPages, pagination.page + 4] | min %}
+    {% set _wsRaw = pagination.page - 4 %}
+    {% set ws = 1 if _wsRaw < 1 else _wsRaw %}
+    {% set _weRaw = pagination.page + 4 %}
+    {% set we = pagination.totalPages if _weRaw > pagination.totalPages else _weRaw %}
     {% if ws > 1 %}<span class="pg disabled">…</span>{% endif %}
     {% for p in range(ws, we + 1) %}
       {% if p == pagination.page %}
