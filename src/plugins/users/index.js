@@ -1,5 +1,10 @@
 import fp from 'fastify-plugin'
-import { hashPassword, verifyPassword, requireAuth } from '../../core/auth.js'
+import { createHash } from 'crypto'
+import { hashPassword, verifyPassword, requireAuth, generateToken } from '../../core/auth.js'
+
+function sha256(s) {
+  return createHash('sha256').update(s).digest('hex')
+}
 
 async function usersPlugin(fastify) {
   const db = fastify.db
@@ -191,6 +196,38 @@ async function usersPlugin(fastify) {
       Number(req.params.id), req.session.userId)
     req.session.flash = { type: 'success', message: 'Link deleted.' }
     return reply.redirect('/dashboard')
+  })
+
+  // ----------------------------------------------------------------
+  // GET /tokens — manage API tokens (web UI)
+  // ----------------------------------------------------------------
+  fastify.get('/tokens', { preHandler: requireAuth }, async (req, reply) => {
+    const tokens = db.all(
+      'SELECT id, label, last_used, created_at FROM api_tokens WHERE user_id = ? ORDER BY created_at DESC',
+      req.session.userId
+    )
+    return reply.view('tokens.njk', { tokens })
+  })
+
+  fastify.post('/tokens', { preHandler: requireAuth }, async (req, reply) => {
+    const { label = '' } = req.body || {}
+    const plain = generateToken(32)
+    const hash = sha256(plain)
+    db.run(
+      'INSERT INTO api_tokens(user_id, token_hash, label, created_at) VALUES(?,?,?,?)',
+      req.session.userId, hash, label.trim() || null, Date.now()
+    )
+    req.session.flash = {
+      type: 'success',
+      message: `Token created (save it — shown once): ${plain}`
+    }
+    return reply.redirect('/tokens')
+  })
+
+  fastify.post('/tokens/delete/:id', { preHandler: requireAuth }, async (req, reply) => {
+    db.run('DELETE FROM api_tokens WHERE id = ? AND user_id = ?', req.params.id, req.session.userId)
+    req.session.flash = { type: 'success', message: 'Token revoked.' }
+    return reply.redirect('/tokens')
   })
 }
 

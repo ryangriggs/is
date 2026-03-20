@@ -100,3 +100,16 @@ CREATE TABLE IF NOT EXISTS dns_records (
 );
 
 CREATE INDEX IF NOT EXISTS idx_dns_subdomain ON dns_records(subdomain);
+
+CREATE TABLE IF NOT EXISTS bookmark_items (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  link_id INTEGER NOT NULL REFERENCES links(id) ON DELETE CASCADE,
+  url TEXT NOT NULL,
+  title TEXT,
+  description TEXT,
+  folder TEXT,
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  created_at INTEGER NOT NULL DEFAULT (strftime('%s','now') * 1000)
+);
+
+CREATE INDEX IF NOT EXISTS idx_bookmark_items_link ON bookmark_items(link_id);

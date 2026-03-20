@@ -1,0 +1,22 @@
+{% extends "layouts/base.njk" %}
+{% block title %}Image Upload — {{ siteName }}{% endblock %}
+{% block content %}
+<section class="section">
+  <div class="container" style="max-width:560px">
+    <h1 class="section-title">Image Upload</h1>
+    <p class="section-subtitle">Share images with a short link. JPEG, PNG, GIF, WebP.</p>
+
+    {% if error %}<div class="alert alert-error mb-3">{{ error }}</div>{% endif %}
+
+    <div class="card">
+      <form method="POST" action="/i" enctype="multipart/form-data">
+        <div class="form-group">
+          <label class="label" for="file">Image File</label>
+          <input id="file" type="file" name="file" class="input" accept="image/jpeg,image/png,image/gif,image/webp" required>
+        </div>
+        <button type="submit" class="btn btn-primary btn-block">Upload Image</button>
+      </form>
+    </div>
+  </div>
+</section>
+{% endblock %}

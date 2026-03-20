@@ -1,0 +1,37 @@
+{% extends "layouts/base.njk" %}
+{% block title %}{{ link.title or 'Bookmarks' }} — {{ siteName }}{% endblock %}
+{% block content %}
+<section class="section">
+  <div class="container" style="max-width:720px">
+    <div style="margin-bottom:1.5rem">
+      <h1 style="margin:0;font-size:1.5rem">{{ link.title or 'Bookmark Collection' }}</h1>
+      <p class="text-muted text-sm" style="margin:.25rem 0 0">{{ items.length }} bookmark{{ 's' if items.length != 1 }}</p>
+    </div>
+
+    {% if items.length %}
+    {% set currentFolder = null %}
+    {% for item in items %}
+      {% if item.folder != currentFolder %}
+        {% if item.folder %}
+        <h3 style="font-size:.875rem;text-transform:uppercase;letter-spacing:.05em;color:var(--color-text-muted);margin:1.5rem 0 .5rem">{{ item.folder }}</h3>
+        {% endif %}
+        {% set currentFolder = item.folder %}
+      {% endif %}
+      <div class="card" style="margin-bottom:.5rem;padding:.75rem 1rem">
+        <a href="{{ item.url }}" target="_blank" rel="noopener" style="font-weight:500">{{ item.title or item.url }}</a>
+        {% if item.description %}
+        <p class="text-muted text-sm" style="margin:.25rem 0 0">{{ item.description }}</p>
+        {% endif %}
+        <p class="text-muted text-xs truncate" style="margin:.15rem 0 0">{{ item.url }}</p>
+      </div>
+    {% endfor %}
+    {% else %}
+    <div class="card text-center text-muted">This collection is empty.</div>
+    {% endif %}
+
+    <div class="text-center mt-4">
+      <a href="/report/{{ link.code }}" class="text-muted text-sm">Report this collection</a>
+    </div>
+  </div>
+</section>
+{% endblock %}

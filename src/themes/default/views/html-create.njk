@@ -1,0 +1,34 @@
+{% extends "layouts/base.njk" %}
+{% block title %}HTML Paste — {{ siteName }}{% endblock %}
+{% block content %}
+<section class="section">
+  <div class="container" style="max-width:720px">
+    <h1 class="section-title">HTML Paste</h1>
+    <p class="section-subtitle">Share HTML snippets or full pages. Rendered in a sandboxed frame.</p>
+
+    {% if error %}<div class="alert alert-error mb-3">{{ error }}</div>{% endif %}
+
+    <div class="card">
+      <form method="POST" action="/h">
+        <div class="form-group">
+          <label class="label" for="title">Title <span class="text-muted">(optional)</span></label>
+          <input id="title" type="text" name="title" class="input" value="{{ title }}" placeholder="Untitled HTML">
+        </div>
+        <div class="form-group">
+          <label class="label" for="content">HTML Content</label>
+          <textarea id="content" name="content" class="input" rows="18" required autofocus
+            style="font-family:monospace;resize:vertical">{{ content }}</textarea>
+        </div>
+        {% if user %}
+        <div class="form-group">
+          <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer">
+            <input type="checkbox" name="is_private" value="1"> Private
+          </label>
+        </div>
+        {% endif %}
+        <button type="submit" class="btn btn-primary btn-block">Create HTML Paste</button>
+      </form>
+    </div>
+  </div>
+</section>
+{% endblock %}

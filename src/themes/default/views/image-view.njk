@@ -1,0 +1,26 @@
+{% extends "layouts/base.njk" %}
+{% block title %}{{ link.title or 'Image' }} — {{ siteName }}{% endblock %}
+{% block content %}
+<section class="section">
+  <div class="container" style="max-width:900px">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem;margin-bottom:1rem">
+      <div>
+        <h1 style="margin:0;font-size:1.25rem">{{ link.title or 'Image' }}</h1>
+        <p class="text-muted text-sm" style="margin:.25rem 0 0">
+          {{ link.created_at | date }} &bull;
+          <a href="/report/{{ link.code }}" class="text-muted">Report</a>
+        </p>
+      </div>
+      <div style="display:flex;gap:.5rem">
+        <a href="/uploads/{{ link.destination }}" download class="btn btn-secondary btn-sm">⬇ Download</a>
+        <a href="/i" class="btn btn-ghost btn-sm">+ Upload another</a>
+      </div>
+    </div>
+
+    <div class="card" style="padding:1rem;text-align:center">
+      <img src="/uploads/{{ link.destination }}" alt="{{ link.title or 'Image' }}"
+        style="max-width:100%;border-radius:8px">
+    </div>
+  </div>
+</section>
+{% endblock %}

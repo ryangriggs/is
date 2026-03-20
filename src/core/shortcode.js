@@ -1,4 +1,6 @@
-const CHARS = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'
+import config from '../config.js'
+
+const CHARS = config.SHORTLINK_CHARS
 const BASE = CHARS.length
 
 export function encode(n) {
@@ -11,9 +13,13 @@ export function encode(n) {
   return result
 }
 
+export function normalizeCode(s) {
+  return s.toLowerCase()
+}
+
 export function decode(s) {
   let result = 0
-  for (const c of s) {
+  for (const c of normalizeCode(s)) {
     const idx = CHARS.indexOf(c)
     if (idx === -1) return null
     result = result * BASE + idx
@@ -24,10 +30,10 @@ export function decode(s) {
 // Reserved codes that must never be assigned to links
 export const RESERVED_CODES = new Set([
   'success', 'manage', 'report', 'login', 'register', 'logout',
-  'dashboard', 'admin', 'static', 'favicon.ico', 'robots.txt',
-  'l', 't', 'h', 'i', 'b', 'd', 'q', 'a',
+  'dashboard', 'admin', 'static', 'uploads', 'favicon.ico', 'robots.txt',
+  'q', 't', 'h', 'i', 'b', 'd', 'a', 'l', 'tokens',
 ])
 
 export function isReserved(code) {
-  return RESERVED_CODES.has(code.toLowerCase())
+  return RESERVED_CODES.has(normalizeCode(code))
 }

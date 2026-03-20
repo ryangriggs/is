@@ -1,0 +1,65 @@
+{% extends "layouts/base.njk" %}
+{% block title %}{{ link.title or 'Bookmarks' }} — {{ siteName }}{% endblock %}
+{% block content %}
+<section class="section">
+  <div class="container" style="max-width:720px">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem;margin-bottom:1.5rem">
+      <div>
+        <h1 style="margin:0;font-size:1.25rem">{{ link.title or 'Untitled Collection' }}</h1>
+        <p class="text-muted text-sm" style="margin:.25rem 0 0">
+          Share: <a href="{{ shortUrl }}">{{ shortUrl }}</a> &bull;
+          <span class="badge {% if link.is_private %}badge-warning{% else %}badge-success{% endif %}">
+            {% if link.is_private %}Private{% else %}Public{% endif %}
+          </span>
+        </p>
+      </div>
+      <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+        <form method="POST" action="/b/{{ link.code }}/visibility" style="margin:0">
+          <button class="btn btn-ghost btn-sm">Toggle Visibility</button>
+        </form>
+        <form method="POST" action="/b/{{ link.code }}/delete" style="margin:0">
+          <button class="btn btn-danger btn-sm" data-confirm="Delete this collection and all bookmarks?">Delete Collection</button>
+        </form>
+        <a href="/b" class="btn btn-secondary btn-sm">← Collections</a>
+      </div>
+    </div>
+
+    <div class="card mb-4">
+      <h2 style="font-size:1rem;margin:0 0 1rem">Add Bookmark</h2>
+      <form method="POST" action="/b/{{ link.code }}/add">
+        <div class="form-group">
+          <input type="url" name="url" class="input" placeholder="https://example.com" required>
+        </div>
+        <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+          <input type="text" name="title" class="input" placeholder="Title (optional)" style="flex:1;min-width:140px">
+          <input type="text" name="folder" class="input" placeholder="Folder (optional)" style="flex:1;min-width:140px">
+          <button type="submit" class="btn btn-primary">Add</button>
+        </div>
+      </form>
+    </div>
+
+    {% if items.length %}
+    {% set currentFolder = '' %}
+    {% for item in items %}
+      {% if item.folder and item.folder != currentFolder %}
+        {% set currentFolder = item.folder %}
+        <h3 style="font-size:.875rem;text-transform:uppercase;letter-spacing:.05em;color:var(--color-text-muted);margin:1rem 0 .5rem">{{ item.folder }}</h3>
+      {% endif %}
+      <div class="card" style="display:flex;align-items:center;justify-content:space-between;gap:.5rem;margin-bottom:.5rem;padding:.75rem 1rem">
+        <div style="min-width:0">
+          <a href="{{ item.url }}" target="_blank" rel="noopener" style="font-weight:500">{{ item.title or item.url }}</a>
+          {% if item.title and item.url != item.title %}
+          <p class="text-muted text-sm truncate" style="margin:.1rem 0 0">{{ item.url }}</p>
+          {% endif %}
+        </div>
+        <form method="POST" action="/b/{{ link.code }}/delete/{{ item.id }}" style="margin:0;flex-shrink:0">
+          <button class="btn btn-ghost btn-sm" data-confirm="Remove this bookmark?">✕</button>
+        </form>
+      </div>
+    {% endfor %}
+    {% else %}
+    <div class="card text-center text-muted">No bookmarks yet. Add one above.</div>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

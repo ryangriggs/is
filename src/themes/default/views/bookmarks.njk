@@ -1,0 +1,46 @@
+{% extends "layouts/base.njk" %}
+{% block title %}Bookmarks — {{ siteName }}{% endblock %}
+{% block content %}
+<section class="section">
+  <div class="container" style="max-width:720px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem">
+      <h1 class="section-title" style="margin:0">My Bookmark Collections</h1>
+    </div>
+
+    {% if error %}<div class="alert alert-error mb-3">{{ error }}</div>{% endif %}
+
+    <div class="card mb-4">
+      <h2 style="font-size:1rem;margin:0 0 1rem">New Collection</h2>
+      <form method="POST" action="/b" style="display:flex;gap:.5rem;flex-wrap:wrap">
+        <input type="text" name="title" class="input" placeholder="Collection name" required style="flex:1;min-width:200px">
+        <label style="display:flex;align-items:center;gap:.25rem;white-space:nowrap">
+          <input type="checkbox" name="is_private" value="1"> Private
+        </label>
+        <button type="submit" class="btn btn-primary">Create</button>
+      </form>
+    </div>
+
+    {% if collections.length %}
+    <div style="display:flex;flex-direction:column;gap:1rem">
+      {% for c in collections %}
+      <div class="card" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.5rem">
+        <div>
+          <a href="/b/{{ c.code }}" style="font-weight:600">{{ c.title or 'Untitled' }}</a>
+          <span class="badge {% if c.is_private %}badge-warning{% else %}badge-success{% endif %}" style="margin-left:.5rem">
+            {% if c.is_private %}Private{% else %}Public{% endif %}
+          </span>
+          <p class="text-muted text-sm" style="margin:.25rem 0 0">{{ c.item_count }} bookmark{{ 's' if c.item_count != 1 }} &bull; {{ c.created_at | date }}</p>
+        </div>
+        <div style="display:flex;gap:.5rem">
+          <a href="/b/{{ c.code }}" class="btn btn-secondary btn-sm">Manage</a>
+          <a href="/{{ c.code }}" target="_blank" class="btn btn-ghost btn-sm">View</a>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="card text-center text-muted">No collections yet. Create one above.</div>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

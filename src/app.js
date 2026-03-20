@@ -8,6 +8,7 @@ import formbody from '@fastify/formbody'
 import rateLimit from '@fastify/rate-limit'
 import staticFiles from '@fastify/static'
 import view from '@fastify/view'
+import multipart from '@fastify/multipart'
 import nunjucks from 'nunjucks'
 
 import config from './config.js'
@@ -64,6 +65,9 @@ export async function buildApp() {
   // Rate limiting (opt-in per route)
   await app.register(rateLimit, { global: false })
 
+  // Multipart (file uploads)
+  await app.register(multipart, { limits: { fileSize: config.IMAGE_MAX_BYTES } })
+
   // Static files
   const themeName = config.THEME || 'default'
   const defaultStaticPath = path.join(__dirname, 'themes', 'default', 'static')
@@ -72,6 +76,12 @@ export async function buildApp() {
   await app.register(staticFiles, {
     root: themeName !== 'default' ? customStaticPath : defaultStaticPath,
     prefix: '/static/',
+  })
+
+  await app.register(staticFiles, {
+    root: path.join(process.cwd(), 'uploads'),
+    prefix: '/uploads/',
+    decorateReply: false,
   })
 
   // Nunjucks views with multi-path theme support

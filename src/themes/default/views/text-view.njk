@@ -1,0 +1,25 @@
+{% extends "layouts/base.njk" %}
+{% block title %}{{ link.title or 'Untitled Paste' }} — {{ siteName }}{% endblock %}
+{% block content %}
+<section class="section">
+  <div class="container" style="max-width:800px">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem;margin-bottom:1rem">
+      <div>
+        <h1 style="margin:0;font-size:1.25rem">{{ link.title or 'Untitled Paste' }}</h1>
+        <p class="text-muted text-sm" style="margin:.25rem 0 0">
+          {{ link.created_at | date }} &bull;
+          <a href="/report/{{ link.code }}" class="text-muted">Report</a>
+        </p>
+      </div>
+      <div style="display:flex;gap:.5rem">
+        <button class="btn btn-secondary btn-sm" data-copy-target="paste-content">📋 Copy</button>
+        <a href="/" class="btn btn-ghost btn-sm">+ New paste</a>
+      </div>
+    </div>
+
+    <div class="card" style="padding:0;overflow:hidden">
+      <pre id="paste-content" style="margin:0;padding:1.5rem;overflow-x:auto;white-space:pre-wrap;word-break:break-word">{{ link.destination }}</pre>
+    </div>
+  </div>
+</section>
+{% endblock %}

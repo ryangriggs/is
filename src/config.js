@@ -37,6 +37,9 @@ const config = Object.freeze({
 
   THEME: optional('THEME', 'default'),
 
+  SHORTLINK_CHARS: optional('SHORTLINK_CHARS', 'abcdefghijklmnopqrstuvwxyz0123456789'),
+  IMAGE_MAX_BYTES: Number(optional('IMAGE_MAX_BYTES', String(10 * 1024 * 1024))),
+
   BCRYPT_ROUNDS: Number(optional('BCRYPT_ROUNDS', '10')),
   RATE_LIMIT_CREATION_MAX: Number(optional('RATE_LIMIT_CREATION_MAX', '10')),
   RATE_LIMIT_CREATION_WINDOW_MS: Number(optional('RATE_LIMIT_CREATION_WINDOW_MS', '60000')),

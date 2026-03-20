@@ -1,9 +1,11 @@
 // is.am — Client-side utilities
 
 // --- Copy to clipboard ---
-document.querySelectorAll('[data-copy]').forEach(el => {
+// data-copy="text"        → copies the given text
+// data-copy-target="id"   → copies the textContent of element with that ID
+document.querySelectorAll('[data-copy],[data-copy-target]').forEach(el => {
   el.addEventListener('click', async () => {
-    const text = el.dataset.copy
+    const text = el.dataset.copy ?? document.getElementById(el.dataset.copyTarget)?.textContent ?? ''
     try {
       await navigator.clipboard.writeText(text)
       const orig = el.textContent

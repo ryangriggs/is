@@ -1,14 +1,15 @@
 import fp from 'fastify-plugin'
 import QRCode from 'qrcode'
-import { encode } from '../../core/shortcode.js'
-import { hashToken, verifyToken, generateToken } from '../../core/auth.js'
+import { normalizeCode } from '../../core/shortcode.js'
+import { createLink } from '../../core/links.js'
+import { verifyToken } from '../../core/auth.js'
 import config from '../../config.js'
 
 async function shortlinksPlugin(fastify) {
   const db = fastify.db
   const hooks = fastify.hooks
 
-  // Register the post:link:visit hook for tracking
+  // Track visits
   hooks.on('post:link:visit', async ({ link, req }) => {
     try {
       db.run(
@@ -21,7 +22,7 @@ async function shortlinksPlugin(fastify) {
   })
 
   // ----------------------------------------------------------------
-  // GET / — homepage (main domain only)
+  // GET / — homepage
   // ----------------------------------------------------------------
   fastify.get('/', async (req, reply) => {
     if (req.subdomain !== '') return reply.callNotFound()
@@ -35,7 +36,7 @@ async function shortlinksPlugin(fastify) {
   })
 
   // ----------------------------------------------------------------
-  // POST / — create link (main domain or l. subdomain)
+  // POST / — create URL shortlink (main domain or l. subdomain)
   // ----------------------------------------------------------------
   fastify.post('/', {
     config: {
@@ -52,12 +53,23 @@ async function shortlinksPlugin(fastify) {
       req.session.flash = { type: 'error', message: 'Please enter a valid URL starting with http:// or https://' }
       return reply.redirect('/')
     }
-    return createAndRedirect(req, reply, destination)
+    return createUrlAndRedirect(req, reply, destination)
   })
 
   // ----------------------------------------------------------------
-  // GET on l.domain/* — instant create from address bar
+  // GET /l/* — quick-create from address bar (subdomain or path)
   // ----------------------------------------------------------------
+  fastify.get('/l/*', async (req, reply) => {
+    const destination = req.params['*']
+    if (!destination || (!destination.startsWith('http://') && !destination.startsWith('https://'))) {
+      return reply.view('home.njk', {
+        flash: { type: 'info', message: `Usage: l.${config.BASE_DOMAIN}/https://your-url-here` }
+      })
+    }
+    return createUrlAndRedirect(req, reply, destination)
+  })
+
+  // Also handle l. subdomain via wildcard
   fastify.get('/*', async (req, reply) => {
     if (req.subdomain !== 'l') return reply.callNotFound()
     const destination = req.params['*']
@@ -66,7 +78,7 @@ async function shortlinksPlugin(fastify) {
         flash: { type: 'info', message: `Usage: l.${config.BASE_DOMAIN}/https://your-url-here` }
       })
     }
-    return createAndRedirect(req, reply, destination)
+    return createUrlAndRedirect(req, reply, destination)
   })
 
   // ----------------------------------------------------------------
@@ -77,33 +89,33 @@ async function shortlinksPlugin(fastify) {
     const { code, token } = req.query
     if (!code) return reply.redirect('/')
 
-    const link = db.get('SELECT * FROM links WHERE code = ?', code)
+    const link = db.get('SELECT * FROM links WHERE code = ?', normalizeCode(code))
     if (!link) return reply.redirect('/')
 
-    const shortUrl = `https://${config.BASE_DOMAIN}/${code}`
+    const shortUrl = `https://${config.BASE_DOMAIN}/${link.code}`
     const qrDataUrl = await QRCode.toDataURL(shortUrl, { width: 200, margin: 2 })
 
     let manageUrl = null
     if (!link.owner_id && token && link.manage_token_hash) {
       const valid = await verifyToken(token, link.manage_token_hash)
       if (valid) {
-        manageUrl = `https://${config.BASE_DOMAIN}/manage/${code}?token=${token}`
-        setMgmtCookie(reply, req, code, token)
+        manageUrl = `https://${config.BASE_DOMAIN}/manage/${link.code}?token=${token}`
+        setMgmtCookie(reply, req, link.code, token)
       }
     } else if (!link.owner_id && link.manage_token_hash) {
-      const cookieToken = getMgmtTokenFromCookie(req, code)
-      if (cookieToken) manageUrl = `https://${config.BASE_DOMAIN}/manage/${code}`
+      const cookieToken = getMgmtTokenFromCookie(req, link.code)
+      if (cookieToken) manageUrl = `https://${config.BASE_DOMAIN}/manage/${link.code}`
     }
 
     return reply.view('success.njk', { link, shortUrl, qrDataUrl, manageUrl, token })
   })
 
   // ----------------------------------------------------------------
-  // GET /:code — redirect
+  // GET /:code — serve content by type
   // ----------------------------------------------------------------
   fastify.get('/:code', async (req, reply) => {
     if (req.subdomain !== '') return reply.callNotFound()
-    const { code } = req.params
+    const code = normalizeCode(req.params.code)
     const link = db.get('SELECT * FROM links WHERE code = ?', code)
 
     if (!link || !link.is_active) {
@@ -123,16 +135,33 @@ async function shortlinksPlugin(fastify) {
       if (!valid) return reply.view('password.njk', { code, error: 'Incorrect password.' })
     }
 
-    await hooks.run('post:link:visit', { link, req, log: fastify.log })
-    return reply.redirect(302, link.destination)
+    await hooks.run('post:link:visit', { link, req })
+
+    switch (link.type) {
+      case 'text':
+        return reply.view('text-view.njk', { link })
+      case 'html':
+        return reply.view('html-view.njk', { link })
+      case 'image':
+        return reply.view('image-view.njk', { link })
+      case 'bookmark': {
+        const items = db.all(
+          'SELECT * FROM bookmark_items WHERE link_id = ? ORDER BY folder, sort_order, id',
+          link.id
+        )
+        return reply.view('bookmark-view.njk', { link, items })
+      }
+      default:
+        return reply.redirect(302, link.destination)
+    }
   })
 
   // ----------------------------------------------------------------
-  // GET /manage/:code — anonymous management
+  // GET /manage/:code
   // ----------------------------------------------------------------
   fastify.get('/manage/:code', async (req, reply) => {
     if (req.subdomain !== '') return reply.callNotFound()
-    const { code } = req.params
+    const code = normalizeCode(req.params.code)
     const link = db.get('SELECT * FROM links WHERE code = ?', code)
 
     if (!link || link.owner_id) {
@@ -149,9 +178,8 @@ async function shortlinksPlugin(fastify) {
     const shortUrl = `https://${config.BASE_DOMAIN}/${code}`
     const qrDataUrl = await QRCode.toDataURL(shortUrl, { width: 160, margin: 2 })
     const stats = db.get(`
-      SELECT
-        COUNT(*) as total,
-        SUM(CASE WHEN visited_at > ? THEN 1 ELSE 0 END) as today
+      SELECT COUNT(*) as total,
+             SUM(CASE WHEN visited_at > ? THEN 1 ELSE 0 END) as today
       FROM tracking WHERE link_id = ?
     `, Date.now() - 86400000, link.id)
 
@@ -162,11 +190,11 @@ async function shortlinksPlugin(fastify) {
   })
 
   // ----------------------------------------------------------------
-  // POST /manage/:code — update or delete
+  // POST /manage/:code
   // ----------------------------------------------------------------
   fastify.post('/manage/:code', async (req, reply) => {
     if (req.subdomain !== '') return reply.callNotFound()
-    const { code } = req.params
+    const code = normalizeCode(req.params.code)
     const link = db.get('SELECT * FROM links WHERE code = ?', code)
 
     if (!link || link.owner_id) {
@@ -185,19 +213,22 @@ async function shortlinksPlugin(fastify) {
     if (action === 'delete') {
       db.run('DELETE FROM links WHERE id = ?', link.id)
       removeMgmtCookie(reply, req, code)
-      req.session.flash = { type: 'success', message: 'Link deleted.' }
+      req.session.flash = { type: 'success', message: 'Deleted.' }
       return reply.redirect('/')
     }
 
     if (action === 'update') {
-      const dest = (destination || '').trim()
-      if (!dest.startsWith('http://') && !dest.startsWith('https://')) {
-        req.session.flash = { type: 'error', message: 'Invalid URL.' }
-        return reply.redirect(`/manage/${code}?token=${token}`)
+      if (link.type === 'url') {
+        const dest = (destination || '').trim()
+        if (!dest.startsWith('http://') && !dest.startsWith('https://')) {
+          req.session.flash = { type: 'error', message: 'Invalid URL.' }
+          return reply.redirect(`/manage/${code}?token=${token}`)
+        }
+        db.run('UPDATE links SET destination = ?, title = ? WHERE id = ?', dest, title || null, link.id)
+      } else {
+        db.run('UPDATE links SET title = ? WHERE id = ?', title || null, link.id)
       }
-      db.run('UPDATE links SET destination = ?, title = ? WHERE id = ?',
-        dest, title || null, link.id)
-      req.session.flash = { type: 'success', message: 'Link updated.' }
+      req.session.flash = { type: 'success', message: 'Updated.' }
       return reply.redirect(`/manage/${code}?token=${token}`)
     }
 
@@ -205,7 +236,7 @@ async function shortlinksPlugin(fastify) {
   })
 
   // ----------------------------------------------------------------
-  // GET /report/:code — report form
+  // GET /report/:code
   // ----------------------------------------------------------------
   fastify.get('/report/:code', async (req, reply) => {
     if (req.subdomain !== '') return reply.callNotFound()
@@ -213,11 +244,11 @@ async function shortlinksPlugin(fastify) {
   })
 
   // ----------------------------------------------------------------
-  // POST /report/:code — submit report
+  // POST /report/:code
   // ----------------------------------------------------------------
   fastify.post('/report/:code', async (req, reply) => {
     if (req.subdomain !== '') return reply.callNotFound()
-    const { code } = req.params
+    const code = normalizeCode(req.params.code)
     const link = db.get('SELECT id FROM links WHERE code = ?', code)
     if (link) {
       db.run(
@@ -233,37 +264,13 @@ async function shortlinksPlugin(fastify) {
   // Helpers
   // ----------------------------------------------------------------
 
-  async function createAndRedirect(req, reply, destination) {
-    const isLoggedIn = !!req.session.userId
-    const plainToken = isLoggedIn ? null : generateToken(32)
-    const tokenHash = plainToken ? await hashToken(plainToken) : null
-
-    const insertData = {
+  async function createUrlAndRedirect(req, reply, destination) {
+    const { link, plainToken } = await createLink(db, hooks, {
       type: 'url',
       destination,
-      ownerId: isLoggedIn ? req.session.userId : null,
-      manageTokenHash: tokenHash,
-      createdAt: Date.now(),
-      createdIp: req.ip,
-    }
-
-    await hooks.run('pre:link:create', { data: insertData, req })
-
-    const link = db.transaction(() => {
-      const info = db.run(
-        `INSERT INTO links(type, destination, owner_id, manage_token_hash, is_active, created_at, created_ip, code)
-         VALUES(?,?,?,?,1,?,?,'')`,
-        insertData.type, insertData.destination, insertData.ownerId,
-        insertData.manageTokenHash, insertData.createdAt, insertData.createdIp
-      )
-      const id = info.lastInsertRowid
-      const code = encode(id)
-      db.run('UPDATE links SET code = ? WHERE id = ?', code, id)
-      return db.get('SELECT * FROM links WHERE id = ?', id)
-    })()
-
-    await hooks.run('post:link:create', { link, req, log: fastify.log })
-
+      ownerId: req.session.userId || null,
+      req,
+    })
     if (plainToken) {
       setMgmtCookie(reply, req, link.code, plainToken)
       return reply.redirect(`/success?code=${link.code}&token=${plainToken}`)

@@ -1,0 +1,55 @@
+{% extends "layouts/base.njk" %}
+{% block title %}API Tokens — {{ siteName }}{% endblock %}
+{% block content %}
+<section class="section">
+  <div class="container" style="max-width:640px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem">
+      <h1 class="section-title" style="margin:0">API Tokens</h1>
+      <a href="/dashboard" class="btn btn-ghost btn-sm">← Dashboard</a>
+    </div>
+
+    <div class="card mb-4">
+      <h2 style="font-size:1rem;margin:0 0 1rem">Create Token</h2>
+      <form method="POST" action="/tokens" style="display:flex;gap:.5rem">
+        <input type="text" name="label" class="input" placeholder="Label (optional)" style="flex:1">
+        <button type="submit" class="btn btn-primary">Create</button>
+      </form>
+      <p class="text-muted text-sm mt-2">The token is shown once after creation. Store it securely.</p>
+    </div>
+
+    {% if tokens.length %}
+    <div class="card">
+      <table class="table">
+        <thead><tr><th>Label</th><th>Last Used</th><th>Created</th><th></th></tr></thead>
+        <tbody>
+          {% for t in tokens %}
+          <tr>
+            <td>{{ t.label or '—' }}</td>
+            <td class="text-muted text-sm">{{ t.last_used | date if t.last_used else 'Never' }}</td>
+            <td class="text-muted text-sm">{{ t.created_at | date }}</td>
+            <td>
+              <form method="POST" action="/tokens/delete/{{ t.id }}" style="margin:0">
+                <button class="btn btn-danger btn-sm" data-confirm="Revoke this token?">Revoke</button>
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="card text-center text-muted">No tokens yet.</div>
+    {% endif %}
+
+    <div class="card mt-4">
+      <h2 style="font-size:1rem;margin:0 0 .5rem">Using the API</h2>
+      <p class="text-muted text-sm">Include your token in the <code>Authorization</code> header:</p>
+      <pre style="background:var(--bg-base);padding:1rem;border-radius:8px;font-size:.8rem;overflow-x:auto">curl -X POST https://{{ baseDomain }}/a/links \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"url":"https://example.com"}'</pre>
+      <p class="text-sm mt-2"><a href="/a">API documentation →</a></p>
+    </div>
+  </div>
+</section>
+{% endblock %}

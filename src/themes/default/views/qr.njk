@@ -1,0 +1,53 @@
+{% extends "layouts/base.njk" %}
+{% block title %}QR Code Generator — {{ siteName }}{% endblock %}
+{% block content %}
+<section class="section">
+  <div class="container" style="max-width:560px">
+    <h1 class="section-title">QR Code Generator</h1>
+    <p class="section-subtitle">Generate a QR code for any URL.</p>
+
+    {% if error %}<div class="alert alert-error mb-3">{{ error }}</div>{% endif %}
+
+    <div class="card mb-4">
+      <form method="POST" action="/q">
+        <div class="form-group">
+          <label class="label" for="url">URL</label>
+          <input id="url" type="url" name="url" class="input" value="{{ url }}" placeholder="https://example.com" required autofocus>
+        </div>
+        <div class="form-group" style="display:flex;gap:1rem">
+          <div style="flex:1">
+            <label class="label" for="size">Size (px)</label>
+            <select id="size" name="size" class="input">
+              <option value="200" {% if size == '200' %}selected{% endif %}>200 — Small</option>
+              <option value="400" {% if size == '400' or not size %}selected{% endif %}>400 — Medium</option>
+              <option value="600" {% if size == '600' %}selected{% endif %}>600 — Large</option>
+              <option value="1000" {% if size == '1000' %}selected{% endif %}>1000 — Print</option>
+            </select>
+          </div>
+          <div style="flex:1">
+            <label class="label" for="ecc">Error Correction</label>
+            <select id="ecc" name="ecc" class="input">
+              <option value="L" {% if ecc == 'L' %}selected{% endif %}>L — 7%</option>
+              <option value="M" {% if ecc == 'M' or not ecc %}selected{% endif %}>M — 15%</option>
+              <option value="Q" {% if ecc == 'Q' %}selected{% endif %}>Q — 25%</option>
+              <option value="H" {% if ecc == 'H' %}selected{% endif %}>H — 30%</option>
+            </select>
+          </div>
+        </div>
+        <button type="submit" class="btn btn-primary btn-block">Generate QR Code</button>
+      </form>
+    </div>
+
+    {% if qrDataUrl %}
+    <div class="card text-center">
+      <img src="{{ qrDataUrl }}" alt="QR Code" style="max-width:100%;border-radius:8px">
+      <div class="mt-3">
+        <a href="/q/download?url={{ url | urlencode }}&size={{ size }}&ecc={{ ecc }}" class="btn btn-primary">⬇ Download PNG</a>
+        <button class="btn btn-secondary" data-copy="{{ url }}">📋 Copy URL</button>
+      </div>
+      <p class="text-muted text-sm mt-2">{{ url }}</p>
+    </div>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

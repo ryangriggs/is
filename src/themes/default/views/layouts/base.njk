@@ -20,6 +20,7 @@
       <ul class="nav-links">
         {% if user %}
           <li><a href="/dashboard" class="{% if currentPath == '/dashboard' %}active{% endif %}">Dashboard</a></li>
+          <li><a href="/tokens" class="{% if currentPath == '/tokens' %}active{% endif %}">API</a></li>
           {% if user.role == 'admin' %}
             <li><a href="/admin" class="{% if '/admin' in currentPath %}active{% endif %}">Admin</a></li>
           {% endif %}

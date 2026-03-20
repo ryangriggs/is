@@ -1,6 +1,6 @@
 {% extends "layouts/base.njk" %}
 
-{% block title %}Link Created — {{ siteName }}{% endblock %}
+{% block title %}{{ link.type | capitalize if link.type else 'Content' }} Created — {{ siteName }}{% endblock %}
 
 {% block content %}
 <section class="section">
@@ -10,7 +10,13 @@
         <span class="badge badge-success">✓ Link Created</span>
       </div>
 
-      <h1 class="hero-title" style="font-size:1.25rem; margin-bottom:8px;">Your short link is ready</h1>
+      <h1 class="hero-title" style="font-size:1.25rem; margin-bottom:8px;">
+        {% if link.type == 'text' %}Text paste created
+        {% elif link.type == 'html' %}HTML paste created
+        {% elif link.type == 'image' %}Image uploaded
+        {% elif link.type == 'bookmark' %}Bookmark collection created
+        {% else %}Your short link is ready{% endif %}
+      </h1>
 
       <div class="link-short-url">
         <a href="{{ shortUrl }}" target="_blank" rel="noopener">{{ shortUrl }}</a>
@@ -21,7 +27,7 @@
         <a href="{{ shortUrl }}" class="btn btn-secondary" target="_blank" rel="noopener">↗ Visit</a>
       </div>
 
-      {% if link.destination %}
+      {% if link.type == 'url' and link.destination %}
       <p class="text-muted text-sm truncate mb-3" title="{{ link.destination }}">
         → <a href="{{ link.destination }}" target="_blank" rel="noopener nofollow" class="text-muted">{{ link.destination }}</a>
       </p>
