@@ -554,6 +554,36 @@ tbody tr:hover td { background: var(--bg-card-hover); }
 .w-full { width: 100%; }
 
 /* ----------------------------------------------------------------
+   Dropdown
+   ---------------------------------------------------------------- */
+.dropdown { position: relative; display: inline-block; }
+.dropdown-menu {
+  display: none;
+  position: absolute;
+  right: 0;
+  top: calc(100% + 4px);
+  background: var(--bg-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  min-width: 200px;
+  z-index: 100;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+  overflow: hidden;
+}
+.dropdown:focus-within .dropdown-menu,
+.dropdown:hover .dropdown-menu { display: block; }
+.dropdown-toggle { cursor: pointer; }
+.dropdown-item {
+  display: block;
+  padding: 10px 16px;
+  color: var(--color-text);
+  text-decoration: none;
+  font-size: 0.9rem;
+  transition: background var(--transition);
+}
+.dropdown-item:hover { background: var(--bg-card-hover); }
+
+/* ----------------------------------------------------------------
    Responsive
    ---------------------------------------------------------------- */
 @media (max-width: 640px) {

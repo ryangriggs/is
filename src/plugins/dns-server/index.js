@@ -37,9 +37,10 @@ async function dnsServerPlugin(fastify) {
 
       for (const question of request.questions) {
         const name = question.name.toLowerCase()
-        const sub = extractSubdomain(name, config.BASE_DOMAIN)
+        const dynApex = `${config.DYN_SUBDOMAIN}.${config.BASE_DOMAIN}`
+        const sub = extractSubdomain(name, dynApex)
 
-        if (!sub || sub.length < 3) continue
+        if (!sub || sub.length < 1) continue
 
         const record = getRecord(sub)
         if (!record) continue

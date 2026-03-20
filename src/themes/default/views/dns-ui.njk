@@ -4,11 +4,13 @@
 <section class="section">
   <div class="container" style="max-width:720px">
     <h1 class="section-title">Dynamic DNS</h1>
-    <p class="section-subtitle">Point a subdomain of <strong>{{ baseDomain }}</strong> to your IP address.</p>
+    <p class="section-subtitle">Point a subdomain of <strong>{{ dynApex }}</strong> to your IP address.</p>
 
-    {% if flash %}
-    <div class="alert alert-{{ flash.type }} mb-3" style="word-break:break-all">{{ flash.message }}</div>
-    {% endif %}
+    <div class="alert alert-info mb-4">
+      <strong>Setup required:</strong> Add an NS record at your DNS provider:<br>
+      <code>{{ dynApex }} NS {{ baseDomain }}</code><br>
+      <span class="text-sm">This delegates <code>*.{{ dynApex }}</code> to this server's built-in DNS.</span>
+    </div>
 
     <div class="card mb-4">
       <h2 style="font-size:1rem;margin:0 0 1rem">Add / Update Record</h2>
@@ -17,14 +19,14 @@
           <label class="label">Subdomain</label>
           <div style="display:flex;align-items:center;gap:.25rem">
             <input type="text" name="subdomain" class="input" placeholder="myhome" required
-              pattern="[a-zA-Z0-9-]{3,}" title="3+ letters, numbers, or hyphens" style="max-width:200px">
-            <span class="text-muted">.{{ baseDomain }}</span>
+              style="max-width:160px">
+            <span class="text-muted">.{{ dynApex }}</span>
           </div>
         </div>
         <div style="display:flex;gap:1rem;flex-wrap:wrap">
           <div class="form-group" style="flex:1;min-width:200px">
             <label class="label">IPv4 Address</label>
-            <input type="text" name="ip4" class="input" placeholder="1.2.3.4" pattern="[\d.]+">
+            <input type="text" name="ip4" class="input" placeholder="1.2.3.4">
           </div>
           <div class="form-group" style="flex:1;min-width:200px">
             <label class="label">IPv6 Address <span class="text-muted">(optional)</span></label>
@@ -39,11 +41,11 @@
     <div class="card mb-4">
       <h2 style="font-size:1rem;margin:0 0 1rem">Your Records</h2>
       <table class="table">
-        <thead><tr><th>Subdomain</th><th>IPv4</th><th>IPv6</th><th>Updated</th><th></th></tr></thead>
+        <thead><tr><th>Hostname</th><th>IPv4</th><th>IPv6</th><th>Updated</th><th></th></tr></thead>
         <tbody>
           {% for r in records %}
           <tr>
-            <td><code>{{ r.subdomain }}.{{ baseDomain }}</code></td>
+            <td><code>{{ r.subdomain }}.{{ dynApex }}</code></td>
             <td>{{ r.ip4 or '—' }}</td>
             <td>{{ r.ip6 or '—' }}</td>
             <td class="text-muted text-sm">{{ r.updated_at | date }}</td>
@@ -61,11 +63,9 @@
 
     <div class="card">
       <h2 style="font-size:1rem;margin:0 0 1rem">Dynamic Update (cron / script)</h2>
-      <p class="text-muted text-sm">Use your secret key (shown on first create) to update your IP automatically:</p>
+      <p class="text-muted text-sm">Use your secret key (shown once at creation) to update your IP automatically:</p>
       <pre style="background:var(--bg-base);padding:1rem;border-radius:8px;overflow-x:auto;font-size:.8rem">curl "https://{{ baseDomain }}/d/update?host=SUBDOMAIN&key=SECRET_KEY&ip=$(curl -s https://api.ipify.org)"</pre>
-      <p class="text-muted text-sm mt-2">
-        Lost your key? Delete the record and recreate it — a new key will be generated.
-      </p>
+      <p class="text-muted text-sm mt-2">Lost your key? Delete the record and recreate it — a new key will be generated.</p>
     </div>
   </div>
 </section>

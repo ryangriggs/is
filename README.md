@@ -105,27 +105,67 @@ The config:
 - Redirects `t/h/i/b/d/q/a/l.yourdomain.com` → `yourdomain.com/t` etc.
 - Redirects HTTP → HTTPS for apex and all subdomains
 
-### 3. DNS
+### 3. DNS configuration
 
-Point a wildcard `A` record at your server:
+#### Required records (all setups)
 
-```
-*.yourdomain.com  →  your.server.ip
-yourdomain.com    →  your.server.ip
-```
+Add these at your DNS provider:
 
-### 4. Dynamic DNS (optional)
+| Type | Name | Value | Purpose |
+|------|------|-------|---------|
+| `A` | `yourdomain.com` | `your.server.ip` | Main site |
+| `A` | `*.yourdomain.com` | `your.server.ip` | All subdomains — feature subdomains, user subdomains |
 
-If you want to use the built-in authoritative DNS server (for `dyn.yourdomain.com` subdomains):
+The wildcard catches `t.`, `h.`, `i.`, `b.`, `d.`, `q.`, `a.`, `l.` and any other subdomains, routing them all to the server. nginx then redirects feature subdomains to their respective paths.
 
-1. Set `DNS_ENABLED=true` and `DNS_PORT=5300` in `.env`
-2. At your registrar, add an NS delegation: `dyn.yourdomain.com NS your.server.hostname`
-3. Map host port 53/udp → container port 5300/udp (see `docker-compose.yml`)
+#### Additional records for Dynamic DNS (optional)
 
-Users can then add DNS records via the `/d` UI and update their IP via:
+The built-in DNS server handles records under `dyn.yourdomain.com`. For this to work, DNS resolvers must be told to ask your server for those names. This requires two extra records:
 
+| Type | Name | Value | Purpose |
+|------|------|-------|---------|
+| `A` | `ns.yourdomain.com` | `your.server.ip` | Names your server as a nameserver |
+| `NS` | `dyn.yourdomain.com` | `ns.yourdomain.com` | Delegates `*.dyn.yourdomain.com` to your server |
+
+**How it works:** When a resolver looks up `home.dyn.yourdomain.com`, it finds the `NS` record for `dyn.yourdomain.com` and asks `ns.yourdomain.com` (your server) directly. The `*.yourdomain.com` wildcard is bypassed — NS delegation takes priority over wildcard A records.
+
+> **Why `ns.yourdomain.com`?** NS record values must be hostnames, not IP addresses. The A record for `ns.yourdomain.com` tells resolvers where to find that nameserver.
+
+#### Enabling the built-in DNS server
+
+1. Set in `.env`:
+   ```
+   DNS_ENABLED=true
+   DNS_PORT=5300
+   DYN_SUBDOMAIN=dyn
+   ```
+
+2. Expose UDP port 53 on the host (mapped to 5300 inside the container — see `docker-compose.yml`). If running without Docker, either run Node as root (not recommended) or use a port redirect:
+   ```bash
+   iptables -t nat -A PREROUTING -p udp --dport 53 -j REDIRECT --to-port 5300
+   ```
+
+3. Users add records via the `/d` UI. Dynamic clients update their IP with:
+   ```bash
+   curl "https://yourdomain.com/d/update?host=myhome&key=SECRET_KEY&ip=$(curl -s https://api.ipify.org)"
+   ```
+   This resolves as `myhome.dyn.yourdomain.com`.
+
+#### Verifying DNS propagation
+
+Check that the wildcard resolves to your server:
 ```bash
-curl "https://yourdomain.com/d/update?host=myhome&key=SECRET_KEY&ip=$(curl -s https://api.ipify.org)"
+dig A t.yourdomain.com +short
+dig A anything.yourdomain.com +short
+```
+
+Check NS delegation for dynamic DNS:
+```bash
+dig NS dyn.yourdomain.com +short
+# should return: ns.yourdomain.com.
+
+dig A home.dyn.yourdomain.com +short
+# should return the IP set in the /d UI
 ```
 
 ---

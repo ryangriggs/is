@@ -1,5 +1,4 @@
 {% extends "layouts/base.njk" %}
-
 {% block title %}Dashboard — {{ siteName }}{% endblock %}
 
 {% block content %}
@@ -9,7 +8,17 @@
       <h1 class="page-title">Dashboard</h1>
       <p class="page-subtitle">Welcome back, <strong>{{ user.username }}</strong></p>
     </div>
-    <a href="/" class="btn btn-primary">+ New Link</a>
+    <div class="dropdown">
+      <button class="btn btn-primary dropdown-toggle">+ New ▾</button>
+      <div class="dropdown-menu">
+        <a href="/" class="dropdown-item">🔗 URL Shortlink</a>
+        <a href="/t" class="dropdown-item">📝 Text Paste</a>
+        <a href="/h" class="dropdown-item">🌐 HTML Paste</a>
+        <a href="/i" class="dropdown-item">🖼️ Image Upload</a>
+        <a href="/b" class="dropdown-item">🔖 Bookmark Collection</a>
+        <a href="/q" class="dropdown-item">⬛ QR Code</a>
+      </div>
+    </div>
   </div>
 
   <div class="stats-grid">
@@ -40,7 +49,8 @@
       <thead>
         <tr>
           <th>Short Link</th>
-          <th>Destination</th>
+          <th>Type</th>
+          <th>Title / Destination</th>
           <th>Created</th>
           <th>Visits</th>
           <th>Status</th>
@@ -55,10 +65,25 @@
               {{ baseDomain }}/{{ link.code }}
             </a>
           </td>
-          <td class="td-url" title="{{ link.destination }}">
-            <a href="{{ link.destination }}" target="_blank" rel="noopener nofollow" class="text-muted">
-              {{ link.destination }}
-            </a>
+          <td>
+            <span class="badge badge-info">
+              {% if link.type == 'url' %}URL
+              {% elif link.type == 'text' %}Text
+              {% elif link.type == 'html' %}HTML
+              {% elif link.type == 'image' %}Image
+              {% elif link.type == 'bookmark' %}Collection
+              {% else %}{{ link.type }}{% endif %}
+            </span>
+          </td>
+          <td class="td-url">
+            {% if link.type == 'url' %}
+              <a href="{{ link.destination }}" target="_blank" rel="noopener nofollow"
+                class="btn btn-ghost btn-sm" title="{{ link.destination }}" style="max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:inline-block">
+                ↗ {{ link.destination | truncate(50) }}
+              </a>
+            {% else %}
+              <span class="text-muted text-sm">{{ link.title or '—' }}</span>
+            {% endif %}
           </td>
           <td class="text-muted text-sm">{{ link.createdAt | date }}</td>
           <td>{{ link.visitCount or 0 }}</td>
@@ -71,9 +96,9 @@
           </td>
           <td class="td-actions">
             <button class="btn btn-ghost btn-sm" data-copy="https://{{ baseDomain }}/{{ link.code }}" title="Copy">📋</button>
+            <a href="/dashboard/edit/{{ link.id }}" class="btn btn-secondary btn-sm" title="Edit">✏️</a>
             <form method="POST" action="/dashboard/delete/{{ link.id }}" style="display:inline">
-              <button type="submit" class="btn btn-danger btn-sm" data-confirm="Delete this link?"
-                title="Delete">🗑</button>
+              <button type="submit" class="btn btn-danger btn-sm" data-confirm="Delete this link?" title="Delete">🗑</button>
             </form>
           </td>
         </tr>

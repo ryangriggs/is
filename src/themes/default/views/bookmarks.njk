@@ -11,12 +11,15 @@
 
     <div class="card mb-4">
       <h2 style="font-size:1rem;margin:0 0 1rem">New Collection</h2>
-      <form method="POST" action="/b" style="display:flex;gap:.5rem;flex-wrap:wrap">
-        <input type="text" name="title" class="input" placeholder="Collection name" required style="flex:1;min-width:200px">
-        <label style="display:flex;align-items:center;gap:.25rem;white-space:nowrap">
-          <input type="checkbox" name="is_private" value="1"> Private
+      <form method="POST" action="/b">
+        <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:.5rem">
+          <input type="text" name="title" class="input" placeholder="Collection name" required style="flex:1;min-width:200px">
+          <input type="text" name="password" class="input" placeholder="Password (optional)" style="width:180px">
+          <button type="submit" class="btn btn-primary">Create</button>
+        </div>
+        <label style="display:flex;align-items:center;gap:.25rem;font-size:.875rem">
+          <input type="checkbox" name="is_private" value="1"> Private (only visible to you)
         </label>
-        <button type="submit" class="btn btn-primary">Create</button>
       </form>
     </div>
 

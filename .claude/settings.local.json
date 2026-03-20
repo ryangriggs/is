@@ -14,7 +14,8 @@
       "Bash(1 curl:*)",
       "Bash(node:*)",
       "Bash(powershell -Command \"node -e 'console.log\\(42\\)'\")",
-      "Bash(netstat -ano)"
+      "Bash(netstat -ano)",
+      "Bash(python3 -m json.tool)"
     ]
   }
 }

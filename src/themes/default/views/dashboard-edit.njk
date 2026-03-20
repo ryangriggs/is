@@ -1,0 +1,59 @@
+{% extends "layouts/base.njk" %}
+{% block title %}Edit — {{ siteName }}{% endblock %}
+{% block content %}
+<section class="section">
+  <div class="container" style="max-width:640px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem">
+      <h1 class="section-title" style="margin:0">Edit {{ link.type | capitalize }}</h1>
+      <a href="/dashboard" class="btn btn-ghost btn-sm">← Dashboard</a>
+    </div>
+
+    <div class="card">
+      <form method="POST" action="/dashboard/edit/{{ link.id }}">
+        <div class="form-group">
+          <label class="label">Short URL</label>
+          <p class="text-muted text-sm">{{ baseDomain }}/{{ link.code }}</p>
+        </div>
+
+        {% if link.type != 'image' and link.type != 'url' %}
+        <div class="form-group">
+          <label class="label" for="title">Title</label>
+          <input id="title" type="text" name="title" class="input" value="{{ link.title or '' }}">
+        </div>
+        {% endif %}
+
+        {% if link.type == 'url' %}
+        <div class="form-group">
+          <label class="label" for="title">Title <span class="text-muted">(optional)</span></label>
+          <input id="title" type="text" name="title" class="input" value="{{ link.title or '' }}">
+        </div>
+        <div class="form-group">
+          <label class="label" for="destination">Destination URL</label>
+          <input id="destination" type="url" name="destination" class="input" value="{{ link.destination }}" required>
+        </div>
+        {% elif link.type == 'text' %}
+        <div class="form-group">
+          <label class="label" for="content">Content</label>
+          <textarea id="content" name="content" class="input" rows="16"
+            style="font-family:monospace;resize:vertical" required>{{ link.destination }}</textarea>
+        </div>
+        {% elif link.type == 'html' %}
+        <div class="form-group">
+          <label class="label" for="content">HTML Content</label>
+          <textarea id="content" name="content" class="input" rows="16"
+            style="font-family:monospace;resize:vertical" required>{{ link.destination }}</textarea>
+        </div>
+        {% elif link.type == 'image' %}
+        <div class="form-group">
+          <label class="label">Image</label>
+          <img src="/uploads/{{ link.destination }}" style="max-width:100%;border-radius:8px;margin-bottom:.5rem">
+          <p class="text-muted text-sm">Images cannot be replaced. Delete and re-upload if needed.</p>
+        </div>
+        {% endif %}
+
+        <button type="submit" class="btn btn-primary btn-block">Save Changes</button>
+      </form>
+    </div>
+  </div>
+</section>
+{% endblock %}

@@ -28,6 +28,7 @@ const config = Object.freeze({
   DNS_ENABLED: optional('DNS_ENABLED', 'true') === 'true',
   DNS_PORT: Number(optional('DNS_PORT', '5300')),
   DNS_UPSTREAM: optional('DNS_UPSTREAM', '8.8.8.8'),
+  DYN_SUBDOMAIN: optional('DYN_SUBDOMAIN', 'dyn'),
 
   SITE_NAME: optional('SITE_NAME', 'is.am'),
   SITE_TAGLINE: optional('SITE_TAGLINE', 'Shorten. Share. Track.'),

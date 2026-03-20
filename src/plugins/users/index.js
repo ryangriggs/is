@@ -199,6 +199,43 @@ async function usersPlugin(fastify) {
   })
 
   // ----------------------------------------------------------------
+  // GET /dashboard/edit/:id
+  // ----------------------------------------------------------------
+  fastify.get('/dashboard/edit/:id', { preHandler: requireAuth }, async (req, reply) => {
+    const link = db.get('SELECT * FROM links WHERE id = ? AND owner_id = ?', req.params.id, req.session.userId)
+    if (!link) { reply.code(404); return reply.view('errors/404.njk', {}) }
+    if (link.type === 'bookmark') return reply.redirect(`/b/${link.code}`)
+    return reply.view('dashboard-edit.njk', { link })
+  })
+
+  fastify.post('/dashboard/edit/:id', { preHandler: requireAuth }, async (req, reply) => {
+    const link = db.get('SELECT * FROM links WHERE id = ? AND owner_id = ?', req.params.id, req.session.userId)
+    if (!link) { reply.code(404); return reply.view('errors/404.njk', {}) }
+
+    const { destination, title, content } = req.body || {}
+
+    if (link.type === 'url') {
+      const dest = (destination || '').trim()
+      if (!dest.startsWith('http://') && !dest.startsWith('https://')) {
+        req.session.flash = { type: 'error', message: 'Invalid URL.' }
+        return reply.redirect(`/dashboard/edit/${link.id}`)
+      }
+      db.run('UPDATE links SET destination = ?, title = ? WHERE id = ?', dest, title || null, link.id)
+    } else if (link.type === 'text' || link.type === 'html') {
+      if (!content?.trim()) {
+        req.session.flash = { type: 'error', message: 'Content cannot be empty.' }
+        return reply.redirect(`/dashboard/edit/${link.id}`)
+      }
+      db.run('UPDATE links SET destination = ?, title = ? WHERE id = ?', content, title || null, link.id)
+    } else {
+      db.run('UPDATE links SET title = ? WHERE id = ?', title || null, link.id)
+    }
+
+    req.session.flash = { type: 'success', message: 'Updated.' }
+    return reply.redirect('/dashboard')
+  })
+
+  // ----------------------------------------------------------------
   // GET /tokens — manage API tokens (web UI)
   // ----------------------------------------------------------------
   fastify.get('/tokens', { preHandler: requireAuth }, async (req, reply) => {
