@@ -1,5 +1,42 @@
 {% extends "layouts/base.njk" %}
 {% block title %}Links — Admin — {{ siteName }}{% endblock %}
+
+{% block head %}
+<style>
+.links-table-wrap { overflow-x: auto; }
+#links-table {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+}
+#links-table th, #links-table td {
+  padding: 7px 10px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+  overflow: hidden;
+}
+#links-table th { white-space: nowrap; }
+#links-table td { word-break: break-word; }
+#links-table .col-actions { white-space: nowrap; }
+.sort-link { color: inherit; text-decoration: none; display: inline-flex; align-items: center; gap: 3px; user-select: none; }
+.sort-link:hover { color: var(--primary); }
+.sort-icon { font-size: .7rem; opacity: .45; }
+.sort-icon.active { opacity: 1; color: var(--primary); }
+th.resizable { position: relative; }
+.resize-handle { position: absolute; right: 0; top: 0; bottom: 0; width: 5px; cursor: col-resize; }
+.resize-handle:hover, .resize-handle.dragging { background: var(--primary); opacity: .4; }
+.link-thumb { display: none; height: 28px; width: 28px; object-fit: cover; border-radius: 3px; vertical-align: middle; margin-right: 4px; cursor: pointer; }
+.show-images .link-thumb { display: inline-block; }
+.pager { display: flex; align-items: center; gap: .35rem; flex-wrap: wrap; margin-top: 1rem; font-size: .875rem; }
+.pg, .pager a { display: inline-flex; align-items: center; justify-content: center; min-width: 32px; height: 32px; padding: 0 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg-card); color: var(--text); text-decoration: none; }
+.pager a:hover { border-color: var(--primary); color: var(--primary); }
+.pg.current { background: var(--primary); color: #fff; border-color: var(--primary); font-weight: 600; }
+.pg.disabled, a.pg-disabled { opacity: .35; pointer-events: none; cursor: default; }
+.pager-goto input { width: 52px; height: 32px; text-align: center; border: 1px solid var(--border); border-radius: 6px; background: var(--bg-card); color: var(--text); padding: 0 4px; }
+.pager-perpage select { height: 32px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg-card); color: var(--text); padding: 0 6px; }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="container">
   <div class="page-header">
@@ -10,85 +47,116 @@
     <a href="/admin" class="btn btn-ghost btn-sm">← Admin</a>
   </div>
 
-  <form method="GET" action="/admin/links" class="card mb-3" style="padding:16px;">
+  <form method="GET" action="/admin/links" class="card mb-3" style="padding:12px" id="filter-form">
     <div class="input-group">
-      <input type="text" name="q" class="input" placeholder="Search by code or URL..." value="{{ query.q }}">
-      <select name="sort" class="select" style="width:160px;">
-        <option value="created_at" {% if query.sort == 'created_at' %}selected{% endif %}>Date Created</option>
-        <option value="code" {% if query.sort == 'code' %}selected{% endif %}>Code</option>
-      </select>
-      <select name="dir" class="select" style="width:110px;">
-        <option value="desc" {% if query.dir == 'desc' %}selected{% endif %}>Newest</option>
-        <option value="asc" {% if query.dir == 'asc' %}selected{% endif %}>Oldest</option>
-      </select>
-      <button type="submit" class="btn btn-secondary">Filter</button>
+      <input type="hidden" name="sort" value="{{ query.sort }}">
+      <input type="hidden" name="dir" value="{{ query.dir }}">
+      <input type="hidden" name="perPage" id="pp-hidden" value="{{ perPage }}">
+      <input type="text" name="q" class="input" placeholder="Search code, URL, or username…" value="{{ query.q }}">
+      <button type="submit" class="btn btn-secondary">Search</button>
       <a href="/admin/links" class="btn btn-ghost">Reset</a>
+      <label style="display:flex;align-items:center;gap:.4rem;margin-left:.5rem;font-size:.875rem;cursor:pointer;user-select:none;white-space:nowrap">
+        <input type="checkbox" id="img-toggle"> Show images
+      </label>
     </div>
   </form>
 
-  <div class="table-wrap">
-    <table>
+  <div class="links-table-wrap">
+    <table id="links-table">
+      <colgroup>
+        <col id="col-code"    style="width:110px">
+        <col id="col-dest"    style="width:240px">
+        <col id="col-owner"   style="width:120px">
+        <col id="col-type"    style="width:80px">
+        <col id="col-ip"      style="width:145px">
+        <col id="col-date"    style="width:100px">
+        <col id="col-visits"  style="width:60px">
+        <col id="col-status"  style="width:68px">
+        <col id="col-actions" style="width:90px">
+      </colgroup>
       <thead>
         <tr>
-          <th>Code</th>
-          <th>Destination</th>
-          <th>Owner</th>
-          <th>Type</th>
-          <th>Creator IP</th>
-          <th>Created</th>
-          <th>Visits</th>
-          <th>Status</th>
-          <th>Actions</th>
+          {% macro sth(label, col, thid) %}
+          <th class="resizable" id="{{ thid }}">
+            <a class="sort-link" href="?q={{ query.q | urlencode }}&sort={{ col }}&dir={{ 'desc' if (query.sort == col and query.dir == 'asc') else 'asc' }}&page=1&perPage={{ perPage }}">
+              {{ label }}<span class="sort-icon {% if query.sort == col %}active{% endif %}">{% if query.sort == col %}{{ '↓' if query.dir == 'desc' else '↑' }}{% else %}↕{% endif %}</span>
+            </a>
+            <div class="resize-handle"></div>
+          </th>
+          {% endmacro %}
+          {{ sth('Code',    'code',       'th-code') }}
+          <th class="resizable" id="th-dest">Destination<div class="resize-handle"></div></th>
+          {{ sth('Owner',   'username',   'th-owner') }}
+          {{ sth('Type',    'type',       'th-type') }}
+          <th class="resizable" id="th-ip">Creator IP<div class="resize-handle"></div></th>
+          {{ sth('Created', 'created_at', 'th-date') }}
+          {{ sth('Visits',  'visit_count','th-visits') }}
+          {{ sth('Status',  'is_active',  'th-status') }}
+          <th class="col-actions">Actions</th>
         </tr>
       </thead>
-      <tbody>
+      <tbody id="links-tbody">
         {% if links.length == 0 %}
-        <tr><td colspan="9" class="text-center text-muted" style="padding:32px;">No links found.</td></tr>
+        <tr><td colspan="9" class="text-center text-muted" style="padding:32px">No links found.</td></tr>
         {% endif %}
         {% for link in links %}
         <tr>
-          <td class="td-code">
-            <a href="https://{{ baseDomain }}/{{ link.code }}" target="_blank" rel="noopener">{{ link.code }}</a>
+          <td><a href="https://{{ baseDomain }}/{{ link.code }}" target="_blank" rel="noopener" style="font-family:monospace;font-size:.85rem">{{ link.code }}</a></td>
+
+          <td>
+            {% if link.type == 'image' %}<img class="link-thumb" src="/uploads/{{ link.destination }}" alt="" onclick="window.open('/uploads/{{ link.destination }}','_blank')">{% endif %}
+            <span title="{{ link.destination }}">{{ link.destination | truncate(60) if link.destination else '—' }}</span>
           </td>
-          <td class="td-url" title="{{ link.destination }}">{{ link.destination | truncate(40) }}</td>
-          <td class="text-muted text-sm">{{ link.username or '—' }}</td>
-          <td><span class="badge badge-neutral">{{ link.type }}</span></td>
-          <td class="text-sm font-mono">
+
+          <td class="text-sm">
+            {% if link.username %}
+              <a href="/admin/users?q={{ link.username | urlencode }}">{{ link.username }}</a>
+              {% if link.ownerIsBlocked %}
+                <form method="POST" action="/admin/users/{{ link.owner_id }}/unblock" style="display:inline">
+                  <button class="btn btn-ghost btn-sm" title="Unblock user" style="padding:1px 5px;font-size:.75rem">✅</button>
+                </form>
+              {% else %}
+                <form method="POST" action="/admin/users/{{ link.owner_id }}/block" style="display:inline">
+                  <button class="btn btn-ghost btn-sm" data-confirm="Block {{ link.username }}?" title="Block user" style="padding:1px 5px;font-size:.75rem">🚫</button>
+                </form>
+              {% endif %}
+            {% else %}<span class="text-muted">—</span>{% endif %}
+          </td>
+
+          <td><span class="badge badge-neutral" style="font-size:.75rem">{{ link.type }}</span></td>
+
+          <td style="font-family:monospace;font-size:.78rem">
             {% if link.created_ip %}
               {{ link.created_ip }}
               {% if link.creatorIpBlocked %}
                 <form method="POST" action="/admin/ip/unblock" style="display:inline">
                   <input type="hidden" name="ip" value="{{ link.created_ip }}">
                   <input type="hidden" name="redirect" value="/admin/links">
-                  <button type="submit" class="btn btn-ghost btn-sm" title="Unblock IP">✅</button>
+                  <button class="btn btn-ghost btn-sm" title="Unblock" style="padding:1px 4px;font-size:.75rem">✅</button>
                 </form>
               {% else %}
                 <form method="POST" action="/admin/ip/block" style="display:inline">
                   <input type="hidden" name="ip" value="{{ link.created_ip }}">
                   <input type="hidden" name="redirect" value="/admin/links">
-                  <button type="submit" class="btn btn-ghost btn-sm" data-confirm="Block IP {{ link.created_ip }}?" title="Block IP">🚫</button>
+                  <button class="btn btn-ghost btn-sm" data-confirm="Block {{ link.created_ip }}?" title="Block" style="padding:1px 4px;font-size:.75rem">🚫</button>
                 </form>
               {% endif %}
             {% else %}—{% endif %}
           </td>
+
           <td class="text-muted text-sm">{{ link.createdAt | date }}</td>
-          <td>{{ link.visitCount or 0 }}</td>
+          <td class="text-sm">{{ link.visitCount or 0 }}</td>
           <td>
-            {% if link.isActive %}
-              <span class="badge badge-success">Active</span>
-            {% else %}
-              <span class="badge badge-danger">Inactive</span>
-            {% endif %}
+            {% if link.isActive %}<span class="badge badge-success">Active</span>
+            {% else %}<span class="badge badge-danger">Off</span>{% endif %}
           </td>
-          <td class="td-actions">
-            <form method="POST" action="/admin/links/{{ link.id }}/toggle" style="display:inline;">
-              <button type="submit" class="btn btn-ghost btn-sm" title="{{ 'Deactivate' if link.isActive else 'Activate' }}">
-                {{ '⏸' if link.isActive else '▶️' }}
-              </button>
+
+          <td class="col-actions" style="white-space:nowrap">
+            <form method="POST" action="/admin/links/{{ link.id }}/toggle" style="display:inline">
+              <button class="btn btn-ghost btn-sm" title="{{ 'Deactivate' if link.isActive else 'Activate' }}">{{ '⏸' if link.isActive else '▶️' }}</button>
             </form>
-            <form method="POST" action="/admin/links/{{ link.id }}/delete" style="display:inline;">
-              <button type="submit" class="btn btn-danger btn-sm"
-                data-confirm="Delete this link permanently?" title="Delete">🗑</button>
+            <form method="POST" action="/admin/links/{{ link.id }}/delete" style="display:inline">
+              <button class="btn btn-danger btn-sm" data-confirm="Delete permanently?" title="Delete">🗑</button>
             </form>
           </td>
         </tr>
@@ -97,20 +165,138 @@
     </table>
   </div>
 
-  {% if pagination.totalPages > 1 %}
-  <div class="pagination">
+  {% if pagination.totalPages > 0 %}
+  <div class="pager">
     {% if pagination.page > 1 %}
-      <a href="?page={{ pagination.page - 1 }}&q={{ query.q }}&sort={{ query.sort }}&dir={{ query.dir }}">‹ Prev</a>
+      <a href="?q={{ query.q | urlencode }}&sort={{ query.sort }}&dir={{ query.dir }}&page=1&perPage={{ perPage }}" title="First">«</a>
+      <a href="?q={{ query.q | urlencode }}&sort={{ query.sort }}&dir={{ query.dir }}&page={{ pagination.page - 1 }}&perPage={{ perPage }}" title="Prev">‹</a>
     {% else %}
-      <span class="disabled">‹ Prev</span>
+      <span class="pg disabled">«</span><span class="pg disabled">‹</span>
     {% endif %}
-    <span>Page {{ pagination.page }} of {{ pagination.totalPages }}</span>
+
+    {% set ws = [1, pagination.page - 4] | max %}
+    {% set we = [pagination.totalPages, pagination.page + 4] | min %}
+    {% if ws > 1 %}<span class="pg disabled">…</span>{% endif %}
+    {% for p in range(ws, we + 1) %}
+      {% if p == pagination.page %}
+        <span class="pg current">{{ p }}</span>
+      {% else %}
+        <a class="pg" href="?q={{ query.q | urlencode }}&sort={{ query.sort }}&dir={{ query.dir }}&page={{ p }}&perPage={{ perPage }}">{{ p }}</a>
+      {% endif %}
+    {% endfor %}
+    {% if we < pagination.totalPages %}<span class="pg disabled">…</span>{% endif %}
+
     {% if pagination.page < pagination.totalPages %}
-      <a href="?page={{ pagination.page + 1 }}&q={{ query.q }}&sort={{ query.sort }}&dir={{ query.dir }}">Next ›</a>
+      <a href="?q={{ query.q | urlencode }}&sort={{ query.sort }}&dir={{ query.dir }}&page={{ pagination.page + 1 }}&perPage={{ perPage }}" title="Next">›</a>
+      <a href="?q={{ query.q | urlencode }}&sort={{ query.sort }}&dir={{ query.dir }}&page={{ pagination.totalPages }}&perPage={{ perPage }}" title="Last">»</a>
     {% else %}
-      <span class="disabled">Next ›</span>
+      <span class="pg disabled">›</span><span class="pg disabled">»</span>
     {% endif %}
+
+    <span class="pager-goto" style="display:flex;align-items:center;gap:.3rem;margin-left:.4rem">
+      <span class="text-muted text-sm">Go to</span>
+      <input type="number" id="goto-page" min="1" max="{{ pagination.totalPages }}" value="{{ pagination.page }}">
+      <span class="text-muted text-sm">of {{ pagination.totalPages }}</span>
+    </span>
+
+    <span class="pager-perpage" style="margin-left:.4rem">
+      <select id="per-page-select">
+        {% for n in [25, 50, 100, 250, 500] %}
+          <option value="{{ n }}" {% if perPage == n %}selected{% endif %}>{{ n }}/page</option>
+        {% endfor %}
+      </select>
+    </span>
   </div>
   {% endif %}
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  const BASE = '/admin/links'
+  function setCookie(k, v, days) {
+    const d = new Date(); d.setTime(d.getTime() + days * 86400000)
+    document.cookie = k + '=' + encodeURIComponent(v) + ';expires=' + d.toUTCString() + ';path=/'
+  }
+  function getCookie(k) {
+    const m = document.cookie.match('(?:^|;)\\s*' + k + '=([^;]*)')
+    return m ? decodeURIComponent(m[1]) : null
+  }
+
+  // Save/restore full state
+  const params = new URLSearchParams(location.search)
+  if (!params.has('q') && !params.has('sort') && !params.has('page') && !params.has('perPage')) {
+    const saved = getCookie('admin_links_state')
+    if (saved) { location.replace(BASE + '?' + saved); return }
+  } else {
+    setCookie('admin_links_state', params.toString(), 30)
+  }
+
+  function nav(overrides) {
+    const p = new URLSearchParams(location.search)
+    Object.entries(overrides).forEach(([k, v]) => p.set(k, v))
+    location.href = BASE + '?' + p.toString()
+  }
+
+  // Per-page
+  const ppSel = document.getElementById('per-page-select')
+  if (ppSel) ppSel.addEventListener('change', () => {
+    setCookie('admin_links_perpage', ppSel.value, 365)
+    nav({ perPage: ppSel.value, page: 1 })
+  })
+
+  // Go to page
+  const gotoEl = document.getElementById('goto-page')
+  if (gotoEl) {
+    const go = () => { const p = Math.max(1, parseInt(gotoEl.value)||1); const cur = parseInt(params.get('page')||'1'); if (p !== cur) nav({ page: p }) }
+    gotoEl.addEventListener('keydown', e => { if (e.key === 'Enter') go() })
+    gotoEl.addEventListener('blur', go)
+  }
+
+  // Image toggle
+  const tbody = document.getElementById('links-tbody')
+  const imgToggle = document.getElementById('img-toggle')
+  if (imgToggle && tbody) {
+    imgToggle.checked = getCookie('admin_links_images') === '1'
+    if (imgToggle.checked) tbody.classList.add('show-images')
+    imgToggle.addEventListener('change', () => {
+      tbody.classList.toggle('show-images', imgToggle.checked)
+      setCookie('admin_links_images', imgToggle.checked ? '1' : '0', 365)
+    })
+  }
+
+  // Column resize
+  const colMap = {
+    'th-code':'col-code','th-dest':'col-dest','th-owner':'col-owner','th-type':'col-type',
+    'th-ip':'col-ip','th-date':'col-date','th-visits':'col-visits','th-status':'col-status'
+  }
+  const savedW = JSON.parse(getCookie('admin_links_cols') || '{}')
+  Object.entries(savedW).forEach(([thId, w]) => {
+    const col = document.getElementById(colMap[thId]); if (col) col.style.width = w + 'px'
+  })
+
+  let rs = null
+  document.querySelectorAll('.resize-handle').forEach(h => {
+    h.addEventListener('mousedown', e => {
+      e.preventDefault()
+      rs = { th: h.closest('th'), h, x0: e.clientX, w0: h.closest('th').offsetWidth }
+      h.classList.add('dragging')
+    })
+  })
+  document.addEventListener('mousemove', e => {
+    if (!rs) return
+    const nw = Math.max(40, rs.w0 + e.clientX - rs.x0)
+    const col = document.getElementById(colMap[rs.th.id]); if (col) col.style.width = nw + 'px'
+  })
+  document.addEventListener('mouseup', () => {
+    if (!rs) return
+    rs.h.classList.remove('dragging')
+    const w = {}
+    Object.keys(colMap).forEach(id => { const col = document.getElementById(colMap[id]); if (col) w[id] = col.offsetWidth })
+    setCookie('admin_links_cols', JSON.stringify(w), 365)
+    rs = null
+  })
+})()
+</script>
 {% endblock %}

@@ -68,7 +68,7 @@ async function adminPlugin(fastify) {
     `, todayStart)
 
     const recentLinks = db.all(
-      `SELECT code, created_at FROM links ORDER BY created_at DESC LIMIT 10`
+      `SELECT code, type, created_at FROM links ORDER BY created_at DESC LIMIT 10`
     )
 
     return reply.view('admin/index.njk', {
@@ -84,32 +84,36 @@ async function adminPlugin(fastify) {
   fastify.get('/admin/links', async (req, reply) => {
     if (req.subdomain !== '') return reply.callNotFound()
 
+    const perPage = Math.min(500, Math.max(10,
+      parseInt(req.query.perPage || req.cookies?.admin_links_perpage || '100')
+    ))
     const page = Math.max(1, Number(req.query.page) || 1)
-    const perPage = 30
     const offset = (page - 1) * perPage
     const q = (req.query.q || '').trim()
-    const sort = ['created_at', 'code'].includes(req.query.sort) ? req.query.sort : 'created_at'
+    const SORTABLE = { created_at: 'l.created_at', code: 'l.code', type: 'l.type', username: 'u.username', visit_count: 'visit_count', is_active: 'l.is_active' }
+    const sort = SORTABLE[req.query.sort] ? req.query.sort : 'created_at'
+    const sortCol = SORTABLE[sort]
     const dir = req.query.dir === 'asc' ? 'ASC' : 'DESC'
 
     let rows, totalRow
     if (q) {
       const like = `%${q}%`
       rows = db.all(`
-        SELECT l.*, u.username, COUNT(t.id) as visit_count
+        SELECT l.*, u.username, u.is_blocked as owner_is_blocked, COUNT(t.id) as visit_count
         FROM links l
         LEFT JOIN users u ON u.id = l.owner_id
         LEFT JOIN tracking t ON t.link_id = l.id
-        WHERE l.code LIKE ? OR l.destination LIKE ?
-        GROUP BY l.id ORDER BY l.${sort} ${dir} LIMIT ? OFFSET ?
-      `, like, like, perPage, offset)
-      totalRow = db.get(`SELECT COUNT(*) as n FROM links WHERE code LIKE ? OR destination LIKE ?`, like, like)
+        WHERE l.code LIKE ? OR l.destination LIKE ? OR u.username LIKE ?
+        GROUP BY l.id ORDER BY ${sortCol} ${dir} LIMIT ? OFFSET ?
+      `, like, like, like, perPage, offset)
+      totalRow = db.get(`SELECT COUNT(*) as n FROM links l LEFT JOIN users u ON u.id = l.owner_id WHERE l.code LIKE ? OR l.destination LIKE ? OR u.username LIKE ?`, like, like, like)
     } else {
       rows = db.all(`
-        SELECT l.*, u.username, COUNT(t.id) as visit_count
+        SELECT l.*, u.username, u.is_blocked as owner_is_blocked, COUNT(t.id) as visit_count
         FROM links l
         LEFT JOIN users u ON u.id = l.owner_id
         LEFT JOIN tracking t ON t.link_id = l.id
-        GROUP BY l.id ORDER BY l.${sort} ${dir} LIMIT ? OFFSET ?
+        GROUP BY l.id ORDER BY ${sortCol} ${dir} LIMIT ? OFFSET ?
       `, perPage, offset)
       totalRow = db.get(`SELECT COUNT(*) as n FROM links`)
     }
@@ -123,9 +127,11 @@ async function adminPlugin(fastify) {
         ...l, createdAt: l.created_at,
         isActive: Boolean(l.is_active), visitCount: l.visit_count,
         creatorIpBlocked: l.created_ip ? blockedIps.has(l.created_ip) : false,
+        ownerIsBlocked: Boolean(l.owner_is_blocked),
       })),
       pagination: { page, totalPages: Math.ceil(totalRow.n / perPage), total: totalRow.n },
       query: { q, sort, dir: dir.toLowerCase() },
+      perPage,
     })
   })
 

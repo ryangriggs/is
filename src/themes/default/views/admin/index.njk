@@ -55,9 +55,15 @@
         <p class="text-muted text-sm">No links yet.</p>
       {% else %}
         {% for link in recentLinks %}
-        <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid var(--color-border);">
-          <span class="font-mono text-sm text-primary">{{ baseDomain }}/{{ link.code }}</span>
-          <span class="text-xs text-muted">{{ link.createdAt | date }}</span>
+        <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid var(--border);">
+          <div style="display:flex;align-items:center;gap:.5rem;min-width:0">
+            <span class="badge badge-neutral" style="font-size:.7rem;flex-shrink:0">{{ link.type }}</span>
+            <a href="https://{{ baseDomain }}/{{ link.code }}" target="_blank" rel="noopener"
+              class="font-mono text-sm" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+              {{ baseDomain }}/{{ link.code }}
+            </a>
+          </div>
+          <span class="text-xs text-muted" style="flex-shrink:0;margin-left:.5rem">{{ link.createdAt | date }}</span>
         </div>
         {% endfor %}
         <a href="/admin/links" class="btn btn-ghost btn-sm mt-2">View all →</a>
