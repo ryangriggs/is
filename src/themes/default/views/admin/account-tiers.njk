@@ -1,0 +1,121 @@
+{% extends "layouts/base.njk" %}
+{% block title %}Account Tiers — Admin — {{ siteName }}{% endblock %}
+
+{% block content %}
+<div class="container">
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Account Tiers</h1>
+      <p class="page-subtitle">Configure limits per subscription level</p>
+    </div>
+    <a href="/admin" class="btn btn-ghost btn-sm">← Admin</a>
+  </div>
+
+  {% if tiers.length == 0 %}
+  <div class="card text-center text-muted" style="padding:2rem">No tiers configured.</div>
+  {% endif %}
+
+  {% for tier in tiers %}
+  <div class="card mb-3">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem">
+      <h3 style="margin:0;text-transform:capitalize">{{ tier.label or tier.name }}</h3>
+      <form method="POST" action="/admin/account-tiers/{{ tier.id }}/delete" style="display:inline">
+        <button class="btn btn-danger btn-sm" data-confirm="Delete tier '{{ tier.name }}'?">Delete</button>
+      </form>
+    </div>
+    <form method="POST" action="/admin/account-tiers">
+      <input type="hidden" name="name" value="{{ tier.name }}">
+      <input type="hidden" name="label" value="{{ tier.label or tier.name }}">
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:1rem">
+        <div>
+          <label class="label">Max Links / Hour</label>
+          <input type="number" name="max_links_per_hour" class="input" value="{{ tier.max_links_per_hour }}" min="0">
+        </div>
+        <div>
+          <label class="label">Max Total Links</label>
+          <input type="number" name="max_links_total" class="input" value="{{ tier.max_links_total }}" min="0" placeholder="0 = unlimited">
+        </div>
+        <div>
+          <label class="label">Max Total Images</label>
+          <input type="number" name="max_images_total" class="input" value="{{ tier.max_images_total }}" min="0" placeholder="0 = unlimited">
+        </div>
+        <div>
+          <label class="label">Max Total Text Pastes</label>
+          <input type="number" name="max_text_total" class="input" value="{{ tier.max_text_total }}" min="0" placeholder="0 = unlimited">
+        </div>
+        <div>
+          <label class="label">Max DDNS Entries</label>
+          <input type="number" name="max_ddns_entries" class="input" value="{{ tier.max_ddns_entries }}" min="0">
+        </div>
+        <div>
+          <label class="label">Max File Size (MB)</label>
+          <input type="number" name="max_file_size_mb" class="input" value="{{ tier.max_file_size_mb }}" min="1">
+        </div>
+        <div>
+          <label class="label">Allow Raw HTML</label>
+          <select name="allow_raw_html" class="input">
+            <option value="1" {% if tier.allow_raw_html %}selected{% endif %}>Yes</option>
+            <option value="0" {% if not tier.allow_raw_html %}selected{% endif %}>No</option>
+          </select>
+        </div>
+        <div>
+          <label class="label">Show Ads</label>
+          <select name="show_ads" class="input">
+            <option value="1" {% if tier.show_ads %}selected{% endif %}>Yes</option>
+            <option value="0" {% if not tier.show_ads %}selected{% endif %}>No</option>
+          </select>
+        </div>
+        <div>
+          <label class="label">Allow Ad Campaigns</label>
+          <select name="allow_ad_campaigns" class="input">
+            <option value="1" {% if tier.allow_ad_campaigns %}selected{% endif %}>Yes</option>
+            <option value="0" {% if not tier.allow_ad_campaigns %}selected{% endif %}>No</option>
+          </select>
+        </div>
+      </div>
+      <div style="margin-top:1rem">
+        <button type="submit" class="btn btn-primary btn-sm">Save Changes</button>
+      </div>
+    </form>
+  </div>
+  {% endfor %}
+
+  <div class="card mt-3">
+    <h3 style="margin-top:0">Add New Tier</h3>
+    <form method="POST" action="/admin/account-tiers">
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:1rem">
+        <div>
+          <label class="label">Tier Name * <span class="text-muted" style="font-weight:400">(lowercase, e.g. pro)</span></label>
+          <input type="text" name="name" class="input" placeholder="pro" required>
+        </div>
+        <div>
+          <label class="label">Display Label</label>
+          <input type="text" name="label" class="input" placeholder="Pro">
+        </div>
+        <div>
+          <label class="label">Max Links / Hour</label>
+          <input type="number" name="max_links_per_hour" class="input" value="50" min="0">
+        </div>
+        <div>
+          <label class="label">Max DDNS Entries</label>
+          <input type="number" name="max_ddns_entries" class="input" value="10" min="0">
+        </div>
+        <div>
+          <label class="label">Max File Size (MB)</label>
+          <input type="number" name="max_file_size_mb" class="input" value="50" min="1">
+        </div>
+        <div>
+          <label class="label">Allow Ad Campaigns</label>
+          <select name="allow_ad_campaigns" class="input">
+            <option value="0">No</option>
+            <option value="1">Yes</option>
+          </select>
+        </div>
+      </div>
+      <div style="margin-top:1rem">
+        <button type="submit" class="btn btn-primary">Add Tier</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

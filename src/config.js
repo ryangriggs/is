@@ -48,6 +48,9 @@ const config = Object.freeze({
   RATE_LIMIT_REGISTER_WINDOW_MS: Number(optional('RATE_LIMIT_REGISTER_WINDOW_MS', '600000')),
   ANON_TOKEN_COOKIE_DAYS: Number(optional('ANON_TOKEN_COOKIE_DAYS', '30')),
 
+  RESEND_API_KEY: optional('RESEND_API_KEY', ''),
+  RESEND_FROM_EMAIL: optional('RESEND_FROM_EMAIL', ''),
+
   get IS_PROD() { return this.NODE_ENV === 'production' },
   get IS_DEV() { return this.NODE_ENV === 'development' },
 })

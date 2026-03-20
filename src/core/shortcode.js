@@ -32,6 +32,7 @@ export const RESERVED_CODES = new Set([
   'success', 'manage', 'report', 'login', 'register', 'logout',
   'dashboard', 'admin', 'static', 'uploads', 'favicon.ico', 'robots.txt',
   'q', 't', 'h', 'i', 'b', 'd', 'a', 'l', 'tokens',
+  'ad', 'ads', 'profile', 'contact', 'return-to-admin',
 ])
 
 export function isReserved(code) {

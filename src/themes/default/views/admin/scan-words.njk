@@ -36,12 +36,19 @@
   {% else %}
   <div class="card">
     <table class="table">
-      <thead><tr><th>Word</th><th>Scope</th><th>Status</th><th></th></tr></thead>
+      <thead><tr><th>Word</th><th>Scope</th><th>Hits</th><th>Status</th><th></th></tr></thead>
       <tbody>
         {% for w in words %}
         <tr>
           <td class="font-mono">{{ w.word }}</td>
           <td><span class="badge badge-neutral">{{ w.scope }}</span></td>
+          <td>
+            {% if w.hits > 0 %}
+              <span class="badge badge-warning">{{ w.hits }}</span>
+            {% else %}
+              <span class="text-muted">0</span>
+            {% endif %}
+          </td>
           <td>
             {% if w.isActive %}
               <span class="badge badge-success">Active</span>

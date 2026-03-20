@@ -40,6 +40,22 @@ async function adminPlugin(fastify) {
     invalidateIpCache()
   }
 
+  // Scan links against scan_words on creation; increment hit counter on match
+  const hooks = fastify.hooks
+  hooks.on('pre:link:create', async ({ data }) => {
+    if (!data.destination) return
+    const words = db.all('SELECT * FROM scan_words WHERE active = 1')
+    if (!words.length) return
+    const matched = scanUrl(data.destination, words)
+    if (matched) {
+      const word = words.find(w => w.word.toLowerCase() === matched.toLowerCase())
+      if (word) {
+        try { db.run('UPDATE scan_words SET hits = hits + 1 WHERE id = ?', word.id) } catch (_) {}
+      }
+      throw Object.assign(new Error('Link blocked by content policy.'), { statusCode: 422 })
+    }
+  })
+
   // Guard all /admin routes
   fastify.addHook('preHandler', async (req, reply) => {
     if (req.url?.startsWith('/admin')) {
@@ -90,7 +106,7 @@ async function adminPlugin(fastify) {
     const page = Math.max(1, Number(req.query.page) || 1)
     const offset = (page - 1) * perPage
     const q = (req.query.q || '').trim()
-    const SORTABLE = { created_at: 'l.created_at', code: 'l.code', type: 'l.type', username: 'u.username', visit_count: 'visit_count', is_active: 'l.is_active' }
+    const SORTABLE = { created_at: 'l.created_at', code: 'l.code', type: 'l.type', username: 'u.username', visit_count: 'visit_count', is_active: 'l.is_active', created_ip: 'l.created_ip', file_size: 'l.file_size' }
     const sort = SORTABLE[req.query.sort] ? req.query.sort : 'created_at'
     const sortCol = SORTABLE[sort]
     const dir = req.query.dir === 'asc' ? 'ASC' : 'DESC'
@@ -370,7 +386,17 @@ async function adminPlugin(fastify) {
     if (req.subdomain !== '') return reply.callNotFound()
     const rows = db.all('SELECT key, value FROM settings')
     const settingsMap = Object.fromEntries(rows.map(r => [r.key, r.value]))
-    return reply.view('admin/settings.njk', { settings: settingsMap })
+    // List available themes
+    const { readdirSync } = await import('fs')
+    const { join, dirname } = await import('path')
+    const { fileURLToPath } = await import('url')
+    const __dir = dirname(fileURLToPath(import.meta.url))
+    let availableThemes = ['default']
+    try {
+      const entries = readdirSync(join(__dir, '../../themes'), { withFileTypes: true })
+      availableThemes = entries.filter(e => e.isDirectory()).map(e => e.name)
+    } catch (_) {}
+    return reply.view('admin/settings.njk', { settings: settingsMap, availableThemes })
   })
 
   fastify.post('/admin/settings', async (req, reply) => {
@@ -378,7 +404,7 @@ async function adminPlugin(fastify) {
     const allowed = [
       'site_name', 'site_tagline', 'registration_open',
       'require_login_to_create', 'max_links_anonymous',
-      'max_file_size_mb', 'allowed_image_types', 'ads_enabled',
+      'max_file_size_mb', 'allowed_image_types', 'ads_enabled', 'active_theme',
     ]
     for (const key of allowed) {
       if (req.body[key] !== undefined) {
@@ -472,10 +498,15 @@ async function adminPlugin(fastify) {
     req.session.impersonatingAdminId = req.session.userId
     req.session.impersonatingAdminUsername = req.session.username
     req.session.impersonatingAdminRole = req.session.role
+    req.session.impersonatingAdminDisplayName = req.session.displayName || null
+    req.session.impersonatingAdminEmail = req.session.email || null
     req.session.userId = user.id
     req.session.username = user.username
+    req.session.displayName = user.display_name || null
+    req.session.email = user.email || null
     req.session.role = user.role
-    req.session.flash = { type: 'info', message: `Now logged in as ${user.username}` }
+    req.session.subscriptionTier = user.subscription_tier || 'free'
+    req.session.flash = { type: 'info', message: `Now logged in as ${user.email || user.username}` }
     return reply.redirect('/dashboard')
   })
 
@@ -535,6 +566,82 @@ async function adminPlugin(fastify) {
     const w = db.get('SELECT id, active FROM scan_words WHERE id = ?', Number(req.params.id))
     if (w) db.run('UPDATE scan_words SET active = ? WHERE id = ?', w.active ? 0 : 1, w.id)
     return reply.redirect('/admin/scan-words')
+  })
+
+  // ----------------------------------------------------------------
+  // Admin: reset user password
+  // ----------------------------------------------------------------
+  fastify.post('/admin/users/:id/reset-password', async (req, reply) => {
+    if (req.subdomain !== '') return reply.callNotFound()
+    const { password = '' } = req.body || {}
+    if (!password || password.length < 8) {
+      req.session.flash = { type: 'error', message: 'Password must be at least 8 characters.' }
+      return reply.redirect('/admin/users')
+    }
+    const { hashPassword } = await import('../../core/auth.js')
+    const hash = await hashPassword(password)
+    db.run('UPDATE users SET password_hash = ? WHERE id = ?', hash, Number(req.params.id))
+    req.session.flash = { type: 'success', message: 'Password reset.' }
+    return reply.redirect('/admin/users')
+  })
+
+  // ----------------------------------------------------------------
+  // Admin: account tiers
+  // ----------------------------------------------------------------
+  fastify.get('/admin/account-tiers', async (req, reply) => {
+    if (req.subdomain !== '') return reply.callNotFound()
+    const tiers = db.all('SELECT * FROM account_tiers ORDER BY name')
+    return reply.view('admin/account-tiers.njk', { tiers })
+  })
+
+  fastify.post('/admin/account-tiers', async (req, reply) => {
+    if (req.subdomain !== '') return reply.callNotFound()
+    const { name, label, max_links_total, max_images_total, max_text_total, max_links_per_hour,
+      max_ddns_entries, max_file_size_mb, allow_raw_html, show_ads, allow_ad_campaigns } = req.body || {}
+    if (!name?.trim()) {
+      req.session.flash = { type: 'error', message: 'Name required.' }
+      return reply.redirect('/admin/account-tiers')
+    }
+    db.run(
+      `INSERT INTO account_tiers(name,label,max_links_total,max_images_total,max_text_total,max_links_per_hour,max_ddns_entries,max_file_size_mb,allow_raw_html,show_ads,allow_ad_campaigns,created_at)
+       VALUES(?,?,?,?,?,?,?,?,?,?,?,?)
+       ON CONFLICT(name) DO UPDATE SET label=excluded.label, max_links_total=excluded.max_links_total,
+         max_images_total=excluded.max_images_total, max_text_total=excluded.max_text_total,
+         max_links_per_hour=excluded.max_links_per_hour, max_ddns_entries=excluded.max_ddns_entries,
+         max_file_size_mb=excluded.max_file_size_mb, allow_raw_html=excluded.allow_raw_html,
+         show_ads=excluded.show_ads, allow_ad_campaigns=excluded.allow_ad_campaigns`,
+      name.trim().toLowerCase(), label || name.trim(), Number(max_links_total) || 0,
+      Number(max_images_total) || 0, Number(max_text_total) || 0, Number(max_links_per_hour) || 0,
+      Number(max_ddns_entries) || 5, Number(max_file_size_mb) || 10,
+      allow_raw_html === '1' ? 1 : 0, show_ads === '1' ? 1 : 0, allow_ad_campaigns === '1' ? 1 : 0,
+      Date.now()
+    )
+    req.session.flash = { type: 'success', message: 'Tier saved.' }
+    return reply.redirect('/admin/account-tiers')
+  })
+
+  fastify.post('/admin/account-tiers/:id/delete', async (req, reply) => {
+    if (req.subdomain !== '') return reply.callNotFound()
+    db.run('DELETE FROM account_tiers WHERE id = ?', Number(req.params.id))
+    req.session.flash = { type: 'success', message: 'Tier deleted.' }
+    return reply.redirect('/admin/account-tiers')
+  })
+
+  // Add theme to settings allowed list and list available themes
+  fastify.get('/admin/themes', async (req, reply) => {
+    if (req.subdomain !== '') return reply.callNotFound()
+    const { readdirSync, existsSync } = await import('fs')
+    const { join, dirname } = await import('path')
+    const { fileURLToPath } = await import('url')
+    const __dirname = dirname(fileURLToPath(import.meta.url))
+    const themesDir = join(__dirname, '../../themes')
+    let themes = ['default']
+    try {
+      const entries = readdirSync(themesDir, { withFileTypes: true })
+      themes = entries.filter(e => e.isDirectory()).map(e => e.name)
+    } catch (_) {}
+    const current = db.get("SELECT value FROM settings WHERE key = 'active_theme'")?.value || 'default'
+    return reply.send({ themes, current })
   })
 }
 

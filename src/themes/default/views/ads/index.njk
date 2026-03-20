@@ -1,0 +1,67 @@
+{% extends "layouts/base.njk" %}
+{% block title %}Ad Campaigns — {{ siteName }}{% endblock %}
+
+{% block content %}
+<div class="container">
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Ad Campaigns</h1>
+      <p class="page-subtitle">Promote your content on {{ siteName }}</p>
+    </div>
+    <a href="/dashboard" class="btn btn-ghost btn-sm">← Dashboard</a>
+  </div>
+
+  <div class="card mb-3">
+    <h3 style="margin-top:0">Create Campaign</h3>
+    <form method="POST" action="/ads">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+        <div>
+          <label class="label">Campaign Name *</label>
+          <input type="text" name="name" class="input" placeholder="My Campaign" required>
+        </div>
+        <div>
+          <label class="label">Click URL *</label>
+          <input type="url" name="click_url" class="input" placeholder="https://example.com" required>
+        </div>
+        <div>
+          <label class="label">Expires (optional)</label>
+          <input type="date" name="expires_at" class="input">
+        </div>
+      </div>
+      <div style="margin-top:1rem">
+        <button type="submit" class="btn btn-primary">Create Campaign</button>
+      </div>
+    </form>
+  </div>
+
+  {% if campaigns.length == 0 %}
+  <div class="card text-center text-muted" style="padding:2rem">
+    No campaigns yet. Create one above to get started.
+  </div>
+  {% else %}
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:1rem">
+    {% for c in campaigns %}
+    <div class="card">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:.5rem">
+        <h3 style="margin:0;font-size:1rem">{{ c.name }}</h3>
+        {% if c.is_active %}
+          <span class="badge badge-success">Active</span>
+        {% else %}
+          <span class="badge badge-neutral">Inactive</span>
+        {% endif %}
+      </div>
+      <p class="text-muted text-sm" style="word-break:break-all;margin:.25rem 0">{{ c.click_url | truncate(50) }}</p>
+      <p class="text-sm" style="margin:.25rem 0">{{ c.image_count }} image{{ 's' if c.image_count != 1 }}</p>
+      {% if c.expires_at %}<p class="text-muted text-sm" style="margin:.25rem 0">Expires: {{ c.expires_at | date }}</p>{% endif %}
+      <div style="margin-top:1rem;display:flex;gap:.5rem">
+        <a href="/ads/{{ c.id }}" class="btn btn-ghost btn-sm">Manage</a>
+        <form method="POST" action="/ads/{{ c.id }}/delete">
+          <button class="btn btn-danger btn-sm" data-confirm="Delete campaign '{{ c.name }}'?">Delete</button>
+        </form>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

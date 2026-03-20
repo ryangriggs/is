@@ -7,6 +7,60 @@ function sha256(s) {
   return createHash('sha256').update(s).digest('hex')
 }
 
+function usernameFromEmail(email) {
+  return email.split('@')[0]
+    .toLowerCase()
+    .replace(/[^a-z0-9_-]/g, '')
+    .slice(0, 20) || 'user'
+}
+
+function setSessionFromUser(req, user) {
+  req.session.userId = user.id
+  req.session.username = user.username
+  req.session.role = user.role
+  req.session.displayName = user.display_name || null
+  req.session.email = user.email || null
+  req.session.subscriptionTier = user.subscription_tier || 'free'
+}
+
+function claimPendingLink(db, req) {
+  const code = req.session.pendingClaimCode
+  if (code && req.session.userId) {
+    try {
+      db.run(
+        'UPDATE links SET owner_id = ? WHERE code = ? AND owner_id IS NULL',
+        req.session.userId, code
+      )
+    } catch (_) {}
+    delete req.session.pendingClaimCode
+  }
+}
+
+async function sendResetEmail(email, token) {
+  const resetUrl = `https://${config.BASE_DOMAIN}/reset-password?token=${token}`
+
+  if (config.IS_DEV || !config.RESEND_API_KEY) {
+    console.log(`[forgot-password] Reset link for ${email}: ${resetUrl}`)
+    return
+  }
+
+  await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${config.RESEND_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      from: config.RESEND_FROM_EMAIL || `noreply@${config.BASE_DOMAIN}`,
+      to: email,
+      subject: `Reset your ${config.SITE_NAME} password`,
+      html: `<p>Click the link below to reset your password. This link expires in 1 hour.</p>
+             <p><a href="${resetUrl}">${resetUrl}</a></p>
+             <p>If you did not request a password reset, you can ignore this email.</p>`,
+    }),
+  })
+}
+
 async function usersPlugin(fastify) {
   const db = fastify.db
 
@@ -40,49 +94,58 @@ async function usersPlugin(fastify) {
       return reply.view('register.njk', { registrationClosed: true })
     }
 
-    const { username, email, password, password2 } = req.body
+    const { email = '', display_name = '', password = '', password2 = '' } = req.body || {}
+    const emailLc = email.trim().toLowerCase()
 
-    if (!username || !/^[a-zA-Z0-9_-]{3,20}$/.test(username)) {
+    if (!emailLc || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailLc)) {
       return reply.view('register.njk', {
-        error: 'Username must be 3–20 characters (letters, numbers, _ and - only).',
-        prefill: { username, email },
+        error: 'Please enter a valid email address.',
+        prefill: { email, display_name },
       })
     }
     if (!password || password.length < 8) {
       return reply.view('register.njk', {
         error: 'Password must be at least 8 characters.',
-        prefill: { username, email },
+        prefill: { email, display_name },
       })
     }
     if (password !== password2) {
       return reply.view('register.njk', {
         error: 'Passwords do not match.',
-        prefill: { username, email },
+        prefill: { email, display_name },
       })
     }
 
     const existing = db.get(
-      `SELECT id FROM users WHERE username = ? OR (email IS NOT NULL AND email = ?)`,
-      username.toLowerCase(), email ? email.toLowerCase() : '__NO_MATCH__'
+      `SELECT id FROM users WHERE email = ?`,
+      emailLc
     )
     if (existing) {
       return reply.view('register.njk', {
-        error: 'Username or email already taken.',
-        prefill: { username, email },
+        error: 'An account with that email already exists.',
+        prefill: { email, display_name },
       })
+    }
+
+    // Auto-generate unique username from email
+    let baseUsername = usernameFromEmail(emailLc)
+    let username = baseUsername
+    let suffix = 1
+    while (db.get('SELECT id FROM users WHERE username = ?', username)) {
+      username = baseUsername + suffix++
     }
 
     const passwordHash = await hashPassword(password)
     const info = db.run(
-      `INSERT INTO users(username, email, password_hash, role, created_at) VALUES(?,?,?,?,?)`,
-      username.toLowerCase(), email ? email.toLowerCase() : null, passwordHash, 'user', Date.now()
+      `INSERT INTO users(username, email, display_name, password_hash, role, created_at) VALUES(?,?,?,?,?,?)`,
+      username, emailLc, display_name.trim() || null, passwordHash, 'user', Date.now()
     )
     const user = db.get('SELECT * FROM users WHERE id = ?', info.lastInsertRowid)
 
-    req.session.userId = user.id
-    req.session.username = user.username
-    req.session.role = user.role
-    req.session.flash = { type: 'success', message: `Welcome, ${user.username}! Your account is ready.` }
+    setSessionFromUser(req, user)
+    claimPendingLink(db, req)
+
+    req.session.flash = { type: 'success', message: `Welcome! Your account is ready.` }
     return reply.redirect('/dashboard')
   })
 
@@ -100,19 +163,20 @@ async function usersPlugin(fastify) {
   // ----------------------------------------------------------------
   fastify.post('/login', async (req, reply) => {
     if (req.subdomain !== '') return reply.callNotFound()
-    const { login, password, next } = req.body
+    const { login = '', password = '', next } = req.body || {}
+    const loginLc = login.trim().toLowerCase()
 
-    if (!login || !password) {
-      return reply.view('login.njk', { error: 'Please enter your username and password.', prefill: login })
+    if (!loginLc || !password) {
+      return reply.view('login.njk', { error: 'Please enter your email and password.', prefill: login })
     }
 
     const user = db.get(
-      `SELECT * FROM users WHERE username = ? OR (email IS NOT NULL AND email = ?)`,
-      login.toLowerCase(), login.toLowerCase()
+      `SELECT * FROM users WHERE email = ? OR username = ?`,
+      loginLc, loginLc
     )
 
     if (!user || !(await verifyPassword(password, user.password_hash))) {
-      return reply.view('login.njk', { error: 'Invalid username or password.', prefill: login })
+      return reply.view('login.njk', { error: 'Invalid email or password.', prefill: login })
     }
     if (user.is_blocked) {
       return reply.view('login.njk', { error: 'Your account has been suspended.', prefill: login })
@@ -120,9 +184,8 @@ async function usersPlugin(fastify) {
 
     db.run('UPDATE users SET last_login = ? WHERE id = ?', Date.now(), user.id)
 
-    req.session.userId = user.id
-    req.session.username = user.username
-    req.session.role = user.role
+    setSessionFromUser(req, user)
+    claimPendingLink(db, req)
 
     return reply.redirect((next && next.startsWith('/')) ? next : '/dashboard')
   })
@@ -133,6 +196,178 @@ async function usersPlugin(fastify) {
   fastify.post('/logout', async (req, reply) => {
     req.session.destroy()
     return reply.redirect('/')
+  })
+
+  // ----------------------------------------------------------------
+  // GET /forgot-password
+  // ----------------------------------------------------------------
+  fastify.get('/forgot-password', async (req, reply) => {
+    if (req.subdomain !== '') return reply.callNotFound()
+    if (req.session.userId) return reply.redirect('/dashboard')
+    return reply.view('forgot-password.njk', {})
+  })
+
+  // ----------------------------------------------------------------
+  // POST /forgot-password
+  // ----------------------------------------------------------------
+  fastify.post('/forgot-password', {
+    config: {
+      rateLimit: { max: 5, timeWindow: 600000, keyGenerator: req => req.ip }
+    }
+  }, async (req, reply) => {
+    if (req.subdomain !== '') return reply.callNotFound()
+    const { email = '' } = req.body || {}
+    const emailLc = email.trim().toLowerCase()
+
+    // Always show success to prevent email enumeration
+    const successView = () => reply.view('forgot-password.njk', {
+      success: 'If an account with that email exists, a reset link has been sent.'
+    })
+
+    if (!emailLc) return successView()
+
+    const user = db.get('SELECT * FROM users WHERE email = ?', emailLc)
+    if (!user) return successView()
+
+    const token = generateToken(40)
+    const tokenHash = sha256(token)
+    const expires = Date.now() + 60 * 60 * 1000 // 1 hour
+
+    db.run(
+      'UPDATE users SET reset_token_hash = ?, reset_token_expires = ? WHERE id = ?',
+      tokenHash, expires, user.id
+    )
+
+    try {
+      await sendResetEmail(emailLc, token)
+    } catch (err) {
+      console.error('[forgot-password] Failed to send email:', err.message)
+    }
+
+    return successView()
+  })
+
+  // ----------------------------------------------------------------
+  // GET /reset-password
+  // ----------------------------------------------------------------
+  fastify.get('/reset-password', async (req, reply) => {
+    if (req.subdomain !== '') return reply.callNotFound()
+    const { token } = req.query
+    if (!token) return reply.redirect('/forgot-password')
+    const tokenHash = sha256(token)
+    const user = db.get(
+      'SELECT * FROM users WHERE reset_token_hash = ? AND reset_token_expires > ?',
+      tokenHash, Date.now()
+    )
+    if (!user) {
+      return reply.view('reset-password.njk', { error: 'This reset link is invalid or has expired.' })
+    }
+    return reply.view('reset-password.njk', { token })
+  })
+
+  // ----------------------------------------------------------------
+  // POST /reset-password
+  // ----------------------------------------------------------------
+  fastify.post('/reset-password', async (req, reply) => {
+    if (req.subdomain !== '') return reply.callNotFound()
+    const { token = '', password = '', password2 = '' } = req.body || {}
+
+    const tokenHash = sha256(token)
+    const user = db.get(
+      'SELECT * FROM users WHERE reset_token_hash = ? AND reset_token_expires > ?',
+      tokenHash, Date.now()
+    )
+    if (!user) {
+      return reply.view('reset-password.njk', { error: 'This reset link is invalid or has expired.' })
+    }
+    if (!password || password.length < 8) {
+      return reply.view('reset-password.njk', { token, error: 'Password must be at least 8 characters.' })
+    }
+    if (password !== password2) {
+      return reply.view('reset-password.njk', { token, error: 'Passwords do not match.' })
+    }
+
+    const hash = await hashPassword(password)
+    db.run(
+      'UPDATE users SET password_hash = ?, reset_token_hash = NULL, reset_token_expires = NULL WHERE id = ?',
+      hash, user.id
+    )
+
+    setSessionFromUser(req, user)
+    req.session.flash = { type: 'success', message: 'Password updated. You are now logged in.' }
+    return reply.redirect('/dashboard')
+  })
+
+  // ----------------------------------------------------------------
+  // GET /profile
+  // ----------------------------------------------------------------
+  fastify.get('/profile', { preHandler: requireAuth }, async (req, reply) => {
+    if (req.subdomain !== '') return reply.callNotFound()
+    const user = db.get('SELECT * FROM users WHERE id = ?', req.session.userId)
+    return reply.view('profile.njk', { profileUser: user })
+  })
+
+  // ----------------------------------------------------------------
+  // POST /profile
+  // ----------------------------------------------------------------
+  fastify.post('/profile', { preHandler: requireAuth }, async (req, reply) => {
+    if (req.subdomain !== '') return reply.callNotFound()
+    const user = db.get('SELECT * FROM users WHERE id = ?', req.session.userId)
+    const { display_name = '', email = '', current_password = '', new_password = '', new_password2 = '' } = req.body || {}
+
+    const emailLc = email.trim().toLowerCase()
+    let error = null
+
+    // Validate email if changed
+    if (emailLc && emailLc !== (user.email || '')) {
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailLc)) {
+        error = 'Invalid email address.'
+      } else {
+        const taken = db.get('SELECT id FROM users WHERE email = ? AND id != ?', emailLc, user.id)
+        if (taken) error = 'That email is already in use.'
+      }
+    }
+
+    // Validate new password if provided
+    if (!error && new_password) {
+      if (!current_password) {
+        error = 'Enter your current password to set a new one.'
+      } else if (!(await verifyPassword(current_password, user.password_hash))) {
+        error = 'Current password is incorrect.'
+      } else if (new_password.length < 8) {
+        error = 'New password must be at least 8 characters.'
+      } else if (new_password !== new_password2) {
+        error = 'New passwords do not match.'
+      }
+    }
+
+    if (error) {
+      return reply.view('profile.njk', { profileUser: user, error })
+    }
+
+    // Apply changes
+    const newDisplayName = display_name.trim() || null
+    const newEmail = emailLc || user.email || null
+
+    if (new_password) {
+      const newHash = await hashPassword(new_password)
+      db.run(
+        'UPDATE users SET display_name = ?, email = ?, password_hash = ? WHERE id = ?',
+        newDisplayName, newEmail, newHash, user.id
+      )
+    } else {
+      db.run(
+        'UPDATE users SET display_name = ?, email = ? WHERE id = ?',
+        newDisplayName, newEmail, user.id
+      )
+    }
+
+    // Update session
+    req.session.displayName = newDisplayName
+    req.session.email = newEmail
+
+    req.session.flash = { type: 'success', message: 'Profile updated.' }
+    return reply.redirect('/profile')
   })
 
   // ----------------------------------------------------------------
@@ -244,7 +479,7 @@ async function usersPlugin(fastify) {
   })
 
   // ----------------------------------------------------------------
-  // GET /tokens — manage API tokens (web UI)
+  // GET /tokens — manage API tokens
   // ----------------------------------------------------------------
   fastify.get('/tokens', { preHandler: requireAuth }, async (req, reply) => {
     const tokens = db.all(
@@ -277,14 +512,21 @@ async function usersPlugin(fastify) {
     return reply.redirect('/tokens')
   })
 
+  // ----------------------------------------------------------------
+  // POST /return-to-admin
+  // ----------------------------------------------------------------
   fastify.post('/return-to-admin', { preHandler: requireAuth }, async (req, reply) => {
     if (!req.session.impersonatingAdminId) return reply.redirect('/dashboard')
     req.session.userId = req.session.impersonatingAdminId
     req.session.username = req.session.impersonatingAdminUsername
     req.session.role = req.session.impersonatingAdminRole
+    req.session.displayName = req.session.impersonatingAdminDisplayName || null
+    req.session.email = req.session.impersonatingAdminEmail || null
     delete req.session.impersonatingAdminId
     delete req.session.impersonatingAdminUsername
     delete req.session.impersonatingAdminRole
+    delete req.session.impersonatingAdminDisplayName
+    delete req.session.impersonatingAdminEmail
     req.session.flash = { type: 'success', message: 'Returned to admin account.' }
     return reply.redirect('/admin/users')
   })

@@ -1,0 +1,51 @@
+{% extends "layouts/base.njk" %}
+{% block title %}Profile — {{ siteName }}{% endblock %}
+{% block content %}
+<div class="container" style="max-width:540px;padding-top:2rem">
+  <div class="page-header">
+    <h1 class="page-title">My Profile</h1>
+  </div>
+
+  <form method="POST" action="/profile" class="card">
+    <h2 style="font-size:1rem;font-weight:600;margin:0 0 1.25rem">Account Details</h2>
+
+    <div class="form-group">
+      <label class="label">Display Name</label>
+      <input type="text" name="display_name" class="input"
+        value="{{ profileUser.display_name or '' }}" placeholder="Your name">
+    </div>
+
+    <div class="form-group">
+      <label class="label">Email Address</label>
+      <input type="email" name="email" class="input"
+        value="{{ profileUser.email or '' }}" required>
+    </div>
+
+    <hr style="border:none;border-top:1px solid var(--color-border);margin:1.5rem 0">
+    <h2 style="font-size:1rem;font-weight:600;margin:0 0 1rem">Change Password</h2>
+    <p class="text-sm text-muted" style="margin-bottom:1rem">Leave blank to keep your current password.</p>
+
+    <div class="form-group">
+      <label class="label">Current Password</label>
+      <input type="password" name="current_password" class="input" autocomplete="current-password">
+    </div>
+    <div class="form-group">
+      <label class="label">New Password</label>
+      <input type="password" name="new_password" class="input" autocomplete="new-password" minlength="8">
+    </div>
+    <div class="form-group">
+      <label class="label">Confirm New Password</label>
+      <input type="password" name="new_password2" class="input" autocomplete="new-password">
+    </div>
+
+    <button type="submit" class="btn btn-primary btn-block">Save Changes</button>
+  </form>
+
+  <div class="card mt-3" style="padding:1rem">
+    <p class="text-sm text-muted">
+      Account tier: <span class="badge badge-info">{{ profileUser.subscription_tier or 'free' }}</span>
+      &nbsp;·&nbsp; Member since {{ profileUser.created_at | date }}
+    </p>
+  </div>
+</div>
+{% endblock %}

@@ -1,8 +1,7 @@
 import fp from 'fastify-plugin'
 import { createLink } from '../../core/links.js'
-import config from '../../config.js'
 
-const MAX_PASTE_BYTES = 512 * 1024 // 512 KB
+const MAX_PASTE_BYTES = 512 * 1024
 
 async function textPastePlugin(fastify) {
   const db = fastify.db
@@ -17,7 +16,8 @@ async function textPastePlugin(fastify) {
     if (!content.trim()) {
       return reply.view('text-create.njk', { error: 'Content cannot be empty.', content, title })
     }
-    if (Buffer.byteLength(content, 'utf8') > MAX_PASTE_BYTES) {
+    const byteSize = Buffer.byteLength(content, 'utf8')
+    if (byteSize > MAX_PASTE_BYTES) {
       return reply.view('text-create.njk', { error: 'Paste too large (max 512 KB).', content, title })
     }
     const { link, plainToken } = await createLink(db, hooks, {
@@ -28,7 +28,8 @@ async function textPastePlugin(fastify) {
       ownerId: req.session.userId || null,
       req,
     })
-    const qs = plainToken ? `?token=${plainToken}` : ''
+    db.run('UPDATE links SET file_size = ? WHERE id = ?', byteSize, link.id)
+    if (!req.session.userId) req.session.pendingClaimCode = link.code
     return reply.redirect(`/success?code=${link.code}${plainToken ? '&token=' + plainToken : ''}`)
   })
 }

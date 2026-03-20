@@ -7,18 +7,21 @@
       <div>
         <h1 style="margin:0;font-size:1.25rem">{{ link.title or 'Untitled Collection' }}</h1>
         <p class="text-muted text-sm" style="margin:.25rem 0 0">
-          Share: <a href="{{ shortUrl }}">{{ shortUrl }}</a> &bull;
-          <span class="badge {% if link.is_private %}badge-warning{% else %}badge-success{% endif %}">
-            {% if link.is_private %}Private{% else %}Public{% endif %}
-          </span>
+          Share: <a href="{{ shortUrl }}">{{ shortUrl }}</a>
         </p>
       </div>
-      <div style="display:flex;gap:.5rem;flex-wrap:wrap">
-        <form method="POST" action="/b/{{ link.code }}/visibility" style="margin:0">
-          <button class="btn btn-ghost btn-sm">Toggle Visibility</button>
+      <div style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:center">
+        {# Slide toggle for public/private #}
+        <form method="POST" action="/b/{{ link.code }}/visibility" style="margin:0;display:flex;align-items:center;gap:.4rem">
+          <span class="text-sm text-muted">{{ 'Private' if link.is_private else 'Public' }}</span>
+          <label class="slide-toggle" title="Toggle visibility">
+            <input type="checkbox" onchange="this.form.submit()" {% if not link.is_private %}checked{% endif %}>
+            <span class="slide-knob"></span>
+          </label>
+          <span class="text-sm text-muted">{{ 'Public' if link.is_private else 'Private' }}</span>
         </form>
         <form method="POST" action="/b/{{ link.code }}/delete" style="margin:0">
-          <button class="btn btn-danger btn-sm" data-confirm="Delete this collection and all bookmarks?">Delete Collection</button>
+          <button class="btn btn-danger btn-sm" data-confirm="Delete this collection and all bookmarks?">Delete</button>
         </form>
         <a href="/b" class="btn btn-secondary btn-sm">← Collections</a>
       </div>
@@ -36,6 +39,26 @@
           <button type="submit" class="btn btn-primary">Add</button>
         </div>
       </form>
+    </div>
+
+    <div class="card mb-4">
+      <details>
+        <summary style="cursor:pointer;font-size:.9rem;font-weight:500;padding:.25rem 0">
+          🔒 {% if link.password_hash %}Change Password{% else %}Set Password{% endif %}
+        </summary>
+        <form method="POST" action="/b/{{ link.code }}/password" style="margin-top:.75rem">
+          <div style="display:flex;gap:.5rem;align-items:flex-end">
+            <div class="form-group" style="flex:1;margin:0">
+              <label class="label" style="font-size:.8rem">New password (leave blank to remove)</label>
+              <input type="password" name="password" class="input" placeholder="Leave blank to remove password">
+            </div>
+            <button type="submit" class="btn btn-secondary btn-sm" style="align-self:flex-end">Save</button>
+          </div>
+          {% if link.password_hash %}
+          <p class="text-xs text-muted mt-1">A password is currently set.</p>
+          {% endif %}
+        </form>
+      </details>
     </div>
 
     {% if items.length %}

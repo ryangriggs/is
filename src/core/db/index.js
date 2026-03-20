@@ -44,10 +44,67 @@ export async function initDb() {
     // Additive column migrations — try/catch because SQLite has no ADD COLUMN IF NOT EXISTS
     const addColumns = [
       'ALTER TABLE dns_records ADD COLUMN ttl INTEGER NOT NULL DEFAULT 300',
-      'ALTER TABLE blocked_ips ADD COLUMN type TEXT NOT NULL DEFAULT \'block\'',
+      "ALTER TABLE blocked_ips ADD COLUMN type TEXT NOT NULL DEFAULT 'block'",
+      'ALTER TABLE users ADD COLUMN display_name TEXT',
+      'ALTER TABLE users ADD COLUMN reset_token_hash TEXT',
+      'ALTER TABLE users ADD COLUMN reset_token_expires INTEGER',
+      'ALTER TABLE scan_words ADD COLUMN hits INTEGER NOT NULL DEFAULT 0',
+      'ALTER TABLE links ADD COLUMN file_size INTEGER',
     ]
     for (const stmt of addColumns) {
       try { sqlite.prepare(stmt).run() } catch (_) { /* column already exists */ }
+    }
+
+    // New tables (all IF NOT EXISTS — safe to re-run)
+    sqlite.exec(`CREATE TABLE IF NOT EXISTS account_tiers (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT UNIQUE NOT NULL,
+      label TEXT,
+      max_links_total INTEGER NOT NULL DEFAULT 0,
+      max_images_total INTEGER NOT NULL DEFAULT 0,
+      max_text_total INTEGER NOT NULL DEFAULT 0,
+      max_links_per_hour INTEGER NOT NULL DEFAULT 0,
+      max_ddns_entries INTEGER NOT NULL DEFAULT 5,
+      max_file_size_mb INTEGER NOT NULL DEFAULT 10,
+      allow_raw_html INTEGER NOT NULL DEFAULT 1,
+      show_ads INTEGER NOT NULL DEFAULT 0,
+      allow_ad_campaigns INTEGER NOT NULL DEFAULT 0,
+      created_at INTEGER NOT NULL DEFAULT (strftime('%s','now') * 1000)
+    )`)
+
+    sqlite.exec(`CREATE TABLE IF NOT EXISTS ad_campaigns (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      owner_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      name TEXT NOT NULL,
+      click_url TEXT NOT NULL DEFAULT '',
+      is_active INTEGER NOT NULL DEFAULT 0,
+      expires_at INTEGER,
+      created_at INTEGER NOT NULL DEFAULT (strftime('%s','now') * 1000)
+    )`)
+
+    sqlite.exec(`CREATE TABLE IF NOT EXISTS ad_images (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      campaign_id INTEGER NOT NULL REFERENCES ad_campaigns(id) ON DELETE CASCADE,
+      image_path TEXT NOT NULL,
+      alt_text TEXT,
+      is_approved INTEGER NOT NULL DEFAULT 0,
+      created_at INTEGER NOT NULL DEFAULT (strftime('%s','now') * 1000)
+    )`)
+
+    sqlite.exec(`CREATE TABLE IF NOT EXISTS ad_clicks (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      image_id INTEGER NOT NULL REFERENCES ad_images(id) ON DELETE CASCADE,
+      ip TEXT,
+      clicked_at INTEGER NOT NULL DEFAULT (strftime('%s','now') * 1000)
+    )`)
+
+    // Seed default account tiers (only if none exist yet)
+    const tierCount = sqlite.prepare('SELECT COUNT(*) as n FROM account_tiers').get()
+    if (tierCount.n === 0) {
+      sqlite.prepare(`INSERT INTO account_tiers(name,label,max_links_per_hour,max_ddns_entries,max_file_size_mb,allow_raw_html,show_ads,allow_ad_campaigns) VALUES(?,?,?,?,?,?,?,?)`)
+        .run('free', 'Free', 10, 3, 10, 1, 1, 0)
+      sqlite.prepare(`INSERT INTO account_tiers(name,label,max_links_per_hour,max_ddns_entries,max_file_size_mb,allow_raw_html,show_ads,allow_ad_campaigns) VALUES(?,?,?,?,?,?,?,?)`)
+        .run('paid', 'Paid', 100, 50, 100, 1, 0, 1)
     }
 
     _db = createSqliteDb(sqlite)

@@ -44,20 +44,38 @@
       </form>
     </div>
 
-    <div class="card">
-      <h2 class="card-title mb-3">Upload Limits</h2>
-      <form method="POST" action="/admin/settings">
-        <div class="form-group">
-          <label class="label">Max file size (MB)</label>
-          <input type="number" name="max_file_size_mb" class="input" value="{{ settings.max_file_size_mb }}" min="1">
-        </div>
-        <div class="form-group">
-          <label class="label">Allowed image types</label>
-          <input type="text" name="allowed_image_types" class="input" value="{{ settings.allowed_image_types }}"
-            placeholder="image/jpeg,image/png,image/gif">
-        </div>
-        <button type="submit" class="btn btn-primary btn-block">Save</button>
-      </form>
+    <div>
+      <div class="card mb-3">
+        <h2 class="card-title mb-3">Upload Limits</h2>
+        <form method="POST" action="/admin/settings">
+          <div class="form-group">
+            <label class="label">Max file size (MB)</label>
+            <input type="number" name="max_file_size_mb" class="input" value="{{ settings.max_file_size_mb }}" min="1">
+          </div>
+          <div class="form-group">
+            <label class="label">Allowed image types</label>
+            <input type="text" name="allowed_image_types" class="input" value="{{ settings.allowed_image_types }}"
+              placeholder="image/jpeg,image/png,image/gif">
+          </div>
+          <button type="submit" class="btn btn-primary btn-block">Save</button>
+        </form>
+      </div>
+
+      <div class="card">
+        <h2 class="card-title mb-3">Theme</h2>
+        <form method="POST" action="/admin/settings">
+          <div class="form-group">
+            <label class="label">Active Theme</label>
+            <select name="active_theme" class="select" id="theme-select">
+              {% for t in availableThemes %}
+              <option value="{{ t }}" {% if t == settings.active_theme or (not settings.active_theme and t == 'default') %}selected{% endif %}>{{ t }}</option>
+              {% endfor %}
+            </select>
+            <p class="text-xs text-muted mt-1">Takes effect on next server restart.</p>
+          </div>
+          <button type="submit" class="btn btn-secondary btn-block">Save Theme</button>
+        </form>
+      </div>
     </div>
   </div>
 </div>

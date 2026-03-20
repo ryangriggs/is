@@ -1,0 +1,92 @@
+{% extends "layouts/base.njk" %}
+{% block title %}Ad Campaigns — Admin — {{ siteName }}{% endblock %}
+
+{% block content %}
+<div class="container">
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Ad Campaigns</h1>
+      <p class="page-subtitle">Manage and approve advertising campaigns</p>
+    </div>
+    <a href="/admin" class="btn btn-ghost btn-sm">← Admin</a>
+  </div>
+
+  {% if pendingImages.length > 0 %}
+  <div class="card mb-3" style="border:1px solid var(--color-warning,#f59e0b)">
+    <h3 style="margin-top:0">Pending Approval ({{ pendingImages.length }})</h3>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:1rem">
+      {% for img in pendingImages %}
+      <div class="card" style="padding:1rem">
+        <img src="/uploads/ads/{{ img.image_path }}" alt="{{ img.alt_text or '' }}"
+             style="width:100%;max-height:120px;object-fit:contain;border-radius:4px;background:var(--bg-card);margin-bottom:.75rem">
+        <div style="font-size:.82rem;margin-bottom:.5rem">
+          <span class="text-muted">Campaign:</span> <strong>{{ img.campaign_name }}</strong><br>
+          <span class="text-muted">Owner:</span> {{ img.display_name or img.email or img.username }}
+          {% if img.alt_text %}<br><span class="text-muted">Alt:</span> {{ img.alt_text }}{% endif %}
+        </div>
+        <div style="display:flex;gap:.5rem">
+          <form method="POST" action="/admin/ads/images/{{ img.id }}/approve">
+            <button class="btn btn-primary btn-sm">✓ Approve</button>
+          </form>
+          <form method="POST" action="/admin/ads/images/{{ img.id }}/reject">
+            <button class="btn btn-danger btn-sm" data-confirm="Reject and delete this image?">✗ Reject</button>
+          </form>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  <div class="card">
+    <h3 style="margin-top:0">All Campaigns ({{ campaigns.length }})</h3>
+    {% if campaigns.length == 0 %}
+    <p class="text-muted">No campaigns yet.</p>
+    {% else %}
+    <div style="overflow-x:auto">
+      <table style="width:100%;border-collapse:collapse;font-size:.875rem">
+        <thead>
+          <tr style="border-bottom:1px solid var(--color-border)">
+            <th style="padding:8px;text-align:left">Name</th>
+            <th style="padding:8px;text-align:left">Owner</th>
+            <th style="padding:8px;text-align:left">Images</th>
+            <th style="padding:8px;text-align:left">Status</th>
+            <th style="padding:8px;text-align:left">Expires</th>
+            <th style="padding:8px;text-align:left">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for c in campaigns %}
+          <tr style="border-bottom:1px solid var(--color-border)">
+            <td style="padding:8px">
+              <strong>{{ c.name }}</strong><br>
+              <a href="{{ c.click_url }}" target="_blank" rel="noopener" class="text-muted" style="font-size:.78rem;word-break:break-all">{{ c.click_url | truncate(40) }}</a>
+            </td>
+            <td style="padding:8px">{{ c.display_name or c.email or c.username }}</td>
+            <td style="padding:8px">
+              {{ c.approved_count }}/{{ c.image_count }} approved
+            </td>
+            <td style="padding:8px">
+              {% if c.is_active %}
+                <span class="badge badge-success">Active</span>
+              {% else %}
+                <span class="badge badge-neutral">Inactive</span>
+              {% endif %}
+            </td>
+            <td style="padding:8px" class="text-muted text-sm">
+              {% if c.expires_at %}{{ c.expires_at | date }}{% else %}—{% endif %}
+            </td>
+            <td style="padding:8px">
+              <form method="POST" action="/admin/ads/{{ c.id }}/toggle" style="display:inline">
+                <button class="btn btn-ghost btn-sm">{{ 'Pause' if c.is_active else 'Activate' }}</button>
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

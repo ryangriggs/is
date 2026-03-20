@@ -301,6 +301,10 @@ async function shortlinksPlugin(fastify) {
       ownerId: req.session.userId || null,
       req,
     })
+    // Store code so it can be claimed if user logs in / registers
+    if (!req.session.userId) {
+      req.session.pendingClaimCode = link.code
+    }
     if (plainToken) {
       setMgmtCookie(reply, req, link.code, plainToken)
       return reply.redirect(`/success?code=${link.code}&token=${plainToken}`)

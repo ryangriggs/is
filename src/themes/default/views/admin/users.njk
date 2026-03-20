@@ -12,7 +12,7 @@
 
   <form method="GET" class="card mb-3" style="padding:16px;">
     <div class="input-group">
-      <input type="text" name="q" class="input" placeholder="Search by username or email..." value="{{ query.q }}">
+      <input type="text" name="q" class="input" placeholder="Search by email or username..." value="{{ query.q }}">
       <button type="submit" class="btn btn-secondary">Search</button>
       <a href="/admin/users" class="btn btn-ghost">Reset</a>
     </div>
@@ -22,8 +22,8 @@
     <table>
       <thead>
         <tr>
-          <th>Username</th>
           <th>Email</th>
+          <th>Name</th>
           <th>Role</th>
           <th>Tier</th>
           <th>Joined</th>
@@ -38,8 +38,8 @@
         {% endif %}
         {% for u in users %}
         <tr>
-          <td><strong>{{ u.username }}</strong></td>
-          <td class="text-muted text-sm">{{ u.email or '—' }}</td>
+          <td class="text-sm">{{ u.email or u.username }}</td>
+          <td class="text-sm text-muted">{{ u.display_name or '—' }}</td>
           <td>
             {% if u.role == 'admin' %}
               <span class="badge badge-warning">Admin</span>
@@ -57,9 +57,9 @@
               <span class="badge badge-success">Active</span>
             {% endif %}
           </td>
-          <td class="td-actions">
+          <td class="td-actions" style="white-space:nowrap">
             <form method="POST" action="/admin/users/{{ u.id }}/tier" style="display:inline;margin-right:.25rem">
-              <select name="tier" class="select" style="width:80px;padding:.2rem .3rem;font-size:.8rem"
+              <select name="tier" class="select" style="width:75px;padding:.2rem .3rem;font-size:.8rem"
                 onchange="this.form.submit()">
                 <option value="free" {% if u.subscriptionTier == 'free' or not u.subscriptionTier %}selected{% endif %}>Free</option>
                 <option value="paid" {% if u.subscriptionTier == 'paid' %}selected{% endif %}>Paid</option>
@@ -68,7 +68,7 @@
             {% if u.id != currentUserId %}
               <form method="POST" action="/admin/users/{{ u.id }}/impersonate" style="display:inline;">
                 <button type="submit" class="btn btn-ghost btn-sm" title="Login as this user"
-                  data-confirm="Login as {{ u.username }}?">👤</button>
+                  data-confirm="Login as this user?">👤</button>
               </form>
               {% if u.isBlocked %}
                 <form method="POST" action="/admin/users/{{ u.id }}/unblock" style="display:inline;">
@@ -83,17 +83,25 @@
               {% if u.role == 'admin' %}
                 <form method="POST" action="/admin/users/{{ u.id }}/remove-admin" style="display:inline;">
                   <button type="submit" class="btn btn-ghost btn-sm"
-                    data-confirm="Remove admin role from this user?" title="Remove admin">⭐</button>
+                    data-confirm="Remove admin role?" title="Remove admin">⭐</button>
                 </form>
               {% else %}
                 <form method="POST" action="/admin/users/{{ u.id }}/make-admin" style="display:inline;">
                   <button type="submit" class="btn btn-ghost btn-sm"
-                    data-confirm="Grant admin role to this user?" title="Make admin">👑</button>
+                    data-confirm="Grant admin role?" title="Make admin">👑</button>
                 </form>
               {% endif %}
+              <button class="btn btn-ghost btn-sm" title="Reset password"
+                onclick="document.getElementById('pwreset-{{ u.id }}').style.display=document.getElementById('pwreset-{{ u.id }}').style.display=='none'?'inline-flex':'none'">🔑</button>
               <form method="POST" action="/admin/users/{{ u.id }}/delete" style="display:inline;">
                 <button type="submit" class="btn btn-danger btn-sm"
                   data-confirm="Delete this user and ALL their links?" title="Delete">🗑</button>
+              </form>
+              <form id="pwreset-{{ u.id }}" method="POST" action="/admin/users/{{ u.id }}/reset-password"
+                style="display:none;gap:.3rem;margin-top:.35rem;align-items:center">
+                <input type="password" name="password" class="input" placeholder="New password"
+                  style="width:140px;padding:.3rem .5rem;font-size:.8rem" minlength="8" required>
+                <button type="submit" class="btn btn-secondary btn-sm">Set</button>
               </form>
             {% else %}
               <span class="text-xs text-muted">(you)</span>

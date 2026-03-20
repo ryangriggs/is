@@ -121,6 +121,25 @@ async function bookmarksPlugin(fastify) {
     return reply.redirect(`/b/${link.code}`)
   })
 
+  // POST /b/:code/password — set or clear collection password
+  fastify.post('/b/:code/password', { preHandler: requireAuth }, async (req, reply) => {
+    const link = db.get(
+      `SELECT * FROM links WHERE code = ? AND type = 'bookmark' AND owner_id = ?`,
+      req.params.code, req.session.userId
+    )
+    if (!link) { reply.code(404); return reply.view('errors/404.njk', {}) }
+    const { password = '' } = req.body || {}
+    if (password.trim()) {
+      const hash = await hashToken(password)
+      db.run('UPDATE links SET password_hash = ? WHERE id = ?', hash, link.id)
+      req.session.flash = { type: 'success', message: 'Password set.' }
+    } else {
+      db.run('UPDATE links SET password_hash = NULL WHERE id = ?', link.id)
+      req.session.flash = { type: 'success', message: 'Password removed.' }
+    }
+    return reply.redirect(`/b/${link.code}`)
+  })
+
   // GET /b/* — smart handler:
   //   /b/slug:https://url   → quick-add URL to collection (requires login)
   //   /b/slug               → view/manage collection by slug or shortcode

@@ -65,13 +65,14 @@ th.resizable { position: relative; }
     <table id="links-table">
       <colgroup>
         <col id="col-code"    style="width:110px">
-        <col id="col-dest"    style="width:240px">
-        <col id="col-owner"   style="width:120px">
-        <col id="col-type"    style="width:80px">
-        <col id="col-ip"      style="width:145px">
-        <col id="col-date"    style="width:100px">
-        <col id="col-visits"  style="width:60px">
-        <col id="col-status"  style="width:68px">
+        <col id="col-dest"    style="width:220px">
+        <col id="col-owner"   style="width:110px">
+        <col id="col-type"    style="width:70px">
+        <col id="col-ip"      style="width:135px">
+        <col id="col-date"    style="width:95px">
+        <col id="col-visits"  style="width:55px">
+        <col id="col-size"    style="width:60px">
+        <col id="col-status"  style="width:65px">
         <col id="col-actions" style="width:90px">
       </colgroup>
       <thead>
@@ -88,9 +89,10 @@ th.resizable { position: relative; }
           <th class="resizable" id="th-dest">Destination<div class="resize-handle"></div></th>
           {{ sth('Owner',   'username',   'th-owner') }}
           {{ sth('Type',    'type',       'th-type') }}
-          <th class="resizable" id="th-ip">Creator IP<div class="resize-handle"></div></th>
+          {{ sth('Creator IP','created_ip','th-ip') }}
           {{ sth('Created', 'created_at', 'th-date') }}
           {{ sth('Visits',  'visit_count','th-visits') }}
+          {{ sth('Size',    'file_size',  'th-size') }}
           {{ sth('Status',  'is_active',  'th-status') }}
           <th class="col-actions">Actions</th>
         </tr>
@@ -146,6 +148,11 @@ th.resizable { position: relative; }
 
           <td class="text-muted text-sm">{{ link.createdAt | date }}</td>
           <td class="text-sm">{{ link.visitCount or 0 }}</td>
+          <td class="text-sm text-muted">
+            {% if link.file_size %}
+              {{ (link.file_size / 1024) | round(1) }}KB
+            {% else %}—{% endif %}
+          </td>
           <td>
             {% if link.isActive %}<span class="badge badge-success">Active</span>
             {% else %}<span class="badge badge-danger">Off</span>{% endif %}
@@ -271,7 +278,7 @@ th.resizable { position: relative; }
   // Column resize
   const colMap = {
     'th-code':'col-code','th-dest':'col-dest','th-owner':'col-owner','th-type':'col-type',
-    'th-ip':'col-ip','th-date':'col-date','th-visits':'col-visits','th-status':'col-status'
+    'th-ip':'col-ip','th-date':'col-date','th-visits':'col-visits','th-size':'col-size','th-status':'col-status'
   }
   const savedW = JSON.parse(getCookie('admin_links_cols') || '{}')
   Object.entries(savedW).forEach(([thId, w]) => {

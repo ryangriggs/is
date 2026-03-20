@@ -1,0 +1,83 @@
+{% extends "layouts/base.njk" %}
+{% block title %}{{ campaign.name }} — Ad Campaign — {{ siteName }}{% endblock %}
+
+{% block content %}
+<div class="container">
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">{{ campaign.name }}</h1>
+      <p class="page-subtitle">
+        {% if campaign.is_active %}<span class="badge badge-success">Active</span>
+        {% else %}<span class="badge badge-neutral">Inactive — awaiting approval</span>{% endif %}
+        &nbsp; {{ clicks }} total clicks
+      </p>
+    </div>
+    <a href="/ads" class="btn btn-ghost btn-sm">← Campaigns</a>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem">
+    <div class="card">
+      <h3 style="margin-top:0">Upload Image</h3>
+      <p class="text-muted text-sm">Images must be approved by an admin before going live.</p>
+      <form method="POST" action="/ads/{{ campaign.id }}/upload" enctype="multipart/form-data">
+        <div style="margin-bottom:1rem">
+          <label class="label">Image File (JPG, PNG, GIF, WebP)</label>
+          <input type="file" name="image" accept="image/*" class="input" required>
+        </div>
+        <div style="margin-bottom:1rem">
+          <label class="label">Alt Text (optional)</label>
+          <input type="text" name="alt_text" class="input" placeholder="Description of the ad image">
+        </div>
+        <button type="submit" class="btn btn-primary">Upload Image</button>
+      </form>
+    </div>
+
+    <div class="card">
+      <h3 style="margin-top:0">Campaign Details</h3>
+      <table style="width:100%;font-size:.875rem">
+        <tr>
+          <td class="text-muted" style="padding:4px 0;width:40%">Click URL</td>
+          <td style="word-break:break-all"><a href="{{ campaign.click_url }}" target="_blank" rel="noopener">{{ campaign.click_url | truncate(40) }}</a></td>
+        </tr>
+        <tr>
+          <td class="text-muted" style="padding:4px 0">Created</td>
+          <td>{{ campaign.created_at | date }}</td>
+        </tr>
+        <tr>
+          <td class="text-muted" style="padding:4px 0">Expires</td>
+          <td>{% if campaign.expires_at %}{{ campaign.expires_at | date }}{% else %}Never{% endif %}</td>
+        </tr>
+        <tr>
+          <td class="text-muted" style="padding:4px 0">Total Clicks</td>
+          <td>{{ clicks }}</td>
+        </tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="card mt-3">
+    <h3 style="margin-top:0">Images ({{ images.length }})</h3>
+    {% if images.length == 0 %}
+    <p class="text-muted">No images uploaded yet.</p>
+    {% else %}
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:1rem">
+      {% for img in images %}
+      <div class="card" style="padding:1rem">
+        <img src="/uploads/ads/{{ img.image_path }}" alt="{{ img.alt_text or '' }}"
+             style="width:100%;max-height:120px;object-fit:contain;border-radius:4px;background:var(--bg-card);margin-bottom:.75rem"
+             onclick="window.open('/uploads/ads/{{ img.image_path }}','_blank')" style="cursor:pointer">
+        <div style="font-size:.82rem;margin-bottom:.5rem">
+          {% if img.is_approved %}
+            <span class="badge badge-success">Approved</span>
+          {% else %}
+            <span class="badge badge-warning">Pending</span>
+          {% endif %}
+          {% if img.alt_text %}<br><span class="text-muted">{{ img.alt_text }}</span>{% endif %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

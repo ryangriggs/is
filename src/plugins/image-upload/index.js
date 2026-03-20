@@ -34,7 +34,7 @@ async function imageUploadPlugin(fastify) {
       return reply.view('image-create.njk', { error: 'No file selected.' })
     }
     if (!ALLOWED_TYPES.has(data.mimetype)) {
-      await data.toBuffer() // drain stream
+      await data.toBuffer()
       return reply.view('image-create.njk', { error: 'Unsupported file type. Use JPEG, PNG, GIF, or WebP.' })
     }
 
@@ -42,8 +42,12 @@ async function imageUploadPlugin(fastify) {
     const filename = nanoid(16) + ext
     const filepath = path.join(uploadsDir, filename)
 
+    let fileSize = 0
     try {
-      await pipeline(data.file, createWriteStream(filepath))
+      const buf = await data.toBuffer()
+      fileSize = buf.length
+      const { writeFile } = await import('fs/promises')
+      await writeFile(filepath, buf)
     } catch {
       return reply.view('image-create.njk', { error: 'Failed to save file. Please try again.' })
     }
@@ -56,6 +60,13 @@ async function imageUploadPlugin(fastify) {
       ownerId: req.session.userId || null,
       req,
     })
+
+    // Store file size
+    if (fileSize) db.run('UPDATE links SET file_size = ? WHERE id = ?', fileSize, link.id)
+
+    // Store pending claim code for anonymous uploads
+    if (!req.session.userId) req.session.pendingClaimCode = link.code
+
     return reply.redirect(`/success?code=${link.code}${plainToken ? '&token=' + plainToken : ''}`)
   })
 }

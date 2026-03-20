@@ -2,13 +2,13 @@
 {% block title %}Dynamic DNS — {{ siteName }}{% endblock %}
 {% block content %}
 <section class="section">
-  <div class="container" style="max-width:720px">
+  <div class="container" style="max-width:760px">
     <h1 class="section-title">Dynamic DNS</h1>
     <p class="section-subtitle">Point a subdomain of <strong>{{ dynApex }}</strong> to your IP address.</p>
 
     <div class="card mb-4">
       <h2 style="font-size:1rem;margin:0 0 1rem">Add / Update Record</h2>
-      <form method="POST" action="/d">
+      <form method="POST" action="/d" id="dns-add-form">
         <div class="form-group">
           <label class="label">Subdomain</label>
           <div style="display:flex;align-items:center;gap:.25rem">
@@ -20,12 +20,20 @@
         <div style="display:flex;gap:1rem;flex-wrap:wrap">
           <div class="form-group" style="flex:1;min-width:200px">
             <label class="label">IPv4 Address</label>
-            <input type="text" name="ip4" class="input" placeholder="1.2.3.4">
+            <input type="text" name="ip4" class="input" id="dns-ip4" placeholder="1.2.3.4">
           </div>
           <div class="form-group" style="flex:1;min-width:200px">
-            <label class="label">IPv6 Address <span class="text-muted">(optional)</span></label>
+            <label class="label">IPv6 Address <span class="text-muted text-xs">(optional)</span></label>
             <input type="text" name="ip6" class="input" placeholder="2001:db8::1">
           </div>
+        </div>
+        <div class="form-group" style="max-width:180px">
+          <label class="label">
+            TTL (seconds)
+            {% if not isPaid %}<span class="text-xs text-muted"> — upgrade to paid to customize</span>{% endif %}
+          </label>
+          <input type="number" name="ttl" class="input" min="30" max="86400"
+            value="300" {% if not isPaid %}disabled{% endif %}>
         </div>
         <button type="submit" class="btn btn-primary">Save Record</button>
       </form>
@@ -34,24 +42,42 @@
     {% if records.length %}
     <div class="card mb-4">
       <h2 style="font-size:1rem;margin:0 0 1rem">Your Records</h2>
-      <table class="table">
-        <thead><tr><th>Hostname</th><th>IPv4</th><th>IPv6</th><th>Updated</th><th></th></tr></thead>
-        <tbody>
-          {% for r in records %}
-          <tr>
-            <td><code>{{ r.subdomain }}.{{ dynApex }}</code></td>
-            <td>{{ r.ip4 or '—' }}</td>
-            <td>{{ r.ip6 or '—' }}</td>
-            <td class="text-muted text-sm">{{ r.updated_at | date }}</td>
-            <td>
-              <form method="POST" action="/d/delete/{{ r.id }}" style="margin:0">
-                <button class="btn btn-danger btn-sm" data-confirm="Delete this record?">Delete</button>
-              </form>
-            </td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
+      {% for r in records %}
+      <details class="dns-record-row" style="border-bottom:1px solid var(--color-border);padding:.75rem 0" {% if loop.last %}style="border-bottom:none"{% endif %}>
+        <summary style="cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:.5rem;list-style:none">
+          <div>
+            <code style="font-size:.875rem">{{ r.subdomain }}.{{ dynApex }}</code>
+            <span class="text-muted text-sm" style="margin-left:.75rem">{{ r.ip4 or '—' }}{% if r.ip6 %} / {{ r.ip6 }}{% endif %}</span>
+            <span class="badge badge-neutral" style="margin-left:.5rem;font-size:.65rem">TTL {{ r.ttl or 300 }}s</span>
+          </div>
+          <div style="display:flex;gap:.4rem;align-items:center">
+            <span class="text-muted text-xs">Updated {{ r.updated_at | date }}</span>
+            <span class="btn btn-ghost btn-sm" style="pointer-events:none">Edit ▾</span>
+          </div>
+        </summary>
+        <div style="padding:.75rem 0 .25rem">
+          <form method="POST" action="/d/{{ r.id }}/edit-ip" style="display:flex;gap:.75rem;flex-wrap:wrap;align-items:flex-end">
+            <div class="form-group" style="flex:1;min-width:160px;margin:0">
+              <label class="label" style="font-size:.8rem">IPv4</label>
+              <input type="text" name="ip4" class="input" value="{{ r.ip4 or '' }}" placeholder="1.2.3.4">
+            </div>
+            <div class="form-group" style="flex:1;min-width:160px;margin:0">
+              <label class="label" style="font-size:.8rem">IPv6</label>
+              <input type="text" name="ip6" class="input" value="{{ r.ip6 or '' }}" placeholder="optional">
+            </div>
+            <div class="form-group" style="min-width:120px;margin:0">
+              <label class="label" style="font-size:.8rem">TTL (s)</label>
+              <input type="number" name="ttl" class="input" value="{{ r.ttl or 300 }}"
+                min="30" max="86400" {% if not isPaid %}disabled{% endif %}>
+            </div>
+            <button type="submit" class="btn btn-secondary btn-sm" style="align-self:flex-end">Update</button>
+            <form method="POST" action="/d/delete/{{ r.id }}" style="margin:0;align-self:flex-end">
+              <button class="btn btn-danger btn-sm" data-confirm="Delete this record?">Delete</button>
+            </form>
+          </form>
+        </div>
+      </details>
+      {% endfor %}
     </div>
     {% endif %}
 
@@ -59,8 +85,23 @@
       <h2 style="font-size:1rem;margin:0 0 1rem">Dynamic Update (cron / script)</h2>
       <p class="text-muted text-sm">Use your secret key (shown once at creation) to update your IP automatically:</p>
       <pre style="background:var(--bg-base);padding:1rem;border-radius:8px;overflow-x:auto;font-size:.8rem">curl "https://{{ baseDomain }}/d/update?host=SUBDOMAIN&key=SECRET_KEY&ip=$(curl -s https://api.ipify.org)"</pre>
-      <p class="text-muted text-sm mt-2">Lost your key? Delete the record and recreate it — a new key will be generated.</p>
+      <p class="text-muted text-sm mt-2">Omit <code>&ip=...</code> to use the requesting client's IP automatically.</p>
+      <p class="text-muted text-sm">Lost your key? Delete the record and recreate it — a new key will be generated.</p>
     </div>
   </div>
 </section>
+{% endblock %}
+{% block scripts %}
+<script>
+// Auto-populate IPv4 with client's current IP when page loads
+;(async function(){
+  const ip4Input = document.getElementById('dns-ip4')
+  if (!ip4Input || ip4Input.value) return
+  try {
+    const r = await fetch('https://api.ipify.org?format=json')
+    const d = await r.json()
+    if (d.ip) ip4Input.value = d.ip
+  } catch (_) {}
+})()
+</script>
 {% endblock %}

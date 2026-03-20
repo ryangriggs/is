@@ -31,6 +31,13 @@ function dateFilter(ts) {
 export async function buildApp() {
   const db = await initDb()
 
+  // Read active theme from DB at startup (takes effect on restart after admin changes it)
+  let startupTheme = config.THEME || 'default'
+  try {
+    const themeSetting = db.get("SELECT value FROM settings WHERE key = 'active_theme'")
+    if (themeSetting?.value) startupTheme = themeSetting.value
+  } catch (_) {}
+
   const app = Fastify({
     logger: config.IS_DEV
       ? { level: 'info' }
@@ -82,7 +89,7 @@ export async function buildApp() {
   await app.register(multipart, { limits: { fileSize: config.IMAGE_MAX_BYTES } })
 
   // Static files
-  const themeName = config.THEME || 'default'
+  const themeName = startupTheme
   const defaultStaticPath = path.join(__dirname, 'themes', 'default', 'static')
   const customStaticPath = path.join(__dirname, 'themes', themeName, 'static')
 
@@ -148,9 +155,23 @@ export async function buildApp() {
     const flash = req.session.flash || null
     if (req.session.flash) delete req.session.flash
 
+    let unreadMessages = 0
+    if (req.session.role === 'admin') {
+      try {
+        unreadMessages = db.get('SELECT COUNT(*) as n FROM messages WHERE is_read = 0')?.n || 0
+      } catch (_) {}
+    }
+
     reply.locals = {
       user: req.session.userId
-        ? { id: req.session.userId, username: req.session.username, role: req.session.role }
+        ? {
+            id: req.session.userId,
+            username: req.session.username,
+            displayName: req.session.displayName || null,
+            email: req.session.email || null,
+            role: req.session.role,
+            subscriptionTier: req.session.subscriptionTier || 'free',
+          }
         : null,
       impersonating: req.session.impersonatingAdminId
         ? { adminId: req.session.impersonatingAdminId, adminUsername: req.session.impersonatingAdminUsername }
@@ -161,6 +182,7 @@ export async function buildApp() {
       baseDomain: config.BASE_DOMAIN,
       currentPath: req.url,
       flash,
+      unreadMessages,
     }
   })
 

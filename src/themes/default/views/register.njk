@@ -1,7 +1,5 @@
 {% extends "layouts/base.njk" %}
-
 {% block title %}Create Account — {{ siteName }}{% endblock %}
-
 {% block content %}
 <div class="auth-wrap">
   <div class="auth-card">
@@ -13,62 +11,29 @@
     {% endif %}
 
     {% if registrationClosed %}
-    <div class="alert alert-warning">
-      Registration is currently closed. Please check back later.
-    </div>
+    <div class="alert alert-warning">Registration is currently closed. Please check back later.</div>
     {% else %}
     <form method="POST" action="/register">
       <div class="form-group">
-        <label class="label" for="username">Username</label>
-        <input
-          id="username"
-          type="text"
-          name="username"
-          class="input"
-          value="{{ prefill.username }}"
-          required
-          minlength="3"
-          maxlength="20"
-          pattern="[a-zA-Z0-9_-]+"
-          autocomplete="username"
-          autofocus
-        >
-        <p class="text-xs text-muted mt-1">3–20 characters. Letters, numbers, _ and - only.</p>
+        <label class="label" for="email">Email Address</label>
+        <input id="email" type="email" name="email" class="input"
+          value="{{ prefill.email }}" required autocomplete="email" autofocus>
       </div>
       <div class="form-group">
-        <label class="label" for="email">Email (optional)</label>
-        <input
-          id="email"
-          type="email"
-          name="email"
-          class="input"
-          value="{{ prefill.email }}"
-          autocomplete="email"
-        >
+        <label class="label" for="display_name">Display Name <span class="text-xs text-muted">(optional)</span></label>
+        <input id="display_name" type="text" name="display_name" class="input"
+          value="{{ prefill.display_name }}" autocomplete="name" placeholder="How you'd like to be called">
       </div>
       <div class="form-group">
         <label class="label" for="password">Password</label>
-        <input
-          id="password"
-          type="password"
-          name="password"
-          class="input"
-          required
-          minlength="8"
-          autocomplete="new-password"
-        >
+        <input id="password" type="password" name="password" class="input"
+          required minlength="8" autocomplete="new-password">
         <p class="text-xs text-muted mt-1">At least 8 characters.</p>
       </div>
       <div class="form-group">
         <label class="label" for="password2">Confirm Password</label>
-        <input
-          id="password2"
-          type="password"
-          name="password2"
-          class="input"
-          required
-          autocomplete="new-password"
-        >
+        <input id="password2" type="password" name="password2" class="input"
+          required autocomplete="new-password">
       </div>
       <button type="submit" class="btn btn-primary btn-block btn-lg">Create Account</button>
     </form>

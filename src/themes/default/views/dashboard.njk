@@ -6,7 +6,7 @@
   <div class="page-header">
     <div>
       <h1 class="page-title">Dashboard</h1>
-      <p class="page-subtitle">Welcome back, <strong>{{ user.username }}</strong></p>
+      <p class="page-subtitle">Welcome back, <strong>{{ user.displayName or user.email or user.username }}</strong></p>
     </div>
     <div class="dropdown">
       <button class="btn btn-primary dropdown-toggle">+ New ▾</button>
