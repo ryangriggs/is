@@ -79,13 +79,22 @@ export async function buildApp() {
   const customViewPath = path.join(__dirname, 'themes', themeName, 'views')
   const viewPaths = themeName !== 'default' ? [customViewPath, defaultViewPath] : [defaultViewPath]
 
-  const njkEnv = nunjucks.configure(viewPaths, {
-    autoescape: true,
-    noCache: config.IS_DEV,
-  })
-  njkEnv.addFilter('date', dateFilter)
+  // @fastify/view always calls engine.configure() — wrap nunjucks so we can
+  // add custom filters to the env it creates before handing it back.
+  const nunjucksWithFilters = {
+    ...nunjucks,
+    configure(paths, opts) {
+      const env = nunjucks.configure(paths, opts)
+      env.addFilter('date', dateFilter)
+      return env
+    }
+  }
 
-  await app.register(view, { engine: { nunjucks } })
+  await app.register(view, {
+    engine: { nunjucks: nunjucksWithFilters },
+    root: viewPaths,
+    options: { autoescape: true, noCache: config.IS_DEV },
+  })
 
   // Global preHandler: subdomain + IP blocking + template locals
   app.addHook('preHandler', async (req, reply) => {
