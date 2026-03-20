@@ -52,8 +52,10 @@ async function dnsUiPlugin(fastify) {
 
     if (secretKey) {
       req.session.flash = {
-        type: 'success',
-        message: `Record created! Save your update key (shown once): ${secretKey}`
+        type: 'key',
+        label: 'DNS Update Key',
+        sublabel: `${sub}.${dynApex()} — shown once, save it now`,
+        key: secretKey,
       }
     } else {
       req.session.flash = { type: 'success', message: 'Record updated.' }
@@ -79,9 +81,13 @@ async function dnsUiPlugin(fastify) {
     const valid = await verifyToken(key, record.secret_key_hash)
     if (!valid) return reply.code(403).send('Forbidden')
 
+    // If no IP provided, use the client's IP (useful for cron: /d/update?host=x&key=y)
+    const newIp4 = ip || req.ip || record.ip4
+    const newIp6 = ip6 || record.ip6
+
     db.run(
       'UPDATE dns_records SET ip4 = ?, ip6 = ?, updated_at = ? WHERE id = ?',
-      ip || record.ip4, ip6 || record.ip6, Date.now(), record.id
+      newIp4, newIp6, Date.now(), record.id
     )
     if (fastify.invalidateDnsCache) fastify.invalidateDnsCache()
     return reply.send('OK')

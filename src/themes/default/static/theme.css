@@ -594,3 +594,40 @@ tbody tr:hover td { background: var(--bg-card-hover); }
   .auth-card { padding: 24px; }
   .link-display { padding: 24px; }
 }
+
+
+/* Key reveal modal */
+.key-modal-backdrop {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,.55);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 1000;
+  padding: 1rem;
+}
+.key-modal {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 2rem;
+  max-width: 480px; width: 100%;
+  text-align: center;
+  box-shadow: 0 8px 40px rgba(0,0,0,.25);
+}
+.key-modal-icon { font-size: 2.5rem; margin-bottom: .75rem; }
+.key-modal-title { font-size: 1.25rem; margin: 0 0 .25rem; }
+.key-modal-sub { color: var(--text-muted); font-size: .875rem; margin: 0 0 1.25rem; }
+.key-modal-value {
+  background: var(--bg-base);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: .875rem 1rem;
+  margin-bottom: 1.25rem;
+  overflow-x: auto;
+}
+.key-modal-value code {
+  font-family: var(--font-mono, monospace);
+  font-size: .9rem;
+  word-break: break-all;
+  user-select: all;
+}
+.key-modal-actions { display: flex; gap: .75rem; justify-content: center; flex-wrap: wrap; }

@@ -94,6 +94,7 @@ CREATE TABLE IF NOT EXISTS dns_records (
   user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
   ip4 TEXT,
   ip6 TEXT,
+  ttl INTEGER NOT NULL DEFAULT 300,
   secret_key_hash TEXT,
   updated_at INTEGER NOT NULL DEFAULT (strftime('%s','now') * 1000),
   created_at INTEGER NOT NULL DEFAULT (strftime('%s','now') * 1000)
@@ -113,3 +114,6 @@ CREATE TABLE IF NOT EXISTS bookmark_items (
 );
 
 CREATE INDEX IF NOT EXISTS idx_bookmark_items_link ON bookmark_items(link_id);
+
+-- Upgrade existing databases (IF NOT EXISTS makes these safe to re-run)
+ALTER TABLE dns_records ADD COLUMN IF NOT EXISTS ttl INTEGER NOT NULL DEFAULT 300;

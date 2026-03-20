@@ -1,0 +1,56 @@
+{% extends "layouts/base.njk" %}
+{% block title %}DNS Records — Admin — {{ siteName }}{% endblock %}
+{% block content %}
+<div class="container">
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Dynamic DNS Records</h1>
+      <p class="page-subtitle">{{ records.length }} record{{ 's' if records.length != 1 }} — set TTL per entry</p>
+    </div>
+    <a href="/admin" class="btn btn-ghost btn-sm">← Admin</a>
+  </div>
+
+  {% if records.length == 0 %}
+  <div class="card text-center text-muted" style="padding:48px">No DNS records yet.</div>
+  {% else %}
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Hostname</th>
+          <th>Owner</th>
+          <th>IPv4</th>
+          <th>IPv6</th>
+          <th>TTL (s)</th>
+          <th>Updated</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in records %}
+        <tr>
+          <td><code>{{ r.subdomain }}.{{ dynApex }}</code></td>
+          <td class="text-muted text-sm">{{ r.username or '—' }}</td>
+          <td>{{ r.ip4 or '—' }}</td>
+          <td>{{ r.ip6 or '—' }}</td>
+          <td>
+            <form method="POST" action="/admin/dns/{{ r.id }}/ttl" style="display:flex;gap:.4rem;align-items:center">
+              <input type="number" name="ttl" value="{{ r.ttl or 300 }}" min="30" max="86400" step="30"
+                class="input" style="width:90px;padding:.25rem .5rem;font-size:.85rem">
+              <button type="submit" class="btn btn-secondary btn-sm">Set</button>
+            </form>
+          </td>
+          <td class="text-muted text-sm">{{ r.updated_at | date }}</td>
+          <td class="td-actions">
+            <form method="POST" action="/d/delete/{{ r.id }}" style="margin:0">
+              <button class="btn btn-danger btn-sm" data-confirm="Delete this DNS record?">🗑</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

@@ -22,7 +22,7 @@ async function dnsServerPlugin(fastify) {
     const now = Date.now()
     if (!cachedRecords || now - cacheTime > CACHE_TTL) {
       cachedRecords = Object.fromEntries(
-        db.all('SELECT subdomain, ip4, ip6 FROM dns_records')
+        db.all('SELECT subdomain, ip4, ip6, ttl FROM dns_records')
           .map(r => [r.subdomain, r])
       )
       cacheTime = now
@@ -45,12 +45,14 @@ async function dnsServerPlugin(fastify) {
         const record = getRecord(sub)
         if (!record) continue
 
+        const ttl = record.ttl || 300
+
         if (question.type === Packet.TYPE.A && record.ip4) {
           response.answers.push({
             name: question.name,
             type: Packet.TYPE.A,
             class: Packet.CLASS.IN,
-            ttl: 300,
+            ttl,
             address: record.ip4,
           })
         }
@@ -60,7 +62,7 @@ async function dnsServerPlugin(fastify) {
             name: question.name,
             type: Packet.TYPE.AAAA,
             class: Packet.CLASS.IN,
-            ttl: 300,
+            ttl,
             address: record.ip6,
           })
         }

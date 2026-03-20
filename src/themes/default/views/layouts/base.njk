@@ -38,7 +38,7 @@
   </nav>
 
   <main class="page-content">
-    {% if flash %}
+    {% if flash and flash.type != 'key' %}
       <div class="container mt-2">
         <div class="alert alert-{{ flash.type }} flash-auto">{{ flash.message }}</div>
       </div>
@@ -46,6 +46,31 @@
 
     {% block content %}{% endblock %}
   </main>
+
+  {% if flash and flash.type == 'key' %}
+  <div class="key-modal-backdrop" id="key-modal">
+    <div class="key-modal">
+      <div class="key-modal-icon">🔑</div>
+      <h2 class="key-modal-title">{{ flash.label }}</h2>
+      <p class="key-modal-sub">{{ flash.sublabel }}</p>
+      <div class="key-modal-value">
+        <code id="key-value">{{ flash.key }}</code>
+      </div>
+      <div class="key-modal-actions">
+        <button class="btn btn-primary" data-copy-target="key-value" id="copy-key-btn">📋 Copy Key</button>
+        <button class="btn btn-ghost" id="dismiss-key-modal">Got it, I've saved it</button>
+      </div>
+    </div>
+  </div>
+  <script>
+    document.getElementById('dismiss-key-modal').addEventListener('click', function() {
+      document.getElementById('key-modal').remove()
+    })
+    document.getElementById('key-modal').addEventListener('click', function(e) {
+      if (e.target === this) this.remove()
+    })
+  </script>
+  {% endif %}
 
   <footer class="footer">
     <div class="container">

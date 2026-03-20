@@ -6,12 +6,6 @@
     <h1 class="section-title">Dynamic DNS</h1>
     <p class="section-subtitle">Point a subdomain of <strong>{{ dynApex }}</strong> to your IP address.</p>
 
-    <div class="alert alert-info mb-4">
-      <strong>Setup required:</strong> Add an NS record at your DNS provider:<br>
-      <code>{{ dynApex }} NS {{ baseDomain }}</code><br>
-      <span class="text-sm">This delegates <code>*.{{ dynApex }}</code> to this server's built-in DNS.</span>
-    </div>
-
     <div class="card mb-4">
       <h2 style="font-size:1rem;margin:0 0 1rem">Add / Update Record</h2>
       <form method="POST" action="/d">

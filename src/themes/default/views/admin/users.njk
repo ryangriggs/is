@@ -69,6 +69,17 @@
                     data-confirm="Block this user?" title="Block">🚫</button>
                 </form>
               {% endif %}
+              {% if u.role == 'admin' %}
+                <form method="POST" action="/admin/users/{{ u.id }}/remove-admin" style="display:inline;">
+                  <button type="submit" class="btn btn-ghost btn-sm"
+                    data-confirm="Remove admin role from this user?" title="Remove admin">👤</button>
+                </form>
+              {% else %}
+                <form method="POST" action="/admin/users/{{ u.id }}/make-admin" style="display:inline;">
+                  <button type="submit" class="btn btn-ghost btn-sm"
+                    data-confirm="Grant admin role to this user?" title="Make admin">⭐</button>
+                </form>
+              {% endif %}
               <form method="POST" action="/admin/users/{{ u.id }}/delete" style="display:inline;">
                 <button type="submit" class="btn btn-danger btn-sm"
                   data-confirm="Delete this user and ALL their links?" title="Delete">🗑</button>

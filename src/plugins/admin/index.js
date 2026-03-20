@@ -1,5 +1,6 @@
 import fp from 'fastify-plugin'
 import { requireAdmin } from '../../core/auth.js'
+import config from '../../config.js'
 
 async function adminPlugin(fastify) {
   const db = fastify.db
@@ -159,6 +160,24 @@ async function adminPlugin(fastify) {
     return reply.redirect('/admin/users')
   })
 
+  fastify.post('/admin/users/:id/make-admin', async (req, reply) => {
+    if (req.subdomain !== '') return reply.callNotFound()
+    db.run(`UPDATE users SET role = 'admin' WHERE id = ?`, Number(req.params.id))
+    req.session.flash = { type: 'success', message: 'User promoted to admin.' }
+    return reply.redirect('/admin/users')
+  })
+
+  fastify.post('/admin/users/:id/remove-admin', async (req, reply) => {
+    if (req.subdomain !== '') return reply.callNotFound()
+    if (Number(req.params.id) === req.session.userId) {
+      req.session.flash = { type: 'error', message: "You can't remove your own admin role." }
+      return reply.redirect('/admin/users')
+    }
+    db.run(`UPDATE users SET role = 'user' WHERE id = ?`, Number(req.params.id))
+    req.session.flash = { type: 'success', message: 'Admin role removed.' }
+    return reply.redirect('/admin/users')
+  })
+
   fastify.post('/admin/users/:id/delete', async (req, reply) => {
     if (req.subdomain !== '') return reply.callNotFound()
     if (Number(req.params.id) === req.session.userId) {
@@ -214,6 +233,29 @@ async function adminPlugin(fastify) {
     }
     req.session.flash = { type: 'success', message: 'Link deactivated.' }
     return reply.redirect('/admin/reports')
+  })
+
+  // ----------------------------------------------------------------
+  // GET /admin/dns
+  // ----------------------------------------------------------------
+  fastify.get('/admin/dns', async (req, reply) => {
+    if (req.subdomain !== '') return reply.callNotFound()
+    const records = db.all(`
+      SELECT d.*, u.username
+      FROM dns_records d
+      LEFT JOIN users u ON u.id = d.user_id
+      ORDER BY d.subdomain
+    `)
+    return reply.view('admin/dns.njk', { records, dynApex: `${config.DYN_SUBDOMAIN}.${config.BASE_DOMAIN}` })
+  })
+
+  fastify.post('/admin/dns/:id/ttl', async (req, reply) => {
+    if (req.subdomain !== '') return reply.callNotFound()
+    const ttl = Math.max(30, Math.min(86400, parseInt(req.body.ttl) || 300))
+    db.run('UPDATE dns_records SET ttl = ? WHERE id = ?', ttl, Number(req.params.id))
+    if (fastify.invalidateDnsCache) fastify.invalidateDnsCache()
+    req.session.flash = { type: 'success', message: `TTL updated to ${ttl}s.` }
+    return reply.redirect('/admin/dns')
   })
 
   // ----------------------------------------------------------------

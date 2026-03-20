@@ -27,24 +27,38 @@ export async function seed() {
     )
   }
 
-  // Bootstrap admin user if no users exist
-  const row = db.get('SELECT COUNT(*) as n FROM users')
-  if (row.n === 0) {
-    const password = config.ADMIN_PASSWORD || generateToken(12)
+  // Bootstrap admin user
+  const existing = db.get(`SELECT * FROM users WHERE username = 'admin' AND role = 'admin'`)
+
+  if (config.ADMIN_PASSWORD) {
+    // ADMIN_PASSWORD set in .env — always upsert so it's the source of truth
+    const passwordHash = await hashPassword(config.ADMIN_PASSWORD)
+    if (existing) {
+      db.run(
+        `UPDATE users SET password_hash = ?, email = ? WHERE id = ?`,
+        passwordHash, config.ADMIN_EMAIL || existing.email, existing.id
+      )
+    } else {
+      db.run(
+        `INSERT INTO users(username, email, password_hash, role, created_at)
+         VALUES(?,?,?,?,?)`,
+        'admin', config.ADMIN_EMAIL || 'admin@localhost', passwordHash, 'admin', Date.now()
+      )
+    }
+  } else if (!existing) {
+    // No ADMIN_PASSWORD set, no admin exists yet — auto-generate
+    const password = generateToken(12)
     const passwordHash = await hashPassword(password)
     db.run(
       `INSERT INTO users(username, email, password_hash, role, created_at)
        VALUES(?,?,?,?,?)`,
       'admin', config.ADMIN_EMAIL || 'admin@localhost', passwordHash, 'admin', Date.now()
     )
-
-    if (!config.ADMIN_PASSWORD) {
-      console.log('='.repeat(60))
-      console.log('  ADMIN ACCOUNT CREATED')
-      console.log('  Username: admin')
-      console.log(`  Password: ${password}`)
-      console.log('  Please change this password after first login.')
-      console.log('='.repeat(60))
-    }
+    console.log('='.repeat(60))
+    console.log('  ADMIN ACCOUNT CREATED')
+    console.log('  Username: admin')
+    console.log(`  Password: ${password}`)
+    console.log('  Save this password or set ADMIN_PASSWORD in .env')
+    console.log('='.repeat(60))
   }
 }

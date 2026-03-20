@@ -9,14 +9,96 @@
     {% if error %}<div class="alert alert-error mb-3">{{ error }}</div>{% endif %}
 
     <div class="card">
-      <form method="POST" action="/i" enctype="multipart/form-data">
+      <form method="POST" action="/i" enctype="multipart/form-data" id="upload-form">
         <div class="form-group">
-          <label class="label" for="file">Image File</label>
-          <input id="file" type="file" name="file" class="input" accept="image/jpeg,image/png,image/gif,image/webp" required>
+          <label class="label">Image</label>
+          <div id="drop-zone" style="border:2px dashed var(--border);border-radius:8px;padding:2rem;text-align:center;cursor:pointer;transition:border-color .15s">
+            <div id="drop-prompt">
+              <div style="font-size:2rem;margin-bottom:.5rem">🖼️</div>
+              <p style="margin:0 0 .5rem;color:var(--text-muted)">Drag &amp; drop, paste (Ctrl+V), or click to select</p>
+              <input id="file" type="file" name="file" accept="image/jpeg,image/png,image/gif,image/webp" style="display:none">
+              <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('file').click()">Choose file</button>
+            </div>
+            <div id="preview-wrap" style="display:none">
+              <img id="preview" alt="Preview" style="max-width:100%;max-height:320px;border-radius:6px;margin-bottom:.75rem">
+              <p id="preview-name" class="text-muted text-sm" style="margin:0 0 .5rem"></p>
+              <button type="button" class="btn btn-ghost btn-sm" id="clear-btn">✕ Clear</button>
+            </div>
+          </div>
         </div>
-        <button type="submit" class="btn btn-primary btn-block">Upload Image</button>
+        <button type="submit" class="btn btn-primary btn-block" id="submit-btn" disabled>Upload Image</button>
       </form>
     </div>
   </div>
 </section>
+{% endblock %}
+{% block scripts %}
+<script>
+(function () {
+  const dropZone = document.getElementById('drop-zone')
+  const fileInput = document.getElementById('file')
+  const dropPrompt = document.getElementById('drop-prompt')
+  const previewWrap = document.getElementById('preview-wrap')
+  const preview = document.getElementById('preview')
+  const previewName = document.getElementById('preview-name')
+  const submitBtn = document.getElementById('submit-btn')
+  const clearBtn = document.getElementById('clear-btn')
+
+  function showFile(file) {
+    if (!file || !file.type.startsWith('image/')) return
+    const dt = new DataTransfer()
+    dt.items.add(file)
+    fileInput.files = dt.files
+    const reader = new FileReader()
+    reader.onload = e => {
+      preview.src = e.target.result
+      previewName.textContent = file.name || 'pasted image'
+      dropPrompt.style.display = 'none'
+      previewWrap.style.display = 'block'
+      submitBtn.disabled = false
+    }
+    reader.readAsDataURL(file)
+  }
+
+  clearBtn.addEventListener('click', () => {
+    fileInput.value = ''
+    preview.src = ''
+    dropPrompt.style.display = 'block'
+    previewWrap.style.display = 'none'
+    submitBtn.disabled = true
+  })
+
+  fileInput.addEventListener('change', () => {
+    if (fileInput.files[0]) showFile(fileInput.files[0])
+  })
+
+  // Paste (Ctrl+V anywhere on the page)
+  document.addEventListener('paste', e => {
+    const item = [...e.clipboardData.items].find(i => i.type.startsWith('image/'))
+    if (item) showFile(item.getAsFile())
+  })
+
+  // Drag & drop
+  dropZone.addEventListener('dragover', e => {
+    e.preventDefault()
+    dropZone.style.borderColor = 'var(--primary)'
+  })
+  dropZone.addEventListener('dragleave', () => {
+    dropZone.style.borderColor = 'var(--border)'
+  })
+  dropZone.addEventListener('drop', e => {
+    e.preventDefault()
+    dropZone.style.borderColor = 'var(--border)'
+    const file = e.dataTransfer.files[0]
+    if (file) showFile(file)
+  })
+
+  // Click on drop zone (but not the button — handled separately)
+  dropZone.addEventListener('click', e => {
+    if (e.target === dropZone || e.target.id === 'drop-prompt') {
+      fileInput.click()
+    }
+  })
+})()
+</script>
 {% endblock %}

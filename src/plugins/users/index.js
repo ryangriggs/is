@@ -1,6 +1,7 @@
 import fp from 'fastify-plugin'
 import { createHash } from 'crypto'
 import { hashPassword, verifyPassword, requireAuth, generateToken } from '../../core/auth.js'
+import config from '../../config.js'
 
 function sha256(s) {
   return createHash('sha256').update(s).digest('hex')
@@ -167,6 +168,11 @@ async function usersPlugin(fastify) {
       WHERE l.owner_id = ?
     `, todayStart, req.session.userId)
 
+    const dnsRecords = db.all(
+      'SELECT * FROM dns_records WHERE user_id = ? ORDER BY subdomain',
+      req.session.userId
+    )
+
     return reply.view('dashboard.njk', {
       links: userLinks.map(l => ({
         ...l,
@@ -184,6 +190,8 @@ async function usersPlugin(fastify) {
         totalPages: Math.ceil(total / perPage),
         total,
       },
+      dnsRecords,
+      dynApex: `${config.DYN_SUBDOMAIN}.${config.BASE_DOMAIN}`,
     })
   })
 
@@ -255,8 +263,10 @@ async function usersPlugin(fastify) {
       req.session.userId, hash, label.trim() || null, Date.now()
     )
     req.session.flash = {
-      type: 'success',
-      message: `Token created (save it — shown once): ${plain}`
+      type: 'key',
+      label: 'API Token',
+      sublabel: label.trim() ? `"${label.trim()}" — shown once, save it now` : 'Shown once, save it now',
+      key: plain,
     }
     return reply.redirect('/tokens')
   })

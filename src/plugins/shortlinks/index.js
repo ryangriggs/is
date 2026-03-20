@@ -111,6 +111,27 @@ async function shortlinksPlugin(fastify) {
   })
 
   // ----------------------------------------------------------------
+  // GET /:code/raw — serve raw content (HTML: no branding; image: file)
+  // ----------------------------------------------------------------
+  fastify.get('/:code/raw', async (req, reply) => {
+    if (req.subdomain !== '') return reply.callNotFound()
+    const code = normalizeCode(req.params.code)
+    const link = db.get('SELECT * FROM links WHERE code = ?', code)
+    if (!link || !link.is_active) {
+      reply.code(404)
+      return reply.view('errors/404.njk', {})
+    }
+    if (link.type === 'html') {
+      reply.header('Content-Type', 'text/html; charset=utf-8')
+      return reply.send(link.destination)
+    }
+    if (link.type === 'image') {
+      return reply.redirect(302, `/uploads/${link.destination}`)
+    }
+    return reply.redirect(302, `/${code}`)
+  })
+
+  // ----------------------------------------------------------------
   // GET /:code — serve content by type
   // ----------------------------------------------------------------
   fastify.get('/:code', async (req, reply) => {
@@ -143,7 +164,7 @@ async function shortlinksPlugin(fastify) {
       case 'html':
         return reply.view('html-view.njk', { link })
       case 'image':
-        return reply.view('image-view.njk', { link })
+        return reply.redirect(302, `/uploads/${link.destination}`)
       case 'bookmark': {
         const items = db.all(
           'SELECT * FROM bookmark_items WHERE link_id = ? ORDER BY folder, sort_order, id',

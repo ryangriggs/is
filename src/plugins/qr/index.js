@@ -8,8 +8,8 @@ async function qrPlugin(fastify) {
 
   fastify.post('/q', async (req, reply) => {
     const { url = '', size = '400', ecc = 'M' } = req.body || {}
-    if (!url || (!url.startsWith('http://') && !url.startsWith('https://'))) {
-      return reply.view('qr.njk', { url, size, ecc, error: 'Please enter a valid URL.' })
+    if (!url.trim()) {
+      return reply.view('qr.njk', { url, size, ecc, error: 'Please enter some text or a URL.' })
     }
     const qrDataUrl = await QRCode.toDataURL(url, {
       width: Math.min(Math.max(parseInt(size) || 400, 100), 1000),
