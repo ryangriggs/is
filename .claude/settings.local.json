@@ -15,7 +15,8 @@
       "Bash(node:*)",
       "Bash(powershell -Command \"node -e 'console.log\\(42\\)'\")",
       "Bash(netstat -ano)",
-      "Bash(python3 -m json.tool)"
+      "Bash(python3 -m json.tool)",
+      "Bash(ls \"C:/temp/is.am/.env\"*)"
     ]
   }
 }

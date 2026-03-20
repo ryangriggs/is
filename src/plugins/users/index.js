@@ -39,26 +39,46 @@ function claimPendingLink(db, req) {
 async function sendResetEmail(email, token) {
   const resetUrl = `https://${config.BASE_DOMAIN}/reset-password?token=${token}`
 
-  if (config.IS_DEV || !config.RESEND_API_KEY) {
-    console.log(`[forgot-password] Reset link for ${email}: ${resetUrl}`)
+  console.log(`[resend] Attempting password reset email to: ${email}`)
+  console.log(`[resend] Reset URL: ${resetUrl}`)
+
+  if (!config.RESEND_API_KEY) {
+    console.log('[resend] RESEND_API_KEY not set — skipping send (link logged above)')
     return
   }
 
-  await fetch('https://api.resend.com/emails', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${config.RESEND_API_KEY}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      from: config.RESEND_FROM_EMAIL || `noreply@${config.BASE_DOMAIN}`,
-      to: email,
-      subject: `Reset your ${config.SITE_NAME} password`,
-      html: `<p>Click the link below to reset your password. This link expires in 1 hour.</p>
-             <p><a href="${resetUrl}">${resetUrl}</a></p>
-             <p>If you did not request a password reset, you can ignore this email.</p>`,
-    }),
-  })
+  const from = config.RESEND_FROM_EMAIL || `noreply@${config.BASE_DOMAIN}`
+  console.log(`[resend] Sending via Resend API from: ${from}`)
+
+  let res, body
+  try {
+    res = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${config.RESEND_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        from,
+        to: email,
+        subject: `Reset your ${config.SITE_NAME} password`,
+        html: `<p>Click the link below to reset your password. This link expires in 1 hour.</p>
+               <p><a href="${resetUrl}">${resetUrl}</a></p>
+               <p>If you did not request a password reset, you can ignore this email.</p>`,
+      }),
+    })
+    body = await res.json()
+  } catch (err) {
+    console.error('[resend] Network error calling Resend API:', err.message)
+    throw err
+  }
+
+  if (!res.ok) {
+    console.error(`[resend] API error ${res.status}:`, JSON.stringify(body))
+    throw new Error(`Resend API returned ${res.status}: ${body?.message || JSON.stringify(body)}`)
+  }
+
+  console.log(`[resend] Email sent successfully. id=${body?.id}`)
 }
 
 async function usersPlugin(fastify) {

@@ -1,6 +1,7 @@
 import path from 'path'
 import { dirname } from 'path'
 import { fileURLToPath } from 'url'
+import { readFileSync } from 'fs'
 import Fastify from 'fastify'
 import cookie from '@fastify/cookie'
 import session from '@fastify/session'
@@ -20,6 +21,8 @@ import { SqliteSessionStore } from './core/auth.js'
 import pluginLoader from './plugins/loader.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
+
+const { version } = JSON.parse(readFileSync(path.join(__dirname, '..', 'version.json'), 'utf8'))
 
 function dateFilter(ts) {
   if (!ts) return '—'
@@ -183,6 +186,7 @@ export async function buildApp() {
       currentPath: req.url,
       flash,
       unreadMessages,
+      appVersion: version,
     }
   })
 
