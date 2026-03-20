@@ -35,6 +35,7 @@ export async function buildApp() {
       ? { level: 'info' }
       : { level: 'warn' },
     trustProxy: true,
+    ignoreTrailingSlash: true,
   })
 
   // Shared decorators
