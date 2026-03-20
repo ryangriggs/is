@@ -25,7 +25,7 @@
       --shadow-card: 0 4px 24px rgba(0,0,0,0.08), 0 0 0 1px var(--color-border);
     }
     [data-theme="light"] .nav {
-      background: rgba(240,244,255,0.9);
+      background: rgba(255, 255, 255, 0.909);
     }
     [data-theme="light"] .nav-links a { color: var(--color-text-muted); }
     [data-theme="light"] .nav-links a:hover { color: var(--color-text); }
@@ -156,9 +156,6 @@
               <a href="/b">🔖 Bookmark Collection</a>
               <a href="/q">⬛ QR Code</a>
               <a href="/d">🌍 Dynamic DNS</a>
-              {% if user.subscriptionTier == 'paid' or user.role == 'admin' %}
-              <a href="/ads">📢 Ad Campaign</a>
-              {% endif %}
             </div>
           </li>
           <li><a href="/dashboard" class="{% if currentPath == '/dashboard' %}active{% endif %}">Dashboard</a></li>
@@ -183,6 +180,7 @@
               <a href="/dashboard">Dashboard</a>
               <a href="/profile">Profile</a>
               <a href="/tokens">API Tokens</a>
+              <a href="/ads">Ad Campaigns</a>
               <div class="drop-divider"></div>
               <form method="POST" action="/logout" style="margin:0">
                 <button type="submit">Log out</button>
