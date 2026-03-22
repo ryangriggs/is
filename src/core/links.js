@@ -26,12 +26,14 @@ export async function createLink(db, hooks, { type, destination, title, meta, is
   await hooks.run('pre:link:create', { data: insertData, req })
 
   const link = db.transaction(() => {
+    const tempCode = '__tmp_' + Date.now().toString(36) + Math.random().toString(36).slice(2)
     const info = db.run(
       `INSERT INTO links(type, destination, owner_id, manage_token_hash, title, meta, is_private, is_active, created_at, created_ip, code)
-       VALUES(?,?,?,?,?,?,?,1,?,?,'')`,
+       VALUES(?,?,?,?,?,?,?,1,?,?,?)`,
       insertData.type, insertData.destination, insertData.ownerId,
       insertData.manageTokenHash, insertData.title, insertData.meta,
-      insertData.isPrivate, insertData.createdAt, insertData.createdIp
+      insertData.isPrivate, insertData.createdAt, insertData.createdIp,
+      tempCode
     )
     const id = info.lastInsertRowid
     let code = encode(id)
