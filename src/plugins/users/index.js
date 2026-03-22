@@ -555,6 +555,37 @@ async function usersPlugin(fastify) {
     req.session.flash = { type: 'success', message: 'Returned to admin account.' }
     return reply.redirect('/admin/users')
   })
+
+  // ----------------------------------------------------------------
+  // GET /pricing — public pricing/subscription page
+  // ----------------------------------------------------------------
+  fastify.get('/pricing', async (req, reply) => {
+    if (req.subdomain !== '') return reply.callNotFound()
+    const tiers = db.all('SELECT * FROM account_tiers WHERE is_enabled = 1 ORDER BY price ASC')
+    const currentTier = req.session.subscriptionTier || (req.session.userId ? 'free' : null)
+    return reply.view('pricing.njk', { tiers, currentTier })
+  })
+
+  // POST /pricing/change — user requests a tier change (manual/admin-side flow for now)
+  fastify.post('/pricing/change', { preHandler: requireAuth }, async (req, reply) => {
+    if (req.subdomain !== '') return reply.callNotFound()
+    const { tier } = req.body || {}
+    const target = db.get('SELECT * FROM account_tiers WHERE name = ? AND is_enabled = 1', tier)
+    if (!target) {
+      req.session.flash = { type: 'error', message: 'Invalid tier.' }
+      return reply.redirect('/pricing')
+    }
+    if (target.price > 0) {
+      // Paid tier — payment not yet integrated; show info
+      req.session.flash = { type: 'info', message: 'Paid subscriptions are not yet available. Check back soon.' }
+      return reply.redirect('/pricing')
+    }
+    // Free tier — allow downgrade immediately
+    db.run('UPDATE users SET subscription_tier = ? WHERE id = ?', target.name, req.session.userId)
+    req.session.subscriptionTier = target.name
+    req.session.flash = { type: 'success', message: `Switched to ${target.label || target.name} plan.` }
+    return reply.redirect('/pricing')
+  })
 }
 
 export default fp(usersPlugin, { name: 'users' })

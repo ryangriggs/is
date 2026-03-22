@@ -4,6 +4,7 @@ import { pipeline } from 'stream/promises'
 import path from 'path'
 import { nanoid } from 'nanoid'
 import { createLink } from '../../core/links.js'
+import { getTierForUser } from '../../core/tiers.js'
 
 const ALLOWED_TYPES = new Set(['image/jpeg', 'image/png', 'image/gif', 'image/webp'])
 const MIME_TO_EXT = {
@@ -46,6 +47,14 @@ async function imageUploadPlugin(fastify) {
     try {
       const buf = await data.toBuffer()
       fileSize = buf.length
+
+      // Tier file size check
+      const tier = getTierForUser(req.session.userId || null, fastify.db)
+      const maxBytes = (tier.max_file_size_mb || 10) * 1024 * 1024
+      if (fileSize > maxBytes) {
+        return reply.view('image-create.njk', { error: `File too large. Your plan allows up to ${tier.max_file_size_mb} MB.` })
+      }
+
       const { writeFile } = await import('fs/promises')
       await writeFile(filepath, buf)
     } catch {

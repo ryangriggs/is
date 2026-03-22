@@ -5,6 +5,7 @@ import { ipMatchesCidr } from '../../core/cidr.js'
 import { invalidateIpCache } from '../../core/ipblock.js'
 import { scanUrl, scanUrlContent } from '../../core/scanner.js'
 import { checkForUpdates, getUpdateStatus, reloadCurrentVersion } from '../../core/updater.js'
+import { checkLinkLimits } from '../../core/tiers.js'
 
 async function adminPlugin(fastify) {
   const db = fastify.db
@@ -44,6 +45,10 @@ async function adminPlugin(fastify) {
   // Scan links against scan_words on creation; increment hit counter on match
   const hooks = fastify.hooks
   hooks.on('pre:link:create', async ({ data }) => {
+    // Tier limit checks
+    checkLinkLimits(data, db)
+
+    // Content scanning
     if (!data.destination) return
     const words = db.all('SELECT * FROM scan_words WHERE active = 1')
     if (!words.length) return
@@ -598,24 +603,28 @@ async function adminPlugin(fastify) {
 
   fastify.post('/admin/account-tiers', async (req, reply) => {
     if (req.subdomain !== '') return reply.callNotFound()
-    const { name, label, max_links_total, max_images_total, max_text_total, max_links_per_hour,
-      max_ddns_entries, max_file_size_mb, allow_raw_html, show_ads, allow_ad_campaigns } = req.body || {}
+    const { name, label, description, price, max_links_total, max_images_total, max_text_total, max_links_per_hour,
+      max_ddns_entries, max_file_size_mb, allow_raw_html, show_ads, allow_ad_campaigns, is_enabled } = req.body || {}
     if (!name?.trim()) {
       req.session.flash = { type: 'error', message: 'Name required.' }
       return reply.redirect('/admin/account-tiers')
     }
     db.run(
-      `INSERT INTO account_tiers(name,label,max_links_total,max_images_total,max_text_total,max_links_per_hour,max_ddns_entries,max_file_size_mb,allow_raw_html,show_ads,allow_ad_campaigns,created_at)
-       VALUES(?,?,?,?,?,?,?,?,?,?,?,?)
-       ON CONFLICT(name) DO UPDATE SET label=excluded.label, max_links_total=excluded.max_links_total,
+      `INSERT INTO account_tiers(name,label,description,price,max_links_total,max_images_total,max_text_total,max_links_per_hour,max_ddns_entries,max_file_size_mb,allow_raw_html,show_ads,allow_ad_campaigns,is_enabled,created_at)
+       VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+       ON CONFLICT(name) DO UPDATE SET label=excluded.label, description=excluded.description,
+         price=excluded.price, max_links_total=excluded.max_links_total,
          max_images_total=excluded.max_images_total, max_text_total=excluded.max_text_total,
          max_links_per_hour=excluded.max_links_per_hour, max_ddns_entries=excluded.max_ddns_entries,
          max_file_size_mb=excluded.max_file_size_mb, allow_raw_html=excluded.allow_raw_html,
-         show_ads=excluded.show_ads, allow_ad_campaigns=excluded.allow_ad_campaigns`,
-      name.trim().toLowerCase(), label || name.trim(), Number(max_links_total) || 0,
-      Number(max_images_total) || 0, Number(max_text_total) || 0, Number(max_links_per_hour) || 0,
-      Number(max_ddns_entries) || 5, Number(max_file_size_mb) || 10,
+         show_ads=excluded.show_ads, allow_ad_campaigns=excluded.allow_ad_campaigns,
+         is_enabled=excluded.is_enabled`,
+      name.trim().toLowerCase(), label || name.trim(), description?.trim() || null,
+      parseFloat(price) || 0,
+      Number(max_links_total) || 0, Number(max_images_total) || 0, Number(max_text_total) || 0,
+      Number(max_links_per_hour) || 0, Number(max_ddns_entries) || 5, Number(max_file_size_mb) || 10,
       allow_raw_html === '1' ? 1 : 0, show_ads === '1' ? 1 : 0, allow_ad_campaigns === '1' ? 1 : 0,
+      is_enabled === '1' ? 1 : 0,
       Date.now()
     )
     req.session.flash = { type: 'success', message: 'Tier saved.' }
@@ -626,6 +635,13 @@ async function adminPlugin(fastify) {
     if (req.subdomain !== '') return reply.callNotFound()
     db.run('DELETE FROM account_tiers WHERE id = ?', Number(req.params.id))
     req.session.flash = { type: 'success', message: 'Tier deleted.' }
+    return reply.redirect('/admin/account-tiers')
+  })
+
+  fastify.post('/admin/account-tiers/:id/toggle-enabled', async (req, reply) => {
+    if (req.subdomain !== '') return reply.callNotFound()
+    const tier = db.get('SELECT id, is_enabled FROM account_tiers WHERE id = ?', Number(req.params.id))
+    if (tier) db.run('UPDATE account_tiers SET is_enabled = ? WHERE id = ?', tier.is_enabled ? 0 : 1, tier.id)
     return reply.redirect('/admin/account-tiers')
   })
 

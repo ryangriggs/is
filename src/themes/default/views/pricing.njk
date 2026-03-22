@@ -1,0 +1,107 @@
+{% extends "layouts/base.njk" %}
+{% block title %}Pricing — {{ siteName }}{% endblock %}
+
+{% block content %}
+<div class="container" style="max-width:960px">
+  <div class="page-header" style="text-align:center;display:block;margin-bottom:2rem">
+    <h1 class="page-title">Plans &amp; Pricing</h1>
+    <p class="page-subtitle">Choose the plan that works for you.</p>
+  </div>
+
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:1.5rem;align-items:start">
+    {% for tier in tiers %}
+    {% set isCurrent = (currentTier == tier.name) or (not currentTier and tier.price == 0) %}
+    <div class="card" style="position:relative;border:{{ '2px solid var(--color-primary)' if isCurrent else '1px solid var(--color-border)' }}">
+
+      {% if isCurrent %}
+      <div style="position:absolute;top:-1px;right:1rem;background:var(--color-primary);color:#fff;font-size:.7rem;font-weight:700;padding:2px 10px;border-radius:0 0 6px 6px;text-transform:uppercase;letter-spacing:.05em">Current Plan</div>
+      {% endif %}
+
+      <div style="margin-bottom:1.25rem">
+        <h2 style="margin:0 0 .25rem;font-size:1.25rem">{{ tier.label or tier.name }}</h2>
+        <div style="font-size:1.75rem;font-weight:700;margin:.5rem 0">
+          {% if tier.price > 0 %}
+            ${{ tier.price }}<span style="font-size:.875rem;font-weight:400;color:var(--color-text-muted)">/mo</span>
+          {% else %}
+            Free
+          {% endif %}
+        </div>
+        {% if tier.description %}
+        <p style="font-size:.875rem;color:var(--color-text-muted);margin:.5rem 0 0">{{ tier.description }}</p>
+        {% endif %}
+      </div>
+
+      <ul style="list-style:none;padding:0;margin:0 0 1.5rem;font-size:.875rem;display:flex;flex-direction:column;gap:.4rem">
+        {% if tier.max_links_per_hour > 0 %}
+        <li>✓ {{ tier.max_links_per_hour }} links/hour</li>
+        {% else %}
+        <li>✓ Unlimited link creation</li>
+        {% endif %}
+
+        {% if tier.max_links_total > 0 %}
+        <li>✓ Up to {{ tier.max_links_total }} total links</li>
+        {% else %}
+        <li>✓ Unlimited total links</li>
+        {% endif %}
+
+        {% if tier.max_images_total > 0 %}
+        <li>✓ Up to {{ tier.max_images_total }} images</li>
+        {% else %}
+        <li>✓ Unlimited images</li>
+        {% endif %}
+
+        {% if tier.max_text_total > 0 %}
+        <li>✓ Up to {{ tier.max_text_total }} text pastes</li>
+        {% else %}
+        <li>✓ Unlimited text pastes</li>
+        {% endif %}
+
+        <li>✓ {{ tier.max_ddns_entries }} DDNS {{ 'entry' if tier.max_ddns_entries == 1 else 'entries' }}</li>
+        <li>✓ Up to {{ tier.max_file_size_mb }} MB uploads</li>
+
+        {% if tier.allow_raw_html %}
+        <li>✓ HTML pastes</li>
+        {% else %}
+        <li style="color:var(--color-text-dim)">✗ HTML pastes</li>
+        {% endif %}
+
+        {% if tier.show_ads %}
+        <li style="color:var(--color-text-dim)">· Ad-supported</li>
+        {% else %}
+        <li>✓ No ads</li>
+        {% endif %}
+
+        {% if tier.allow_ad_campaigns %}
+        <li>✓ Run ad campaigns</li>
+        {% endif %}
+      </ul>
+
+      {% if user %}
+        {% if isCurrent %}
+          <button class="btn btn-secondary btn-block" disabled>Current Plan</button>
+        {% elif tier.price > 0 %}
+          <button class="btn btn-primary btn-block" disabled title="Payment coming soon">Coming Soon</button>
+        {% else %}
+          <form method="POST" action="/pricing/change">
+            <input type="hidden" name="tier" value="{{ tier.name }}">
+            <button class="btn btn-secondary btn-block" data-confirm="Switch to {{ tier.label or tier.name }} plan?">Switch to {{ tier.label or tier.name }}</button>
+          </form>
+        {% endif %}
+      {% else %}
+        <a href="/register" class="btn btn-primary btn-block">Get Started</a>
+      {% endif %}
+    </div>
+    {% endfor %}
+
+    {% if not tiers.length %}
+    <div class="card text-center text-muted" style="padding:2rem;grid-column:1/-1">No plans configured yet.</div>
+    {% endif %}
+  </div>
+
+  {% if user and user.role == 'admin' %}
+  <div style="margin-top:2rem;text-align:center;font-size:.8rem;color:var(--color-text-muted)">
+    <a href="/admin/account-tiers">Manage tiers in Admin →</a>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

@@ -57,7 +57,7 @@
       display: block; width: 100%; padding: 9px 14px;
       font-size: .875rem; color: var(--color-text); background: none;
       border: none; text-align: left; cursor: pointer;
-      text-decoration: none; transition: background 150ms;
+      text-decoration: none; transition: background 150ms; border-radius: 0;
     }
     .nav-avatar-drop a:hover, .nav-avatar-drop button:hover {
       background: var(--bg-card-hover); color: var(--color-text);
@@ -77,7 +77,7 @@
     .nav-new-drop a {
       display: flex; align-items: center; gap: 8px;
       padding: 9px 14px; font-size: .875rem; color: var(--color-text);
-      text-decoration: none; transition: background 150ms;
+      text-decoration: none; transition: background 150ms; border-radius: 0;
     }
     .nav-new-drop a:hover { background: var(--bg-card-hover); color: var(--color-text); }
 
@@ -188,6 +188,7 @@
               <a href="/dashboard">Dashboard</a>
               <a href="/profile">Profile</a>
               <a href="/b">Bookmarks</a>
+              <a href="/pricing">Subscription</a>
               <a href="/tokens">API Tokens</a>
               <a href="/ads">Ad Campaigns</a>
               <div class="drop-divider"></div>
@@ -234,6 +235,7 @@
         <div class="mob-section-label">Account — {{ user.displayName or user.email or user.username }}</div>
         <a href="/profile">Profile</a>
         <a href="/b">Bookmarks</a>
+        <a href="/pricing">Subscription</a>
         <a href="/tokens">API Tokens</a>
         <a href="/ads">Ad Campaigns</a>
         <div class="mob-divider"></div>

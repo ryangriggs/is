@@ -345,6 +345,10 @@ tbody tr:hover td { background: var(--bg-card-hover); }
 .td-actions { white-space: nowrap; vertical-align: middle; }
 .td-actions-inner { display: flex; gap: 6px; align-items: center; }
 
+/* Image thumbnails in link tables — hidden until .show-images is on the tbody */
+.link-thumb { display: none; max-height: 80px; max-width: 160px; object-fit: contain; border-radius: 4px; cursor: pointer; vertical-align: middle; }
+.show-images .link-thumb { display: inline-block; }
+
 /* Type filter pills */
 .type-pills { display: flex; flex-wrap: wrap; gap: .35rem; align-items: center; }
 .type-pill {

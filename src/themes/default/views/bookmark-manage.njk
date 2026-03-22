@@ -23,7 +23,8 @@
           <span class="text-sm">Public</span>
         </form>
 
-        {# Password button + popup #}
+        {# Password button + popup — only relevant for public collections #}
+        {% if not link.is_private %}
         <div class="pw-popup-wrap">
           <button type="button" id="pw-btn" class="btn btn-ghost btn-sm"
                   title="{{ 'Password protected — click to change' if link.password_hash else 'Set a password' }}">
@@ -45,6 +46,7 @@
             {% endif %}
           </div>
         </div>
+        {% endif %}
 
         <form method="POST" action="/b/{{ link.code }}/delete" style="margin:0">
           <button class="btn btn-danger btn-sm" data-confirm="Delete this collection and all bookmarks?">Delete</button>
@@ -77,17 +79,11 @@
       <div class="card" style="margin-bottom:.5rem;padding:.75rem 1rem">
         <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:.5rem">
           <div style="min-width:0;flex:1">
-            <a href="{{ item.url }}" target="_blank" rel="noopener" style="font-weight:500;word-break:break-word">{{ item.title or item.url }}</a>
-            <div style="margin-top:.35rem;display:flex;flex-wrap:wrap;align-items:center;gap:.4rem">
-              {# Actual URL as a copy button #}
-              <a href="{{ item.url }}" target="_blank" rel="noopener"
-                 class="badge badge-neutral" style="font-size:.72rem;text-decoration:none;max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"
-                 title="{{ item.url }}">{{ item.url | truncate(50) }}</a>
+            <div style="display:flex;align-items:center;gap:.4rem;flex-wrap:wrap">
+              <a href="{{ item.url }}" target="_blank" rel="noopener" style="font-weight:500;word-break:break-word">{{ item.title or item.url }}</a>
               <button class="btn btn-ghost btn-sm" style="padding:1px 6px;font-size:.72rem"
                       data-copy="{{ item.url }}" title="Copy URL">📋</button>
-              {# Shortlink (only if one was created at add time) #}
               {% if item.shortlink_code %}
-              <span style="color:var(--color-text-dim);font-size:.7rem">·</span>
               <a href="https://{{ baseDomain }}/{{ item.shortlink_code }}" target="_blank" rel="noopener"
                  class="badge badge-info" style="font-family:monospace;font-size:.72rem;text-decoration:none">
                 {{ baseDomain }}/{{ item.shortlink_code }}

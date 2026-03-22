@@ -78,10 +78,24 @@ async function bookmarksPlugin(fastify) {
       req.session.flash = { type: 'error', message: 'URL is required.' }
       return reply.redirect(`/b/${link.code}`)
     }
+    // Try to fetch page title if none provided
+    let resolvedTitle = title.trim()
+    if (!resolvedTitle) {
+      try {
+        const res = await fetch(url.trim(), {
+          signal: AbortSignal.timeout(5000),
+          headers: { 'User-Agent': 'Mozilla/5.0 (compatible; is.am-bot/1.0)' },
+        })
+        const html = await res.text()
+        const match = html.match(/<title[^>]*>([^<]+)<\/title>/i)
+        if (match) resolvedTitle = match[1].trim().replace(/\s+/g, ' ').substring(0, 200)
+      } catch (_) {}
+    }
+
     const count = db.get('SELECT COUNT(*) as n FROM bookmark_items WHERE link_id = ?', link.id)
     const result = db.run(
       `INSERT INTO bookmark_items(link_id, url, title, description, folder, sort_order) VALUES(?,?,?,?,?,?)`,
-      link.id, url.trim(), title.trim() || url.trim(),
+      link.id, url.trim(), resolvedTitle || url.trim(),
       description.trim() || null, folder.trim() || null, count.n
     )
     const itemId = result.lastInsertRowid

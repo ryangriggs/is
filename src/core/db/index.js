@@ -51,6 +51,11 @@ export async function initDb() {
       'ALTER TABLE scan_words ADD COLUMN hits INTEGER NOT NULL DEFAULT 0',
       'ALTER TABLE links ADD COLUMN file_size INTEGER',
       'ALTER TABLE bookmark_items ADD COLUMN shortlink_code TEXT',
+      'ALTER TABLE account_tiers ADD COLUMN price REAL NOT NULL DEFAULT 0',
+      'ALTER TABLE account_tiers ADD COLUMN description TEXT',
+      'ALTER TABLE account_tiers ADD COLUMN is_enabled INTEGER NOT NULL DEFAULT 1',
+      'ALTER TABLE users ADD COLUMN stripe_customer_id TEXT',
+      'ALTER TABLE users ADD COLUMN stripe_subscription_id TEXT',
     ]
     for (const stmt of addColumns) {
       try { sqlite.prepare(stmt).run() } catch (_) { /* column already exists */ }

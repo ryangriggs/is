@@ -6,7 +6,7 @@
   <div class="page-header">
     <div>
       <h1 class="page-title">Account Tiers</h1>
-      <p class="page-subtitle">Configure limits per subscription level</p>
+      <p class="page-subtitle">Configure subscription levels shown on the <a href="/pricing">/pricing</a> page</p>
     </div>
     <a href="/admin" class="btn btn-ghost btn-sm">← Admin</a>
   </div>
@@ -16,32 +16,62 @@
   {% endif %}
 
   {% for tier in tiers %}
-  <div class="card mb-3">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem">
-      <h3 style="margin:0;text-transform:capitalize">{{ tier.label or tier.name }}</h3>
-      <form method="POST" action="/admin/account-tiers/{{ tier.id }}/delete" style="display:inline">
-        <button class="btn btn-danger btn-sm" data-confirm="Delete tier '{{ tier.name }}'?">Delete</button>
-      </form>
+  <div class="card mb-3" style="{% if not tier.is_enabled %}opacity:.6{% endif %}">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:.5rem">
+      <div style="display:flex;align-items:center;gap:.75rem">
+        <h3 style="margin:0;text-transform:capitalize">{{ tier.label or tier.name }}</h3>
+        {% if tier.is_enabled %}
+          <span class="badge badge-success">Enabled</span>
+        {% else %}
+          <span class="badge badge-neutral">Disabled</span>
+        {% endif %}
+        {% if tier.price > 0 %}
+          <span class="badge badge-info">${{ tier.price }}/mo</span>
+        {% else %}
+          <span class="badge badge-neutral">Free</span>
+        {% endif %}
+      </div>
+      <div style="display:flex;gap:.5rem">
+        <form method="POST" action="/admin/account-tiers/{{ tier.id }}/toggle-enabled" style="display:inline">
+          <button class="btn btn-ghost btn-sm">{{ 'Disable' if tier.is_enabled else 'Enable' }}</button>
+        </form>
+        <form method="POST" action="/admin/account-tiers/{{ tier.id }}/delete" style="display:inline">
+          <button class="btn btn-danger btn-sm" data-confirm="Delete tier '{{ tier.name }}'?">Delete</button>
+        </form>
+      </div>
     </div>
+
     <form method="POST" action="/admin/account-tiers">
       <input type="hidden" name="name" value="{{ tier.name }}">
-      <input type="hidden" name="label" value="{{ tier.label or tier.name }}">
-      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:1rem">
+
+      <div class="form-group">
+        <label class="label">Display Label</label>
+        <input type="text" name="label" class="input" value="{{ tier.label or tier.name }}">
+      </div>
+      <div class="form-group">
+        <label class="label">Description <span class="text-muted" style="font-weight:400">(shown on pricing page)</span></label>
+        <textarea name="description" class="input" rows="2" placeholder="What's included in this plan...">{{ tier.description or '' }}</textarea>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:1rem;margin-bottom:1rem">
         <div>
-          <label class="label">Max Links / Hour</label>
+          <label class="label">Price ($/month, 0 = free)</label>
+          <input type="number" name="price" class="input" value="{{ tier.price or 0 }}" min="0" step="0.01">
+        </div>
+        <div>
+          <label class="label">Max Links / Hour <span class="text-muted">(0=∞)</span></label>
           <input type="number" name="max_links_per_hour" class="input" value="{{ tier.max_links_per_hour }}" min="0">
         </div>
         <div>
-          <label class="label">Max Total Links</label>
-          <input type="number" name="max_links_total" class="input" value="{{ tier.max_links_total }}" min="0" placeholder="0 = unlimited">
+          <label class="label">Max Total Links <span class="text-muted">(0=∞)</span></label>
+          <input type="number" name="max_links_total" class="input" value="{{ tier.max_links_total }}" min="0">
         </div>
         <div>
-          <label class="label">Max Total Images</label>
-          <input type="number" name="max_images_total" class="input" value="{{ tier.max_images_total }}" min="0" placeholder="0 = unlimited">
+          <label class="label">Max Total Images <span class="text-muted">(0=∞)</span></label>
+          <input type="number" name="max_images_total" class="input" value="{{ tier.max_images_total }}" min="0">
         </div>
         <div>
-          <label class="label">Max Total Text Pastes</label>
-          <input type="number" name="max_text_total" class="input" value="{{ tier.max_text_total }}" min="0" placeholder="0 = unlimited">
+          <label class="label">Max Total Text Pastes <span class="text-muted">(0=∞)</span></label>
+          <input type="number" name="max_text_total" class="input" value="{{ tier.max_text_total }}" min="0">
         </div>
         <div>
           <label class="label">Max DDNS Entries</label>
@@ -72,10 +102,9 @@
             <option value="0" {% if not tier.allow_ad_campaigns %}selected{% endif %}>No</option>
           </select>
         </div>
+        <input type="hidden" name="is_enabled" value="{{ '1' if tier.is_enabled else '0' }}">
       </div>
-      <div style="margin-top:1rem">
-        <button type="submit" class="btn btn-primary btn-sm">Save Changes</button>
-      </div>
+      <button type="submit" class="btn btn-primary btn-sm">Save Changes</button>
     </form>
   </div>
   {% endfor %}
@@ -83,14 +112,18 @@
   <div class="card mt-3">
     <h3 style="margin-top:0">Add New Tier</h3>
     <form method="POST" action="/admin/account-tiers">
-      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:1rem">
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:1rem;margin-bottom:1rem">
         <div>
-          <label class="label">Tier Name * <span class="text-muted" style="font-weight:400">(lowercase, e.g. pro)</span></label>
+          <label class="label">Tier Name * <span class="text-muted" style="font-weight:400">(e.g. pro)</span></label>
           <input type="text" name="name" class="input" placeholder="pro" required>
         </div>
         <div>
           <label class="label">Display Label</label>
           <input type="text" name="label" class="input" placeholder="Pro">
+        </div>
+        <div>
+          <label class="label">Price ($/month)</label>
+          <input type="number" name="price" class="input" value="9.99" min="0" step="0.01">
         </div>
         <div>
           <label class="label">Max Links / Hour</label>
@@ -111,10 +144,13 @@
             <option value="1">Yes</option>
           </select>
         </div>
+        <input type="hidden" name="is_enabled" value="1">
       </div>
-      <div style="margin-top:1rem">
-        <button type="submit" class="btn btn-primary">Add Tier</button>
+      <div class="form-group">
+        <label class="label">Description</label>
+        <textarea name="description" class="input" rows="2" placeholder="What's included in this plan..."></textarea>
       </div>
+      <button type="submit" class="btn btn-primary">Add Tier</button>
     </form>
   </div>
 </div>

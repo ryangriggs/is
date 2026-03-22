@@ -2,6 +2,7 @@ import fp from 'fastify-plugin'
 import { requireAuth } from '../../core/auth.js'
 import { hashToken, generateToken, verifyToken } from '../../core/auth.js'
 import config from '../../config.js'
+import { getTierForUser } from '../../core/tiers.js'
 
 const dynApex = () => `${config.DYN_SUBDOMAIN}.${config.BASE_DOMAIN}`
 
@@ -34,6 +35,18 @@ async function dnsUiPlugin(fastify) {
     if (existing && existing.user_id !== req.session.userId) {
       req.session.flash = { type: 'error', message: 'That subdomain is taken.' }
       return reply.redirect('/d')
+    }
+
+    // DDNS entry limit check (only when creating a new record)
+    if (!existing) {
+      const tier = getTierForUser(req.session.userId, db)
+      if (tier.max_ddns_entries > 0) {
+        const { n } = db.get('SELECT COUNT(*) as n FROM dns_records WHERE user_id = ?', req.session.userId)
+        if (n >= tier.max_ddns_entries) {
+          req.session.flash = { type: 'error', message: `DDNS entry limit reached (${tier.max_ddns_entries}). Upgrade your plan.` }
+          return reply.redirect('/d')
+        }
+      }
     }
 
     const isPaid = req.session.subscriptionTier === 'paid' || req.session.role === 'admin'
