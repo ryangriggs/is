@@ -595,6 +595,14 @@ async function usersPlugin(fastify) {
     req.session.flash = { type: 'success', message: `Switched to ${target.label || target.name} plan.` }
     return reply.redirect('/pricing')
   })
+
+  // ----------------------------------------------------------------
+  // GET /advertise — advertising info page (placeholder)
+  // ----------------------------------------------------------------
+  fastify.get('/advertise', async (req, reply) => {
+    if (req.subdomain !== '') return reply.callNotFound()
+    return reply.view('advertise.njk', {})
+  })
 }
 
 export default fp(usersPlugin, { name: 'users' })

@@ -1,0 +1,104 @@
+{% extends "layouts/base.njk" %}
+{% block title %}{{ campaign.name }} — Ad Campaigns — Admin — {{ siteName }}{% endblock %}
+
+{% block content %}
+<div class="container" style="max-width:900px">
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">{{ campaign.name }}</h1>
+      <p class="page-subtitle">
+        Owner: {{ campaign.display_name or campaign.email or campaign.username }}
+        &bull; {{ totalClicks }} total click{{ 's' if totalClicks != 1 }}
+        &bull; <a href="{{ campaign.click_url }}" target="_blank" rel="noopener" class="text-muted">{{ campaign.click_url | truncate(60) }}</a>
+      </p>
+    </div>
+    <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+      <form method="POST" action="/admin/ads/{{ campaign.id }}/toggle">
+        <button class="btn btn-ghost btn-sm">{{ 'Pause Campaign' if campaign.is_active else 'Activate Campaign' }}</button>
+      </form>
+      <form method="POST" action="/admin/ads/{{ campaign.id }}/delete">
+        <button class="btn btn-danger btn-sm" data-confirm="Delete this campaign and all its images?">Delete Campaign</button>
+      </form>
+      <a href="/admin/ads" class="btn btn-ghost btn-sm">← All Campaigns</a>
+    </div>
+  </div>
+
+  <div class="card mb-3" style="display:flex;gap:2rem;flex-wrap:wrap;align-items:center">
+    <div>
+      <div class="text-muted text-xs" style="text-transform:uppercase;letter-spacing:.05em">Status</div>
+      {% if campaign.is_active %}
+        <span class="badge badge-success">Active</span>
+      {% else %}
+        <span class="badge badge-neutral">Inactive</span>
+      {% endif %}
+    </div>
+    <div>
+      <div class="text-muted text-xs" style="text-transform:uppercase;letter-spacing:.05em">Images</div>
+      <strong>{{ images.length }}</strong>
+    </div>
+    <div>
+      <div class="text-muted text-xs" style="text-transform:uppercase;letter-spacing:.05em">Total Clicks</div>
+      <strong>{{ totalClicks }}</strong>
+    </div>
+    <div>
+      <div class="text-muted text-xs" style="text-transform:uppercase;letter-spacing:.05em">Expires</div>
+      <span>{% if campaign.expires_at %}{{ campaign.expires_at | date }}{% else %}Never{% endif %}</span>
+    </div>
+    <div>
+      <div class="text-muted text-xs" style="text-transform:uppercase;letter-spacing:.05em">Created</div>
+      <span>{{ campaign.created_at | date }}</span>
+    </div>
+  </div>
+
+  {% if images.length == 0 %}
+  <div class="card text-center text-muted">No images uploaded yet.</div>
+  {% else %}
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:1rem">
+    {% for img in images %}
+    <div class="card" style="padding:1rem;border:1px solid {% if img.is_approved %}var(--color-success,#22c55e){% else %}var(--color-warning,#f59e0b){% endif %}">
+      <div style="padding:.6rem .75rem .75rem;background:var(--bg-card);border-radius:var(--radius-lg);border:1px solid var(--color-border);margin-bottom:.75rem">
+        <div style="font-size:.6rem;text-transform:uppercase;letter-spacing:.08em;color:var(--color-text-dim);margin-bottom:.4rem;text-align:center">Advertisement</div>
+        <div style="display:flex;align-items:center;justify-content:center;height:{{ adImageHeight or '90' }}px;overflow:hidden;border-radius:4px">
+          <img src="/uploads/ads/{{ img.image_path }}" alt="{{ img.alt_text or '' }}"
+               style="max-width:100%;height:100%;object-fit:contain;display:block">
+        </div>
+      </div>
+
+      <div style="font-size:.82rem;margin-bottom:.75rem">
+        <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.3rem">
+          {% if img.is_approved %}
+            <span class="badge badge-success">Approved</span>
+          {% else %}
+            <span class="badge badge-warning">Pending</span>
+          {% endif %}
+          <span class="text-muted">{{ img.click_count }} click{{ 's' if img.click_count != 1 }}</span>
+        </div>
+        {% if img.alt_text %}
+        <div class="text-muted">Alt: {{ img.alt_text }}</div>
+        {% endif %}
+        <div class="text-muted text-xs">Uploaded {{ img.created_at | date }}</div>
+      </div>
+
+      <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+        {% if img.is_approved %}
+          <form method="POST" action="/admin/ads/images/{{ img.id }}/disapprove">
+            <input type="hidden" name="back" value="campaign">
+            <button class="btn btn-ghost btn-sm">Disapprove</button>
+          </form>
+        {% else %}
+          <form method="POST" action="/admin/ads/images/{{ img.id }}/approve">
+            <input type="hidden" name="back" value="campaign">
+            <button class="btn btn-primary btn-sm">✓ Approve</button>
+          </form>
+        {% endif %}
+        <form method="POST" action="/admin/ads/images/{{ img.id }}/delete">
+          <input type="hidden" name="back" value="campaign">
+          <button class="btn btn-danger btn-sm" data-confirm="Delete this image?">Delete</button>
+        </form>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

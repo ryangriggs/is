@@ -135,6 +135,11 @@
             <label class="label">URL interstitial countdown (seconds)</label>
             <input type="number" name="ad_interstitial_seconds" class="input" value="{{ settings.ad_interstitial_seconds or '5' }}" min="1" max="60">
           </div>
+          <div class="form-group">
+            <label class="label">Ad image height (px)</label>
+            <input type="number" name="ad_image_height" class="input" value="{{ settings.ad_image_height or '90' }}" min="40" max="400">
+            <p class="text-xs text-muted mt-1">Images are scaled to this height and centered. Width fills the container.</p>
+          </div>
           <button type="submit" class="btn btn-primary btn-sm btn-block">Save</button>
         </form>
       </div>

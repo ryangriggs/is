@@ -483,7 +483,7 @@ async function adminPlugin(fastify) {
       'max_file_size_mb', 'allowed_image_types', 'ads_enabled', 'active_theme',
       'github_repo_url', 'update_check_hours',
       'watermark_position', 'watermark_size_pct',
-      'ad_interstitial_seconds',
+      'ad_interstitial_seconds', 'ad_image_height',
     ]
     for (const key of allowed) {
       if (req.body[key] !== undefined) {

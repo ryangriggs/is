@@ -150,20 +150,22 @@
 
       {# ── Desktop nav links (hidden on mobile) ── #}
       <ul class="nav-links">
+        {# + New — always visible #}
+        <li class="nav-new-wrap">
+          <button class="btn btn-primary btn-sm" id="nav-new-btn" style="gap:4px">+ New ▾</button>
+          <div class="nav-new-drop" id="nav-new-drop">
+            <a href="/">🔗 URL Shortlink</a>
+            <a href="/t">📝 Text Paste</a>
+            <a href="/h">🌐 HTML Paste</a>
+            <a href="/i">🖼️ Image Upload</a>
+            <a href="/q">⬛ QR Code</a>
+            {% if user %}
+            <a href="/b">🔖 Bookmark Collection</a>
+            <a href="/d">🌍 Dynamic DNS</a>
+            {% endif %}
+          </div>
+        </li>
         {% if user %}
-          {# + New — first, bright #}
-          <li class="nav-new-wrap">
-            <button class="btn btn-primary btn-sm" id="nav-new-btn" style="gap:4px">+ New ▾</button>
-            <div class="nav-new-drop" id="nav-new-drop">
-              <a href="/">🔗 URL Shortlink</a>
-              <a href="/t">📝 Text Paste</a>
-              <a href="/h">🌐 HTML Paste</a>
-              <a href="/i">🖼️ Image Upload</a>
-              <a href="/b">🔖 Bookmark Collection</a>
-              <a href="/q">⬛ QR Code</a>
-              <a href="/d">🌍 Dynamic DNS</a>
-            </div>
-          </li>
           <li><a href="/dashboard" class="{% if currentPath == '/dashboard' %}active{% endif %}">Dashboard</a></li>
           {% if user.role == 'admin' %}
             <li>
@@ -173,6 +175,7 @@
             </li>
           {% endif %}
         {% endif %}
+        <li><a href="/pricing">Pricing</a></li>
         <li><a href="/contact">Contact</a></li>
         <li>
           <button id="theme-toggle" class="btn btn-ghost btn-sm" title="Toggle theme" style="padding:6px 8px;font-size:1rem">🌙</button>
@@ -228,6 +231,7 @@
         {% if user.role == 'admin' %}
           <a href="/admin">Admin{% if unreadMessages > 0 %} <span class="badge badge-danger badge-pulse" style="font-size:.65rem">{{ unreadMessages }}</span>{% endif %}</a>
         {% endif %}
+        <a href="/pricing">Pricing</a>
         <a href="/contact">Contact</a>
         <div class="mob-divider"></div>
         <div class="mob-section-label">Account — {{ user.displayName or user.email or user.username }}</div>
@@ -241,6 +245,14 @@
           <button type="submit" class="mob-link">Log out</button>
         </form>
       {% else %}
+        <div class="mob-section-label">Create New</div>
+        <a href="/">🔗 URL Shortlink</a>
+        <a href="/t">📝 Text Paste</a>
+        <a href="/h">🌐 HTML Paste</a>
+        <a href="/i">🖼️ Image Upload</a>
+        <a href="/q">⬛ QR Code</a>
+        <div class="mob-divider"></div>
+        <a href="/pricing">Pricing</a>
         <a href="/login">Login</a>
         <a href="/register">Sign up</a>
         <a href="/contact">Contact</a>
@@ -312,6 +324,10 @@
     <div class="container">
       <p>
         &copy; {{ siteName }} &mdash;
+        <a href="/pricing">Pricing</a>
+        &nbsp;&bull;&nbsp;
+        <a href="/advertise">Advertise</a>
+        &nbsp;&bull;&nbsp;
         <a href="{{ githubRepoUrl }}" target="_blank" rel="noopener">Open Source</a>
         &nbsp;&bull;&nbsp;
         <a href="/report">Report a link</a>

@@ -191,7 +191,8 @@ async function adsPlugin(fastify) {
     const campaigns = db.all(`
       SELECT ac.*, u.email, u.username, u.display_name,
              COUNT(ai.id) as image_count,
-             SUM(CASE WHEN ai.is_approved = 1 THEN 1 ELSE 0 END) as approved_count
+             SUM(CASE WHEN ai.is_approved = 1 THEN 1 ELSE 0 END) as approved_count,
+             SUM(CASE WHEN ai.is_approved = 0 THEN 1 ELSE 0 END) as pending_count
       FROM ad_campaigns ac
       LEFT JOIN users u ON u.id = ac.owner_id
       LEFT JOIN ad_images ai ON ai.campaign_id = ac.id
@@ -200,7 +201,7 @@ async function adsPlugin(fastify) {
     `)
 
     const pendingImages = db.all(`
-      SELECT ai.*, ac.name as campaign_name, u.email, u.username, u.display_name
+      SELECT ai.*, ac.id as campaign_id, ac.name as campaign_name, u.email, u.username, u.display_name
       FROM ad_images ai
       JOIN ad_campaigns ac ON ac.id = ai.campaign_id
       JOIN users u ON u.id = ac.owner_id
@@ -212,12 +213,53 @@ async function adsPlugin(fastify) {
   })
 
   // ----------------------------------------------------------------
-  // Admin: POST /admin/ads/:campaignId/toggle — activate/deactivate
+  // Admin: GET /admin/ads/:id — campaign detail
+  // ----------------------------------------------------------------
+  fastify.get('/admin/ads/:id', { preHandler: requireAdmin }, async (req, reply) => {
+    const campaign = db.get(`
+      SELECT ac.*, u.email, u.username, u.display_name
+      FROM ad_campaigns ac
+      LEFT JOIN users u ON u.id = ac.owner_id
+      WHERE ac.id = ?
+    `, req.params.id)
+    if (!campaign) { reply.code(404); return reply.view('errors/404.njk', {}) }
+
+    const images = db.all(`
+      SELECT ai.*, COUNT(ac2.id) as click_count
+      FROM ad_images ai
+      LEFT JOIN ad_clicks ac2 ON ac2.image_id = ai.id
+      WHERE ai.campaign_id = ?
+      GROUP BY ai.id
+      ORDER BY ai.created_at DESC
+    `, campaign.id)
+
+    const totalClicks = db.get(`
+      SELECT COUNT(*) as n FROM ad_clicks ac
+      JOIN ad_images ai ON ai.id = ac.image_id
+      WHERE ai.campaign_id = ?
+    `, campaign.id)
+
+    return reply.view('admin/ads-campaign.njk', { campaign, images, totalClicks: totalClicks?.n || 0 })
+  })
+
+  // ----------------------------------------------------------------
+  // Admin: POST /admin/ads/:id/toggle — activate/deactivate
   // ----------------------------------------------------------------
   fastify.post('/admin/ads/:id/toggle', { preHandler: requireAdmin }, async (req, reply) => {
     const campaign = db.get('SELECT * FROM ad_campaigns WHERE id = ?', req.params.id)
     if (!campaign) { reply.code(404); return reply.view('errors/404.njk', {}) }
     db.run('UPDATE ad_campaigns SET is_active = ? WHERE id = ?', campaign.is_active ? 0 : 1, campaign.id)
+    const back = req.headers.referer?.includes(`/admin/ads/${campaign.id}`) ? `/admin/ads/${campaign.id}` : '/admin/ads'
+    return reply.redirect(back)
+  })
+
+  // ----------------------------------------------------------------
+  // Admin: POST /admin/ads/:id/delete — delete campaign + images
+  // ----------------------------------------------------------------
+  fastify.post('/admin/ads/:id/delete', { preHandler: requireAdmin }, async (req, reply) => {
+    db.run('DELETE FROM ad_images WHERE campaign_id = ?', req.params.id)
+    db.run('DELETE FROM ad_campaigns WHERE id = ?', req.params.id)
+    req.session.flash = { type: 'success', message: 'Campaign deleted.' }
     return reply.redirect('/admin/ads')
   })
 
@@ -225,16 +267,53 @@ async function adsPlugin(fastify) {
   // Admin: POST /admin/ads/images/:id/approve
   // ----------------------------------------------------------------
   fastify.post('/admin/ads/images/:id/approve', { preHandler: requireAdmin }, async (req, reply) => {
+    const img = db.get('SELECT campaign_id FROM ad_images WHERE id = ?', req.params.id)
     db.run('UPDATE ad_images SET is_approved = 1 WHERE id = ?', req.params.id)
     req.session.flash = { type: 'success', message: 'Image approved.' }
-    return reply.redirect('/admin/ads')
+    const back = req.body?.back === 'campaign' && img ? `/admin/ads/${img.campaign_id}` : '/admin/ads'
+    return reply.redirect(back)
   })
 
   // ----------------------------------------------------------------
-  // Admin: POST /admin/ads/images/:id/reject — delete image
+  // Admin: POST /admin/ads/images/:id/disapprove
+  // ----------------------------------------------------------------
+  fastify.post('/admin/ads/images/:id/disapprove', { preHandler: requireAdmin }, async (req, reply) => {
+    const img = db.get('SELECT campaign_id FROM ad_images WHERE id = ?', req.params.id)
+    db.run('UPDATE ad_images SET is_approved = 0 WHERE id = ?', req.params.id)
+    req.session.flash = { type: 'success', message: 'Image disapproved.' }
+    const back = req.body?.back === 'campaign' && img ? `/admin/ads/${img.campaign_id}` : '/admin/ads'
+    return reply.redirect(back)
+  })
+
+  // ----------------------------------------------------------------
+  // Admin: POST /admin/ads/images/:id/delete — delete image file + record
+  // ----------------------------------------------------------------
+  fastify.post('/admin/ads/images/:id/delete', { preHandler: requireAdmin }, async (req, reply) => {
+    const img = db.get('SELECT campaign_id, image_path FROM ad_images WHERE id = ?', req.params.id)
+    if (img) {
+      db.run('DELETE FROM ad_images WHERE id = ?', req.params.id)
+      try {
+        const { unlink } = await import('fs/promises')
+        await unlink(path.join(UPLOADS_DIR, img.image_path))
+      } catch (_) {}
+    }
+    req.session.flash = { type: 'success', message: 'Image deleted.' }
+    const back = req.body?.back === 'campaign' && img ? `/admin/ads/${img.campaign_id}` : '/admin/ads'
+    return reply.redirect(back)
+  })
+
+  // ----------------------------------------------------------------
+  // Admin: POST /admin/ads/images/:id/reject — kept for backwards compat (= delete)
   // ----------------------------------------------------------------
   fastify.post('/admin/ads/images/:id/reject', { preHandler: requireAdmin }, async (req, reply) => {
-    db.run('DELETE FROM ad_images WHERE id = ?', req.params.id)
+    const img = db.get('SELECT campaign_id, image_path FROM ad_images WHERE id = ?', req.params.id)
+    if (img) {
+      db.run('DELETE FROM ad_images WHERE id = ?', req.params.id)
+      try {
+        const { unlink } = await import('fs/promises')
+        await unlink(path.join(UPLOADS_DIR, img.image_path))
+      } catch (_) {}
+    }
     req.session.flash = { type: 'success', message: 'Image rejected and removed.' }
     return reply.redirect('/admin/ads')
   })
