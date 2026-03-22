@@ -50,6 +50,7 @@ export async function initDb() {
       'ALTER TABLE users ADD COLUMN reset_token_expires INTEGER',
       'ALTER TABLE scan_words ADD COLUMN hits INTEGER NOT NULL DEFAULT 0',
       'ALTER TABLE links ADD COLUMN file_size INTEGER',
+      'ALTER TABLE bookmark_items ADD COLUMN shortlink_code TEXT',
     ]
     for (const stmt of addColumns) {
       try { sqlite.prepare(stmt).run() } catch (_) { /* column already exists */ }

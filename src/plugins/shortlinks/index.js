@@ -135,6 +135,43 @@ async function shortlinksPlugin(fastify) {
   })
 
   // ----------------------------------------------------------------
+  // POST /success/set-title
+  // ----------------------------------------------------------------
+  fastify.post('/success/set-title', async (req, reply) => {
+    if (req.subdomain !== '') return reply.callNotFound()
+    const { code, token, title } = req.body || {}
+    if (!code) return reply.redirect('/')
+
+    const link = db.get('SELECT * FROM links WHERE code = ?', normalizeCode(code))
+    if (!link) return reply.redirect('/')
+
+    const newTitle = (title || '').trim() || null
+
+    // Owned link — must be logged in as the owner
+    if (link.owner_id) {
+      if (req.session.userId !== link.owner_id) {
+        reply.code(403); return reply.view('errors/403.njk', {})
+      }
+      db.run('UPDATE links SET title = ? WHERE id = ?', newTitle, link.id)
+      return reply.redirect(`/success?code=${code}`)
+    }
+
+    // Anonymous link — validate manage token
+    const candidate = token || getMgmtTokenFromCookie(req, link.code)
+    if (!candidate || !link.manage_token_hash) {
+      reply.code(403); return reply.view('errors/403.njk', {})
+    }
+    const valid = await verifyToken(candidate, link.manage_token_hash)
+    if (!valid) {
+      reply.code(403); return reply.view('errors/403.njk', {})
+    }
+
+    db.run('UPDATE links SET title = ? WHERE id = ?', newTitle, link.id)
+    const qs = token ? `?code=${code}&token=${token}` : `?code=${code}`
+    return reply.redirect(`/success${qs}`)
+  })
+
+  // ----------------------------------------------------------------
   // GET /:code/raw — serve raw content (HTML: no branding; image: file)
   // ----------------------------------------------------------------
   fastify.get('/:code/raw', async (req, reply) => {

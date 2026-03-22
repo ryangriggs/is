@@ -42,6 +42,14 @@
 
       <hr class="divider">
 
+      <form method="POST" action="/success/set-title" style="display:flex;gap:.5rem;align-items:center;margin-bottom:1rem">
+        <input type="hidden" name="code" value="{{ link.code }}">
+        {% if token %}<input type="hidden" name="token" value="{{ token }}">{% endif %}
+        <input type="text" name="title" class="input" style="flex:1"
+               value="{{ link.title or '' }}" placeholder="Add a title for this link (optional)">
+        <button type="submit" class="btn btn-ghost btn-sm">Save</button>
+      </form>
+
       {% if manageUrl %}
       <div class="manage-token-box mb-3">
         <strong>⚠️ Save this management link — it won't be shown again</strong>

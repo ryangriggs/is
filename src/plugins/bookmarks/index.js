@@ -79,11 +79,24 @@ async function bookmarksPlugin(fastify) {
       return reply.redirect(`/b/${link.code}`)
     }
     const count = db.get('SELECT COUNT(*) as n FROM bookmark_items WHERE link_id = ?', link.id)
-    db.run(
+    const result = db.run(
       `INSERT INTO bookmark_items(link_id, url, title, description, folder, sort_order) VALUES(?,?,?,?,?,?)`,
       link.id, url.trim(), title.trim() || url.trim(),
       description.trim() || null, folder.trim() || null, count.n
     )
+    const itemId = result.lastInsertRowid
+
+    // Create a shortlink for this bookmark item
+    try {
+      const { link: shortlink } = await createLink(db, hooks, {
+        type: 'url',
+        destination: url.trim(),
+        ownerId: req.session.userId,
+        req,
+      })
+      db.run('UPDATE bookmark_items SET shortlink_code = ? WHERE id = ?', shortlink.code, itemId)
+    } catch (_) {}
+
     return reply.redirect(`/b/${link.code}`)
   })
 
@@ -128,14 +141,14 @@ async function bookmarksPlugin(fastify) {
       req.params.code, req.session.userId
     )
     if (!link) { reply.code(404); return reply.view('errors/404.njk', {}) }
-    const { password = '' } = req.body || {}
-    if (password.trim()) {
+    const { password = '', remove } = req.body || {}
+    if (remove === '1' || !password.trim()) {
+      db.run('UPDATE links SET password_hash = NULL WHERE id = ?', link.id)
+      req.session.flash = { type: 'success', message: 'Password removed.' }
+    } else {
       const hash = await hashToken(password)
       db.run('UPDATE links SET password_hash = ? WHERE id = ?', hash, link.id)
       req.session.flash = { type: 'success', message: 'Password set.' }
-    } else {
-      db.run('UPDATE links SET password_hash = NULL WHERE id = ?', link.id)
-      req.session.flash = { type: 'success', message: 'Password removed.' }
     }
     return reply.redirect(`/b/${link.code}`)
   })

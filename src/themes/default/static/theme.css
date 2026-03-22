@@ -53,7 +53,7 @@
    Reset
    ---------------------------------------------------------------- */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-html { font-size: 16px; scroll-behavior: smooth; }
+html { font-size: 16px; scroll-behavior: smooth; overflow-x: hidden; }
 body {
   font-family: var(--font);
   background: var(--bg-base);
@@ -62,6 +62,7 @@ body {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+  overflow-x: hidden;
 }
 img, svg { display: block; max-width: 100%; }
 a { color: var(--color-primary); text-decoration: none; transition: color var(--transition); }
@@ -340,7 +341,54 @@ tbody tr:last-child td { border-bottom: none; }
 tbody tr:hover td { background: var(--bg-card-hover); }
 .td-code { font-family: var(--font-mono); font-size: 0.875rem; color: var(--color-primary); }
 .td-url { max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--color-text-muted); }
-.td-actions { display: flex; gap: 6px; }
+/* td-actions: keep as table-cell (not flex) to preserve equal row heights */
+.td-actions { white-space: nowrap; vertical-align: middle; }
+.td-actions-inner { display: flex; gap: 6px; align-items: center; }
+
+/* Type filter pills */
+.type-pills { display: flex; flex-wrap: wrap; gap: .35rem; align-items: center; }
+.type-pill {
+  padding: 2px 11px;
+  border-radius: 999px;
+  border: 1px solid var(--color-border);
+  background: none;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  font-size: .73rem;
+  font-weight: 500;
+  transition: all 150ms;
+  white-space: nowrap;
+  line-height: 1.6;
+}
+.type-pill.active {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: #fff;
+}
+.type-pill:hover:not(.active) {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+/* Visibility slide toggle — orange=public, blue=private */
+.slide-toggle-vis .slide-knob { background: #3b82f6; }
+.slide-toggle-vis input:checked + .slide-knob { background: #f59e0b; }
+
+/* Password popup */
+.pw-popup-wrap { position: relative; display: inline-block; }
+.pw-popup {
+  display: none;
+  position: absolute;
+  right: 0; top: calc(100% + 6px);
+  background: var(--bg-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 8px 24px rgba(0,0,0,.35);
+  padding: 1rem;
+  min-width: 220px;
+  z-index: 100;
+}
+.pw-popup.open { display: block; }
 
 /* ----------------------------------------------------------------
    Badges
@@ -584,15 +632,77 @@ tbody tr:hover td { background: var(--bg-card-hover); }
 .dropdown-item:hover { background: var(--bg-card-hover); }
 
 /* ----------------------------------------------------------------
+   Hamburger / mobile nav
+   ---------------------------------------------------------------- */
+.nav-hamburger {
+  display: none;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--color-text);
+  padding: 6px 8px;
+  font-size: 1.4rem;
+  line-height: 1;
+  border-radius: var(--radius);
+  transition: background var(--transition);
+}
+.nav-hamburger:hover { background: var(--bg-card-hover); }
+
+.nav-mobile-right {
+  display: none;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Full-width panel that drops below the nav on mobile */
+.nav-mobile-menu {
+  display: none;
+  position: absolute;
+  top: var(--nav-height);
+  left: 0; right: 0;
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--color-border);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+  z-index: 200;
+  padding: 8px 0 12px;
+  flex-direction: column;
+}
+.nav-mobile-menu.open { display: flex; }
+.nav-mobile-menu a,
+.nav-mobile-menu button.mob-link {
+  display: block; width: 100%;
+  padding: 10px 20px;
+  font-size: .9rem; color: var(--color-text);
+  text-decoration: none; background: none; border: none;
+  text-align: left; cursor: pointer;
+  transition: background var(--transition);
+}
+.nav-mobile-menu a:hover,
+.nav-mobile-menu button.mob-link:hover { background: var(--bg-card-hover); }
+.mob-section-label {
+  padding: 10px 20px 4px;
+  font-size: .7rem; font-weight: 600; text-transform: uppercase;
+  letter-spacing: .05em; color: var(--color-text-dim);
+}
+.mob-divider { height: 1px; background: var(--color-border); margin: 6px 0; }
+.mob-theme-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 8px 20px;
+}
+
+/* ----------------------------------------------------------------
    Responsive
    ---------------------------------------------------------------- */
-@media (max-width: 640px) {
+@media (max-width: 768px) {
+  .nav { position: sticky; } /* ensure mobile menu positions correctly */
+  .nav-links { display: none !important; }
+  .nav-mobile-right { display: flex; }
   .hero { padding: 48px 0 40px; }
   .hero-form { flex-direction: column; }
-  .nav-links .nav-link-hide { display: none; }
   .container { padding: 0 16px; }
   .auth-card { padding: 24px; }
   .link-display { padding: 24px; }
+  .table-wrap { border-radius: 0; border-left: none; border-right: none; }
 }
 
 

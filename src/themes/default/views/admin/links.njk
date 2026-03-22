@@ -55,9 +55,24 @@ th.resizable { position: relative; }
       <input type="text" name="q" class="input" placeholder="Search code, URL, or username…" value="{{ query.q }}">
       <button type="submit" class="btn btn-secondary">Search</button>
       <a href="/admin/links" class="btn btn-ghost">Reset</a>
-      <label style="display:flex;align-items:center;gap:.4rem;margin-left:.5rem;font-size:.875rem;cursor:pointer;user-select:none;white-space:nowrap">
-        <input type="checkbox" id="img-toggle"> Show images
-      </label>
+      <div style="display:flex;align-items:center;gap:.4rem;margin-left:.5rem;white-space:nowrap;user-select:none">
+        <span style="font-size:.8rem;color:var(--color-text-muted)">Images</span>
+        <label class="slide-toggle" style="cursor:pointer" title="Show image thumbnails">
+          <input type="checkbox" id="img-toggle">
+          <span class="slide-knob"></span>
+        </label>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:.5rem;margin-top:.5rem;flex-wrap:wrap">
+      <span style="font-size:.75rem;color:var(--color-text-muted)">Type:</span>
+      <div class="type-pills" id="type-pills">
+        <button type="button" class="type-pill active" data-type="all">All</button>
+        <button type="button" class="type-pill" data-type="url">URL</button>
+        <button type="button" class="type-pill" data-type="text">Text</button>
+        <button type="button" class="type-pill" data-type="html">HTML</button>
+        <button type="button" class="type-pill" data-type="image">Image</button>
+        <button type="button" class="type-pill" data-type="bookmark">Bookmark</button>
+      </div>
     </div>
   </form>
 
@@ -102,7 +117,7 @@ th.resizable { position: relative; }
         <tr><td colspan="9" class="text-center text-muted" style="padding:32px">No links found.</td></tr>
         {% endif %}
         {% for link in links %}
-        <tr>
+        <tr data-type="{{ link.type }}">
           <td><a href="https://{{ baseDomain }}/{{ link.code }}" target="_blank" rel="noopener" style="font-family:monospace;font-size:.85rem">{{ link.code }}</a></td>
 
           <td>
@@ -158,13 +173,15 @@ th.resizable { position: relative; }
             {% else %}<span class="badge badge-danger">Off</span>{% endif %}
           </td>
 
-          <td class="col-actions" style="white-space:nowrap">
-            <form method="POST" action="/admin/links/{{ link.id }}/toggle" style="display:inline">
-              <button class="btn btn-ghost btn-sm" title="{{ 'Deactivate' if link.isActive else 'Activate' }}">{{ '⏸' if link.isActive else '▶️' }}</button>
-            </form>
-            <form method="POST" action="/admin/links/{{ link.id }}/delete" style="display:inline">
-              <button class="btn btn-danger btn-sm" data-confirm="Delete permanently?" title="Delete">🗑</button>
-            </form>
+          <td class="col-actions">
+            <div class="td-actions-inner">
+              <form method="POST" action="/admin/links/{{ link.id }}/toggle" style="display:inline">
+                <button class="btn btn-ghost btn-sm" title="{{ 'Deactivate' if link.isActive else 'Activate' }}">{{ '⏸' if link.isActive else '▶️' }}</button>
+              </form>
+              <form method="POST" action="/admin/links/{{ link.id }}/delete" style="display:inline">
+                <button class="btn btn-danger btn-sm" data-confirm="Delete permanently?" title="Delete">🗑</button>
+              </form>
+            </div>
           </td>
         </tr>
         {% endfor %}
@@ -263,7 +280,7 @@ th.resizable { position: relative; }
     gotoEl.addEventListener('blur', go)
   }
 
-  // Image toggle
+  // Image toggle (slide switch)
   const tbody = document.getElementById('links-tbody')
   const imgToggle = document.getElementById('img-toggle')
   if (imgToggle && tbody) {
@@ -274,6 +291,39 @@ th.resizable { position: relative; }
       setCookie('admin_links_images', imgToggle.checked ? '1' : '0', 365)
     })
   }
+
+  // Type filter pills
+  const allRows = Array.from(document.querySelectorAll('#links-tbody tr[data-type]'))
+  const pills = document.querySelectorAll('#type-pills .type-pill')
+  let activeTypes = new Set(JSON.parse(getCookie('admin_links_types') || '["all"]'))
+
+  function applyTypeFilter() {
+    const showAll = activeTypes.has('all') || activeTypes.size === 0
+    allRows.forEach(row => {
+      row.style.display = showAll || activeTypes.has(row.dataset.type) ? '' : 'none'
+    })
+    pills.forEach(p => p.classList.toggle('active', activeTypes.has(p.dataset.type)))
+    setCookie('admin_links_types', JSON.stringify([...activeTypes]), 365)
+  }
+
+  pills.forEach(pill => {
+    pill.addEventListener('click', () => {
+      const t = pill.dataset.type
+      if (t === 'all') {
+        activeTypes = new Set(['all'])
+      } else {
+        activeTypes.delete('all')
+        if (activeTypes.has(t)) {
+          activeTypes.delete(t)
+          if (activeTypes.size === 0) activeTypes.add('all')
+        } else {
+          activeTypes.add(t)
+        }
+      }
+      applyTypeFilter()
+    })
+  })
+  applyTypeFilter()
 
   // Column resize
   const colMap = {

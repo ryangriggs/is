@@ -135,19 +135,19 @@
 </head>
 <body class="{% block bodyClass %}{% endblock %}">
 
-  <nav class="nav">
+  <nav class="nav" style="position:sticky;top:0;z-index:200">
     <div class="container nav-inner">
       <a href="/" class="nav-logo">
         {% if siteLogo %}<img src="{{ siteLogo }}" alt="{{ siteName }}">{% endif %}
         <span class="nav-logo-text">{{ siteName }}</span>
       </a>
-      <ul class="nav-links">
-        <li><a href="/contact">Contact</a></li>
 
+      {# ── Desktop nav ── #}
+      <ul class="nav-links">
         {% if user %}
-          {# New button dropdown — accessible from any page #}
+          {# + New — first, bright #}
           <li class="nav-new-wrap">
-            <button class="btn btn-ghost btn-sm" id="nav-new-btn" style="gap:4px">+ New ▾</button>
+            <button class="btn btn-primary btn-sm" id="nav-new-btn" style="gap:4px">+ New ▾</button>
             <div class="nav-new-drop" id="nav-new-drop">
               <a href="/">🔗 URL Shortlink</a>
               <a href="/t">📝 Text Paste</a>
@@ -158,6 +158,11 @@
               <a href="/d">🌍 Dynamic DNS</a>
             </div>
           </li>
+        {% endif %}
+
+        <li><a href="/contact">Contact</a></li>
+
+        {% if user %}
           <li><a href="/dashboard" class="{% if currentPath == '/dashboard' %}active{% endif %}">Dashboard</a></li>
           {% if user.role == 'admin' %}
             <li>
@@ -179,6 +184,7 @@
               </div>
               <a href="/dashboard">Dashboard</a>
               <a href="/profile">Profile</a>
+              <a href="/b">Bookmarks</a>
               <a href="/tokens">API Tokens</a>
               <a href="/ads">Ad Campaigns</a>
               <div class="drop-divider"></div>
@@ -187,17 +193,55 @@
               </form>
             </div>
           </li>
-
         {% else %}
-          <li class="nav-link-hide"><a href="/login">Login</a></li>
+          <li><a href="/login">Login</a></li>
           <li><a href="/register" class="btn btn-primary btn-sm">Sign up</a></li>
         {% endif %}
 
-        {# Day/night toggle #}
         <li>
           <button id="theme-toggle" class="btn btn-ghost btn-sm" title="Toggle theme" style="padding:6px 8px;font-size:1rem">🌙</button>
         </li>
       </ul>
+
+      {# ── Mobile right: theme + hamburger ── #}
+      <div class="nav-mobile-right">
+        <button id="theme-toggle-mob" class="btn btn-ghost btn-sm" title="Toggle theme" style="padding:6px 8px;font-size:1rem">🌙</button>
+        <button class="nav-hamburger" id="hamburger-btn" title="Menu">☰</button>
+      </div>
+    </div>
+
+    {# ── Mobile slide-down menu ── #}
+    <div class="nav-mobile-menu" id="nav-mobile-menu">
+      {% if user %}
+        <div class="mob-section-label">Create New</div>
+        <a href="/">🔗 URL Shortlink</a>
+        <a href="/t">📝 Text Paste</a>
+        <a href="/h">🌐 HTML Paste</a>
+        <a href="/i">🖼️ Image Upload</a>
+        <a href="/b">🔖 Bookmark Collection</a>
+        <a href="/q">⬛ QR Code</a>
+        <a href="/d">🌍 Dynamic DNS</a>
+        <div class="mob-divider"></div>
+        <a href="/dashboard">Dashboard</a>
+        {% if user.role == 'admin' %}
+          <a href="/admin">Admin{% if unreadMessages > 0 %} <span class="badge badge-danger badge-pulse" style="font-size:.65rem">{{ unreadMessages }}</span>{% endif %}</a>
+        {% endif %}
+        <a href="/contact">Contact</a>
+        <div class="mob-divider"></div>
+        <div class="mob-section-label">Account — {{ user.displayName or user.email or user.username }}</div>
+        <a href="/profile">Profile</a>
+        <a href="/b">Bookmarks</a>
+        <a href="/tokens">API Tokens</a>
+        <a href="/ads">Ad Campaigns</a>
+        <div class="mob-divider"></div>
+        <form method="POST" action="/logout" style="margin:0">
+          <button type="submit" class="mob-link">Log out</button>
+        </form>
+      {% else %}
+        <a href="/login">Login</a>
+        <a href="/register">Sign up</a>
+        <a href="/contact">Contact</a>
+      {% endif %}
     </div>
   </nav>
 
@@ -261,20 +305,25 @@
   <script src="https://unpkg.com/htmx.org@1.9.12/dist/htmx.min.js" defer></script>
   <script src="/static/app.js" defer></script>
   <script>
-    // Theme toggle
-    var themeBtn = document.getElementById('theme-toggle')
-    if (themeBtn) {
-      function applyTheme(t) {
-        document.documentElement.setAttribute('data-theme', t)
-        localStorage.setItem('theme', t)
-        themeBtn.textContent = t === 'dark' ? '☀️' : '🌙'
-      }
-      var cur = document.documentElement.getAttribute('data-theme') || 'dark'
-      themeBtn.textContent = cur === 'dark' ? '☀️' : '🌙'
-      themeBtn.addEventListener('click', function(){
+    // Theme toggle (syncs both desktop and mobile buttons)
+    function applyTheme(t) {
+      document.documentElement.setAttribute('data-theme', t)
+      localStorage.setItem('theme', t)
+      var icon = t === 'dark' ? '☀️' : '🌙'
+      var d = document.getElementById('theme-toggle')
+      var m = document.getElementById('theme-toggle-mob')
+      if (d) d.textContent = icon
+      if (m) m.textContent = icon
+    }
+    var cur = document.documentElement.getAttribute('data-theme') || 'dark'
+    applyTheme(cur)
+    ;['theme-toggle','theme-toggle-mob'].forEach(function(id){
+      var btn = document.getElementById(id)
+      if (btn) btn.addEventListener('click', function(){
         applyTheme(document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark')
       })
-    }
+    })
+
     // Avatar dropdown
     var avatarBtn = document.getElementById('avatar-btn')
     var avatarDrop = document.getElementById('avatar-drop')
@@ -282,12 +331,28 @@
       avatarBtn.addEventListener('click', function(e){ e.stopPropagation(); avatarDrop.classList.toggle('open') })
       document.addEventListener('click', function(){ avatarDrop.classList.remove('open') })
     }
+
     // New dropdown
     var newBtn = document.getElementById('nav-new-btn')
     var newDrop = document.getElementById('nav-new-drop')
     if (newBtn && newDrop) {
       newBtn.addEventListener('click', function(e){ e.stopPropagation(); newDrop.classList.toggle('open') })
       document.addEventListener('click', function(){ newDrop.classList.remove('open') })
+    }
+
+    // Hamburger
+    var hamburger = document.getElementById('hamburger-btn')
+    var mobileMenu = document.getElementById('nav-mobile-menu')
+    if (hamburger && mobileMenu) {
+      hamburger.addEventListener('click', function(e){
+        e.stopPropagation()
+        var open = mobileMenu.classList.toggle('open')
+        hamburger.textContent = open ? '✕' : '☰'
+      })
+      document.addEventListener('click', function(){
+        mobileMenu.classList.remove('open')
+        hamburger.textContent = '☰'
+      })
     }
   </script>
   {% block scripts %}{% endblock %}

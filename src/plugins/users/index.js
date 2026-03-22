@@ -399,6 +399,10 @@ async function usersPlugin(fastify) {
     const page = Math.max(1, Number(req.query.page) || 1)
     const perPage = 20
     const offset = (page - 1) * perPage
+    const SORTABLE = { created_at: 'l.created_at', code: 'l.code', type: 'l.type', visit_count: 'visit_count', is_active: 'l.is_active' }
+    const sort = SORTABLE[req.query.sort] ? req.query.sort : 'created_at'
+    const sortCol = SORTABLE[sort]
+    const dir = req.query.dir === 'asc' ? 'ASC' : 'DESC'
 
     const userLinks = db.all(`
       SELECT l.*, COUNT(t.id) as visit_count
@@ -406,7 +410,7 @@ async function usersPlugin(fastify) {
       LEFT JOIN tracking t ON t.link_id = l.id
       WHERE l.owner_id = ?
       GROUP BY l.id
-      ORDER BY l.created_at DESC
+      ORDER BY ${sortCol} ${dir}
       LIMIT ? OFFSET ?
     `, req.session.userId, perPage, offset)
 
@@ -447,6 +451,7 @@ async function usersPlugin(fastify) {
       },
       dnsRecords,
       dynApex: `${config.DYN_SUBDOMAIN}.${config.BASE_DOMAIN}`,
+      sort, dir,
     })
   })
 

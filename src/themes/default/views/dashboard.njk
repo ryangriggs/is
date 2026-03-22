@@ -45,22 +45,52 @@
     <a href="/" class="btn btn-primary">Create a link</a>
   </div>
   {% else %}
+
+  {# Filter bar #}
+  <div style="display:flex;align-items:center;gap:.75rem;flex-wrap:wrap;margin-bottom:.75rem">
+    <div class="type-pills" id="dash-type-pills">
+      <button type="button" class="type-pill active" data-type="all">All</button>
+      <button type="button" class="type-pill" data-type="url">URL</button>
+      <button type="button" class="type-pill" data-type="text">Text</button>
+      <button type="button" class="type-pill" data-type="html">HTML</button>
+      <button type="button" class="type-pill" data-type="image">Image</button>
+      <button type="button" class="type-pill" data-type="bookmark">Bookmark</button>
+    </div>
+    <div style="display:flex;align-items:center;gap:.4rem;margin-left:auto">
+      <span style="font-size:.8rem;color:var(--color-text-muted)">Images</span>
+      <label class="slide-toggle" style="cursor:pointer" title="Show image thumbnails">
+        <input type="checkbox" id="dash-img-toggle">
+        <span class="slide-knob"></span>
+      </label>
+    </div>
+  </div>
+
   <div class="table-wrap">
-    <table>
+    <table id="dash-table">
       <thead>
         <tr>
-          <th>Short Link</th>
-          <th>Type</th>
+          {% macro sth(label, col) %}
+          <th>
+            <a href="?sort={{ col }}&dir={{ 'desc' if (sort == col and dir == 'asc') else 'asc' }}&page=1"
+               style="color:inherit;text-decoration:none;display:inline-flex;align-items:center;gap:3px;user-select:none">
+              {{ label }}<span style="font-size:.7rem;opacity:{% if sort == col %}1{% else %}.4{% endif %};color:var(--color-primary)">
+                {% if sort == col %}{{ '↓' if dir == 'desc' else '↑' }}{% else %}↕{% endif %}
+              </span>
+            </a>
+          </th>
+          {% endmacro %}
+          {{ sth('Short Link', 'code') }}
+          {{ sth('Type', 'type') }}
           <th>Title / Destination</th>
-          <th>Created</th>
-          <th>Visits</th>
-          <th>Status</th>
+          {{ sth('Created', 'created_at') }}
+          {{ sth('Visits', 'visit_count') }}
+          {{ sth('Status', 'is_active') }}
           <th>Actions</th>
         </tr>
       </thead>
-      <tbody>
+      <tbody id="dash-tbody">
         {% for link in links %}
-        <tr>
+        <tr data-type="{{ link.type }}">
           <td class="td-code">
             <a href="https://{{ baseDomain }}/{{ link.code }}" target="_blank" rel="noopener">
               {{ baseDomain }}/{{ link.code }}
@@ -77,9 +107,14 @@
             </span>
           </td>
           <td class="td-url">
-            {% if link.type == 'url' %}
+            {% if link.type == 'image' %}
+              <img class="link-thumb" src="/uploads/{{ link.destination }}" alt=""
+                   onclick="window.open('/uploads/{{ link.destination }}','_blank')"
+                   style="cursor:pointer">
+              <span class="text-muted text-sm">{{ link.title or link.destination | truncate(40) }}</span>
+            {% elif link.type == 'url' %}
               <a href="{{ link.destination }}" target="_blank" rel="noopener nofollow"
-                class="btn btn-ghost btn-sm" title="{{ link.destination }}" style="max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:inline-block">
+                 title="{{ link.destination }}" style="max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:inline-block;vertical-align:middle">
                 ↗ {{ link.destination | truncate(50) }}
               </a>
             {% else %}
@@ -96,17 +131,63 @@
             {% endif %}
           </td>
           <td class="td-actions">
-            <button class="btn btn-ghost btn-sm" data-copy="https://{{ baseDomain }}/{{ link.code }}" title="Copy">📋</button>
-            <a href="/dashboard/edit/{{ link.id }}" class="btn btn-secondary btn-sm" title="Edit">✏️</a>
-            <form method="POST" action="/dashboard/delete/{{ link.id }}" style="display:inline">
-              <button type="submit" class="btn btn-danger btn-sm" data-confirm="Delete this link?" title="Delete">🗑</button>
-            </form>
+            <div class="td-actions-inner">
+              <button class="btn btn-ghost btn-sm" data-copy="https://{{ baseDomain }}/{{ link.code }}" title="Copy">📋</button>
+              <a href="/dashboard/edit/{{ link.id }}" class="btn btn-secondary btn-sm" title="Edit">✏️</a>
+              <form method="POST" action="/dashboard/delete/{{ link.id }}" style="display:inline">
+                <button type="submit" class="btn btn-danger btn-sm" data-confirm="Delete this link?" title="Delete">🗑</button>
+              </form>
+            </div>
           </td>
         </tr>
         {% endfor %}
       </tbody>
     </table>
   </div>
+
+  <script>
+  (function() {
+    function getCookie(k) { const m = document.cookie.match('(?:^|;)\\s*' + k + '=([^;]*)'); return m ? decodeURIComponent(m[1]) : null }
+    function setCookie(k, v) { const d = new Date(); d.setTime(d.getTime() + 365*86400000); document.cookie = k+'='+encodeURIComponent(v)+';expires='+d.toUTCString()+';path=/' }
+
+    const tbody = document.getElementById('dash-tbody')
+    const allRows = Array.from(document.querySelectorAll('#dash-tbody tr[data-type]'))
+
+    // Images toggle
+    const imgToggle = document.getElementById('dash-img-toggle')
+    if (imgToggle && tbody) {
+      imgToggle.checked = getCookie('dash_images') === '1'
+      if (imgToggle.checked) tbody.classList.add('show-images')
+      imgToggle.addEventListener('change', () => {
+        tbody.classList.toggle('show-images', imgToggle.checked)
+        setCookie('dash_images', imgToggle.checked ? '1' : '0')
+      })
+    }
+
+    // Type filter pills
+    const pills = document.querySelectorAll('#dash-type-pills .type-pill')
+    let activeTypes = new Set(JSON.parse(getCookie('dash_types') || '["all"]'))
+    function applyFilter() {
+      const showAll = activeTypes.has('all') || activeTypes.size === 0
+      allRows.forEach(r => { r.style.display = showAll || activeTypes.has(r.dataset.type) ? '' : 'none' })
+      pills.forEach(p => p.classList.toggle('active', activeTypes.has(p.dataset.type)))
+      setCookie('dash_types', JSON.stringify([...activeTypes]))
+    }
+    pills.forEach(pill => {
+      pill.addEventListener('click', () => {
+        const t = pill.dataset.type
+        if (t === 'all') { activeTypes = new Set(['all']) }
+        else {
+          activeTypes.delete('all')
+          activeTypes.has(t) ? activeTypes.delete(t) : activeTypes.add(t)
+          if (activeTypes.size === 0) activeTypes.add('all')
+        }
+        applyFilter()
+      })
+    })
+    applyFilter()
+  })()
+  </script>
 
   {% if pagination.totalPages > 1 %}
   <div class="pagination">
