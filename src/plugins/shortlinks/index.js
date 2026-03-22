@@ -60,8 +60,21 @@ async function shortlinksPlugin(fastify) {
   // GET /l/* — quick-create from address bar (subdomain or path)
   // ----------------------------------------------------------------
   fastify.get('/l/*', async (req, reply) => {
-    // Use raw URL to preserve query string (req.params['*'] strips it)
-    const destination = req.raw.url.replace(/^\/l\//, '')
+    // req.params['*'] has the path only — query string is parsed separately by Fastify.
+    // Reconstruct by taking the path from params and the query string from req.raw.url.
+    // Browsers never send #fragments to the server; users must encode # as %23 for anchors.
+    const rawUrl = req.raw.url  // e.g. /l/https://example.com/path?foo=bar
+    const qIdx = rawUrl.indexOf('?')
+    const qs = qIdx !== -1 ? rawUrl.slice(qIdx) : ''
+    // Decode %23 → # so anchors work when user types https://example.com%23section
+    const pathPart = req.params['*'].replace(/%23/gi, '#')
+    const destination = pathPart + qs
+
+    console.log('[l-shortcut] raw url    :', rawUrl)
+    console.log('[l-shortcut] params[*]  :', req.params['*'])
+    console.log('[l-shortcut] qs         :', qs)
+    console.log('[l-shortcut] destination:', destination)
+
     if (!destination || (!destination.startsWith('http://') && !destination.startsWith('https://'))) {
       return reply.view('home.njk', {
         flash: { type: 'info', message: `Usage: l.${config.BASE_DOMAIN}/https://your-url-here` }
@@ -70,11 +83,20 @@ async function shortlinksPlugin(fastify) {
     return createUrlAndRedirect(req, reply, destination)
   })
 
-  // Also handle l. subdomain via wildcard
+  // Also handle l. subdomain directly (when nginx subdomain redirect is not in use)
   fastify.get('/*', async (req, reply) => {
     if (req.subdomain !== 'l') return reply.callNotFound()
-    // Use raw URL to preserve query string (req.params['*'] strips it)
-    const destination = req.raw.url.slice(1)
+    const rawUrl = req.raw.url
+    const qIdx = rawUrl.indexOf('?')
+    const qs = qIdx !== -1 ? rawUrl.slice(qIdx) : ''
+    const pathPart = req.params['*'].replace(/%23/gi, '#')
+    const destination = pathPart + qs
+
+    console.log('[l-subdomain] raw url    :', rawUrl)
+    console.log('[l-subdomain] params[*]  :', req.params['*'])
+    console.log('[l-subdomain] qs         :', qs)
+    console.log('[l-subdomain] destination:', destination)
+
     if (!destination || (!destination.startsWith('http://') && !destination.startsWith('https://'))) {
       return reply.view('home.njk', {
         flash: { type: 'info', message: `Usage: l.${config.BASE_DOMAIN}/https://your-url-here` }
