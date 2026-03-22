@@ -36,10 +36,12 @@ export async function createLink(db, hooks, { type, destination, title, meta, is
       id = info.lastInsertRowid
       code = normalizeCode(encode(id))
       if (isReserved(code)) {
-        // Permanently consume this ID with its reserved code
+        // Brand this placeholder with the reserved code so it's permanently consumed
         db.run('UPDATE links SET code = ? WHERE id = ?', code, id)
       }
-    } while (isReserved(code))
+      // If code is taken by a legacy row (old escape logic left colliding codes),
+      // the placeholder keeps its tmp code and we loop to the next ID
+    } while (isReserved(code) || db.get('SELECT id FROM links WHERE code = ? AND id != ?', code, id))
 
     // Update the winning row with the actual link data
     db.run(
