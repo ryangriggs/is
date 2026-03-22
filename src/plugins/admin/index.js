@@ -749,14 +749,16 @@ async function adminPlugin(fastify) {
     if (req.subdomain !== '') return reply.callNotFound()
     const { execSync } = await import('child_process')
     try {
-      const out = execSync('git pull', { cwd: process.cwd(), timeout: 60000 })
-      console.log('[updater] git pull output:', out.toString())
+      const pullOut = execSync('git pull', { cwd: process.cwd(), timeout: 60000 })
+      console.log('[updater] git pull output:', pullOut.toString())
+      const npmOut = execSync('npm install --production', { cwd: process.cwd(), timeout: 120000 })
+      console.log('[updater] npm install output:', npmOut.toString())
       reloadCurrentVersion()
       req.session.flash = { type: 'success', message: 'Update applied. App is restarting...' }
       await reply.redirect('/admin/settings')
       setTimeout(() => process.exit(0), 500)
     } catch (err) {
-      console.error('[updater] git pull failed:', err.message)
+      console.error('[updater] update failed:', err.message)
       req.session.flash = { type: 'error', message: 'Update failed: ' + (err.stderr?.toString() || err.message) }
       return reply.redirect('/admin/settings')
     }
