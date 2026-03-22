@@ -53,7 +53,7 @@ export async function checkForUpdates(repoUrl, { force = false, maxAgeHours = 24
 
   console.log(`[updater] Checking for updates at: ${rawUrl}`)
   try {
-    const res = await fetch(rawUrl, { signal: AbortSignal.timeout(10000) })
+    const res = await fetch(rawUrl, { signal: AbortSignal.timeout(10000), cache: 'no-store' })
     if (!res.ok) {
       console.log(`[updater] Remote check failed: HTTP ${res.status}`)
       return null
