@@ -150,8 +150,20 @@
 
       {# ── Desktop nav links (hidden on mobile) ── #}
       <ul class="nav-links">
-        {# + New — always visible #}
-        <li class="nav-new-wrap">
+        {% if user %}
+          <li><a href="/dashboard" class="{% if currentPath == '/dashboard' %}active{% endif %}">Dashboard</a></li>
+        {% endif %}
+        <li><a href="/pricing">Pricing</a></li>
+        <li><a href="/contact">Contact</a></li>
+        <li>
+          <button id="theme-toggle" class="btn btn-ghost btn-sm" title="Toggle theme" style="padding:6px 8px;font-size:1rem">🌙</button>
+        </li>
+      </ul>
+
+      {# ── Always-visible right section: + New, hamburger, avatar ── #}
+      <div class="nav-actions">
+        {# + New — always visible across all screen sizes #}
+        <div class="nav-new-wrap">
           <button class="btn btn-primary btn-sm" id="nav-new-btn" style="gap:4px">+ New ▾</button>
           <div class="nav-new-drop" id="nav-new-drop">
             <a href="/">🔗 URL Shortlink</a>
@@ -164,19 +176,8 @@
             <a href="/d">🌍 Dynamic DNS</a>
             {% endif %}
           </div>
-        </li>
-        {% if user %}
-          <li><a href="/dashboard" class="{% if currentPath == '/dashboard' %}active{% endif %}">Dashboard</a></li>
-        {% endif %}
-        <li><a href="/pricing">Pricing</a></li>
-        <li><a href="/contact">Contact</a></li>
-        <li>
-          <button id="theme-toggle" class="btn btn-ghost btn-sm" title="Toggle theme" style="padding:6px 8px;font-size:1rem">🌙</button>
-        </li>
-      </ul>
-
-      {# ── Always-visible right section: avatar/login + mobile controls ── #}
-      <div class="nav-actions">
+        </div>
+        <button class="nav-hamburger" id="hamburger-btn" title="Menu">☰</button>
         {% if user %}
           <div class="nav-avatar-wrap">
             <button class="nav-avatar-btn" id="avatar-btn" title="Account">
@@ -206,50 +207,23 @@
           <a href="/login" class="btn btn-ghost btn-sm">Login</a>
           <a href="/register" class="btn btn-primary btn-sm">Sign up</a>
         {% endif %}
-        <button id="theme-toggle-mob" class="btn btn-ghost btn-sm nav-mob-only" title="Toggle theme" style="padding:6px 8px;font-size:1rem">🌙</button>
-        <button class="nav-hamburger" id="hamburger-btn" title="Menu">☰</button>
       </div>
     </div>
 
-    {# ── Mobile slide-down menu ── #}
+    {# ── Mobile slide-down menu (nav links only — no account) ── #}
     <div class="nav-mobile-menu" id="nav-mobile-menu">
       {% if user %}
-        <div class="mob-section-label">Create New</div>
-        <a href="/">🔗 URL Shortlink</a>
-        <a href="/t">📝 Text Paste</a>
-        <a href="/h">🌐 HTML Paste</a>
-        <a href="/i">🖼️ Image Upload</a>
-        <a href="/b">🔖 Bookmark Collection</a>
-        <a href="/q">⬛ QR Code</a>
-        <a href="/d">🌍 Dynamic DNS</a>
-        <div class="mob-divider"></div>
         <a href="/dashboard">Dashboard</a>
         <a href="/pricing">Pricing</a>
         <a href="/contact">Contact</a>
-        <div class="mob-divider"></div>
-        <div class="mob-section-label">Account — {{ user.displayName or user.email or user.username }}</div>
-        <a href="/profile">Profile</a>
-        <a href="/b">Bookmarks</a>
-        <a href="/pricing">Subscription</a>
-        <a href="/tokens">API Tokens</a>
-        <a href="/ads">Ad Campaigns</a>
-        <div class="mob-divider"></div>
-        <form method="POST" action="/logout" style="margin:0">
-          <button type="submit" class="mob-link">Log out</button>
-        </form>
       {% else %}
-        <div class="mob-section-label">Create New</div>
-        <a href="/">🔗 URL Shortlink</a>
-        <a href="/t">📝 Text Paste</a>
-        <a href="/h">🌐 HTML Paste</a>
-        <a href="/i">🖼️ Image Upload</a>
-        <a href="/q">⬛ QR Code</a>
-        <div class="mob-divider"></div>
         <a href="/pricing">Pricing</a>
         <a href="/login">Login</a>
         <a href="/register">Sign up</a>
         <a href="/contact">Contact</a>
       {% endif %}
+      <div class="mob-divider"></div>
+      <button id="theme-toggle-mob" class="mob-link" title="Toggle theme">🌙 Toggle Day / Night</button>
     </div>
   </nav>
 
@@ -333,15 +307,14 @@
   <script src="https://unpkg.com/htmx.org@1.9.12/dist/htmx.min.js" defer></script>
   <script src="/static/app.js" defer></script>
   <script>
-    // Theme toggle (syncs both desktop and mobile buttons)
+    // Theme toggle (syncs desktop + hamburger-menu button)
     function applyTheme(t) {
       document.documentElement.setAttribute('data-theme', t)
       localStorage.setItem('theme', t)
-      var icon = t === 'dark' ? '☀️' : '🌙'
       var d = document.getElementById('theme-toggle')
       var m = document.getElementById('theme-toggle-mob')
-      if (d) d.textContent = icon
-      if (m) m.textContent = icon
+      if (d) d.textContent = t === 'dark' ? '☀️' : '🌙'
+      if (m) m.textContent = (t === 'dark' ? '☀️' : '🌙') + ' Toggle Day / Night'
     }
     var cur = document.documentElement.getAttribute('data-theme') || 'dark'
     applyTheme(cur)

@@ -1,35 +1,82 @@
 {% extends "layouts/base.njk" %}
 {% block title %}HTML Paste — {{ siteName }}{% endblock %}
+
+{% block head %}
+<link rel="stylesheet" href="https://unpkg.com/jodit@4/es2021/jodit.min.css">
+<style>
+  .jodit-container { border-radius: var(--radius) !important; overflow: hidden; }
+  .jodit-workplace { background: var(--bg-input) !important; }
+</style>
+{% endblock %}
+
 {% block content %}
 <section class="section">
-  <div class="container" style="max-width:720px">
+  <div class="container" style="max-width:900px">
     <h1 class="section-title">HTML Paste</h1>
     <p class="section-subtitle">Share HTML snippets or full pages. Rendered in a sandboxed frame.</p>
 
     {% if error %}<div class="alert alert-error mb-3">{{ error }}</div>{% endif %}
 
     <div class="card">
-      <form method="POST" action="/h">
+      <form method="POST" action="/h" id="html-paste-form">
         <div class="form-group">
           <label class="label" for="title">Title <span class="text-muted">(optional)</span></label>
           <input id="title" type="text" name="title" class="input" value="{{ title }}" placeholder="Untitled HTML">
         </div>
         <div class="form-group">
           <label class="label" for="content">HTML Content</label>
-          <textarea id="content" name="content" class="input" rows="18" required autofocus
-            style="font-family:monospace;resize:vertical">{{ content }}</textarea>
+          <textarea id="content" name="content" required>{{ content }}</textarea>
         </div>
         {% if user %}
-        <div class="form-group">
+        <div class="form-group" style="margin-top:1rem">
           <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer">
             <input type="checkbox" name="is_private" value="1"> Private
           </label>
         </div>
         {% endif %}
-        <button type="submit" class="btn btn-primary btn-block">Create HTML Paste</button>
+        <button type="submit" class="btn btn-primary btn-block" style="margin-top:1rem">Create HTML Paste</button>
       </form>
     </div>
     {% include "partials/ad-banner.njk" %}
   </div>
 </section>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://unpkg.com/jodit@4/es2021/jodit.min.js"></script>
+<script>
+(function () {
+  var isDark = document.documentElement.getAttribute('data-theme') !== 'light'
+  var editor = Jodit.make('#content', {
+    theme: isDark ? 'dark' : 'default',
+    defaultMode: Jodit.MODE_SOURCE,
+    height: 500,
+    language: 'en',
+    buttons: [
+      'source', '|',
+      'bold', 'italic', 'underline', 'strikethrough', '|',
+      'ul', 'ol', '|',
+      'outdent', 'indent', '|',
+      'font', 'fontsize', 'brush', '|',
+      'link', 'image', '|',
+      'align', '|',
+      'hr', 'table', '|',
+      'undo', 'redo', '|',
+      'fullsize',
+    ],
+    toolbarAdaptive: false,
+    spellcheck: false,
+    showCharsCounter: false,
+    showWordsCounter: false,
+    showXPathInStatusbar: false,
+  })
+
+  // Keep Jodit theme in sync if user toggles day/night while on this page
+  var obs = new MutationObserver(function () {
+    var dark = document.documentElement.getAttribute('data-theme') !== 'light'
+    editor.setTheme(dark ? 'dark' : 'default')
+  })
+  obs.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] })
+})()
+</script>
 {% endblock %}

@@ -4,10 +4,6 @@ import config from '../../config.js'
 
 const DEFAULTS = {
   registration_open: 'true',
-  require_login_to_create: 'false',
-  max_links_anonymous: '10',
-  max_file_size_mb: '10',
-  allowed_image_types: 'image/jpeg,image/png,image/gif,image/webp',
   site_name: config.SITE_NAME,
   site_tagline: config.SITE_TAGLINE,
   site_logo_path: config.SITE_LOGO_PATH,

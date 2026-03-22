@@ -63,6 +63,7 @@ export async function initDb() {
       'ALTER TABLE account_tiers ADD COLUMN stripe_price_id_monthly TEXT',
       'ALTER TABLE account_tiers ADD COLUMN stripe_price_id_yearly TEXT',
       'ALTER TABLE account_tiers ADD COLUMN price_yearly REAL NOT NULL DEFAULT 0',
+      "ALTER TABLE account_tiers ADD COLUMN allowed_image_types TEXT NOT NULL DEFAULT 'image/jpeg,image/png,image/gif'",
     ]
     for (const stmt of addColumns) {
       try { sqlite.prepare(stmt).run() } catch (_) { /* column already exists */ }

@@ -1,6 +1,13 @@
 {% extends "layouts/base.njk" %}
 {% block title %}Dashboard — {{ siteName }}{% endblock %}
 
+{% block head %}
+<style>
+  .img-text-link { font-size:.8rem; }
+  #dash-tbody.show-images .img-text-link { display:none; }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="container">
   <div class="page-header">
@@ -109,10 +116,10 @@
           </td>
           <td class="td-url">
             {% if link.type == 'image' %}
-              <img class="link-thumb" src="/uploads/{{ link.destination }}" alt=""
-                   onclick="window.open('/uploads/{{ link.destination }}','_blank')"
-                   style="cursor:pointer">
-              <span class="text-muted text-sm">{{ link.title or link.destination | truncate(40) }}</span>
+              <a href="/uploads/{{ link.destination }}" target="_blank" rel="noopener">
+                <img class="link-thumb" src="/uploads/{{ link.destination }}" alt="">
+              </a>
+              <a href="/uploads/{{ link.destination }}" target="_blank" rel="noopener" class="img-text-link">View image ↗</a>
             {% elif link.type == 'url' %}
               <a href="{{ link.destination }}" target="_blank" rel="noopener nofollow"
                  title="{{ link.destination }}" style="max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:inline-block;vertical-align:middle">

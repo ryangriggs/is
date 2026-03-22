@@ -79,19 +79,27 @@
       <div class="card" style="margin-bottom:.5rem;padding:.75rem 1rem">
         <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:.5rem">
           <div style="min-width:0;flex:1">
-            <div style="display:flex;align-items:center;gap:.4rem;flex-wrap:wrap">
-              <a href="{{ item.url }}" target="_blank" rel="noopener" style="font-weight:500;word-break:break-word">{{ item.title or item.url }}</a>
+            <a href="{{ item.url }}" target="_blank" rel="noopener"
+               style="font-weight:500;word-break:break-word">{{ item.title or item.url }}</a>
+            <div style="display:flex;align-items:center;gap:.35rem;flex-wrap:wrap;margin-top:.3rem">
+              <span class="text-muted text-xs truncate" style="max-width:260px">{{ item.url }}</span>
               <button class="btn btn-ghost btn-sm" style="padding:1px 6px;font-size:.72rem"
                       data-copy="{{ item.url }}" title="Copy URL">📋</button>
               {% if item.shortlink_code %}
-              <a href="https://{{ baseDomain }}/{{ item.shortlink_code }}" target="_blank" rel="noopener"
-                 class="badge badge-info" style="font-family:monospace;font-size:.72rem;text-decoration:none">
-                {{ baseDomain }}/{{ item.shortlink_code }}
-              </a>
               <button class="btn btn-ghost btn-sm" style="padding:1px 6px;font-size:.72rem"
-                      data-copy="https://{{ baseDomain }}/{{ item.shortlink_code }}" title="Copy shortlink">📋</button>
+                      data-copy="https://{{ baseDomain }}/{{ item.shortlink_code }}"
+                      title="Copy shortlink {{ baseDomain }}/{{ item.shortlink_code }}">🔗 Copy shortlink</button>
               {% endif %}
             </div>
+            <details style="margin-top:.5rem">
+              <summary class="text-sm" style="cursor:pointer;color:var(--color-text-muted);list-style:none;display:inline-flex;align-items:center;gap:.3rem">✏️ Rename</summary>
+              <form method="POST" action="/b/{{ link.code }}/rename/{{ item.id }}"
+                    style="display:flex;gap:.4rem;margin-top:.4rem">
+                <input type="text" name="title" class="input" value="{{ item.title or '' }}"
+                       placeholder="Bookmark name" style="flex:1;font-size:.875rem;padding:.35rem .6rem">
+                <button type="submit" class="btn btn-primary btn-sm">Save</button>
+              </form>
+            </details>
           </div>
           <form method="POST" action="/b/{{ link.code }}/delete/{{ item.id }}" style="margin:0;flex-shrink:0">
             <button class="btn btn-ghost btn-sm" data-confirm="Remove this bookmark?">✕</button>

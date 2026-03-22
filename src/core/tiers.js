@@ -6,12 +6,12 @@ export function getTierForUser(userId, db) {
     const user = db.get('SELECT subscription_tier FROM users WHERE id = ?', userId)
     tierName = user?.subscription_tier || 'free'
   }
-  return db.get('SELECT * FROM account_tiers WHERE name = ?', tierName) || { name: 'free', max_links_per_hour: 10, max_file_size_mb: 10, allow_raw_html: 1, show_ads: 1, max_ddns_entries: 3, max_links_total: 0, max_images_total: 0, max_text_total: 0 }
+  return db.get('SELECT * FROM account_tiers WHERE name = ?', tierName) || { name: 'free', max_links_per_hour: 10, max_file_size_mb: 10, allow_raw_html: 1, show_ads: 1, max_ddns_entries: 3, max_links_total: 0, max_images_total: 0, max_text_total: 0, allowed_image_types: 'image/jpeg,image/png,image/gif' }
 }
 
 export function getAnonymousTier(db) {
   return db.get("SELECT * FROM account_tiers WHERE name = 'anonymous'") ||
-    { name: 'anonymous', max_links_per_hour: 5, max_links_total: 10, max_images_total: 3, max_text_total: 5, max_ddns_entries: 0, max_file_size_mb: 5, allow_raw_html: 0, show_ads: 1 }
+    { name: 'anonymous', max_links_per_hour: 5, max_links_total: 10, max_images_total: 3, max_text_total: 5, max_ddns_entries: 0, max_file_size_mb: 5, allow_raw_html: 0, show_ads: 1, allowed_image_types: 'image/jpeg,image/png,image/gif' }
 }
 
 // Called from pre:link:create hook — throws if limit exceeded

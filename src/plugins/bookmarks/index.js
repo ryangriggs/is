@@ -116,6 +116,21 @@ async function bookmarksPlugin(fastify) {
     return reply.redirect(`/b/${link.code}`)
   })
 
+  // POST /b/:code/rename/:itemId — rename a bookmark item
+  fastify.post('/b/:code/rename/:itemId', { preHandler: requireAuth }, async (req, reply) => {
+    const link = db.get(
+      `SELECT * FROM links WHERE code = ? AND type = 'bookmark' AND owner_id = ?`,
+      req.params.code, req.session.userId
+    )
+    if (!link) { reply.code(404); return reply.view('errors/404.njk', {}) }
+    const newTitle = (req.body?.title || '').trim()
+    if (newTitle) {
+      db.run('UPDATE bookmark_items SET title = ? WHERE id = ? AND link_id = ?',
+        newTitle, req.params.itemId, link.id)
+    }
+    return reply.redirect(`/b/${link.code}`)
+  })
+
   // POST /b/:code/delete/:itemId — delete a bookmark item
   fastify.post('/b/:code/delete/:itemId', { preHandler: requireAuth }, async (req, reply) => {
     const link = db.get(

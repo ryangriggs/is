@@ -26,6 +26,8 @@ th.resizable { position: relative; }
 .resize-handle { position: absolute; right: 0; top: 0; bottom: 0; width: 5px; cursor: col-resize; }
 .resize-handle:hover, .resize-handle.dragging { background: var(--primary); opacity: .4; }
 /* link-thumb rules live in theme.css */
+.img-text-link { font-size:.8rem; }
+#links-tbody.show-images .img-text-link { display:none; }
 .pager { display: flex; align-items: center; gap: .35rem; flex-wrap: wrap; margin-top: 1rem; font-size: .875rem; }
 .pg, .pager a { display: inline-flex; align-items: center; justify-content: center; min-width: 32px; height: 32px; padding: 0 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg-card); color: var(--text); text-decoration: none; }
 .pager a:hover { border-color: var(--primary); color: var(--primary); }
@@ -120,8 +122,14 @@ th.resizable { position: relative; }
           <td><a href="https://{{ baseDomain }}/{{ link.code }}" target="_blank" rel="noopener" style="font-family:monospace;font-size:.85rem">{{ link.code }}</a></td>
 
           <td>
-            {% if link.type == 'image' %}<img class="link-thumb" src="/uploads/{{ link.destination }}" alt="" onclick="window.open('/uploads/{{ link.destination }}','_blank')">{% endif %}
-            <span title="{{ link.destination }}">{{ link.destination | truncate(60) if link.destination else '—' }}</span>
+            {% if link.type == 'image' %}
+              <a href="/uploads/{{ link.destination }}" target="_blank" rel="noopener">
+                <img class="link-thumb" src="/uploads/{{ link.destination }}" alt="">
+              </a>
+              <a href="/uploads/{{ link.destination }}" target="_blank" rel="noopener" class="img-text-link">View image ↗</a>
+            {% else %}
+              <span title="{{ link.destination }}">{{ link.destination | truncate(60) if link.destination else '—' }}</span>
+            {% endif %}
           </td>
 
           <td class="text-sm">

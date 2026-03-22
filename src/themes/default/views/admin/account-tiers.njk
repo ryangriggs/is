@@ -103,6 +103,19 @@
           <input type="number" name="max_file_size_mb" class="input" value="{{ tier.max_file_size_mb }}" min="1">
         </div>
         <div>
+          <label class="label">Allowed Image Types</label>
+          {% set allowedTypes = tier.allowed_image_types or 'image/jpeg,image/png,image/gif' %}
+          <div style="display:flex;flex-direction:column;gap:.3rem;margin-top:.35rem">
+            {% for mime, label in [['image/jpeg','JPEG'], ['image/png','PNG'], ['image/gif','GIF'], ['image/webp','WebP']] %}
+            <label style="display:flex;align-items:center;gap:.4rem;font-weight:400;cursor:pointer">
+              <input type="checkbox" name="allowed_image_types" value="{{ mime }}"
+                {% if mime in allowedTypes %}checked{% endif %}>
+              {{ label }}
+            </label>
+            {% endfor %}
+          </div>
+        </div>
+        <div>
           <label class="label">Allow Raw HTML</label>
           <select name="allow_raw_html" class="input">
             <option value="1" {% if tier.allow_raw_html %}selected{% endif %}>Yes</option>
@@ -164,6 +177,15 @@
         <div>
           <label class="label">Max File Size (MB)</label>
           <input type="number" name="max_file_size_mb" class="input" value="50" min="1">
+        </div>
+        <div>
+          <label class="label">Allowed Image Types</label>
+          <div style="display:flex;flex-direction:column;gap:.3rem;margin-top:.35rem">
+            <label style="display:flex;align-items:center;gap:.4rem;font-weight:400;cursor:pointer"><input type="checkbox" name="allowed_image_types" value="image/jpeg" checked> JPEG</label>
+            <label style="display:flex;align-items:center;gap:.4rem;font-weight:400;cursor:pointer"><input type="checkbox" name="allowed_image_types" value="image/png" checked> PNG</label>
+            <label style="display:flex;align-items:center;gap:.4rem;font-weight:400;cursor:pointer"><input type="checkbox" name="allowed_image_types" value="image/gif" checked> GIF</label>
+            <label style="display:flex;align-items:center;gap:.4rem;font-weight:400;cursor:pointer"><input type="checkbox" name="allowed_image_types" value="image/webp"> WebP</label>
+          </div>
         </div>
         <div>
           <label class="label">Allow Ad Campaigns</label>

@@ -50,8 +50,13 @@ async function imageUploadPlugin(fastify) {
       const buf = await data.toBuffer()
       fileSize = buf.length
 
-      // Tier file size check
+      // Tier checks (file size + allowed image types)
       const tier = getTierForUser(req.session.userId || null, db)
+      const allowedTypes = (tier.allowed_image_types || 'image/jpeg,image/png,image/gif').split(',').map(s => s.trim())
+      if (!allowedTypes.includes(data.mimetype)) {
+        const labels = allowedTypes.map(m => MIME_TO_EXT[m]?.replace('.', '').toUpperCase() || m).join(', ')
+        return reply.view('image-create.njk', { error: `Your plan only allows: ${labels}.`, ad })
+      }
       const maxBytes = (tier.max_file_size_mb || 10) * 1024 * 1024
       if (fileSize > maxBytes) {
         return reply.view('image-create.njk', { error: `File too large. Your plan allows up to ${tier.max_file_size_mb} MB.`, ad })
