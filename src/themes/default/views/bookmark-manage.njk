@@ -13,15 +13,14 @@
       </div>
       <div style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:center">
 
-        {# Visibility toggle — orange=public, blue=private #}
+        {# Visibility toggle — orange=public, blue=private, labels both sides #}
         <form method="POST" action="/b/{{ link.code }}/visibility" style="margin:0;display:flex;align-items:center;gap:.5rem">
+          <span class="text-sm">Private</span>
           <label class="slide-toggle slide-toggle-vis" title="Toggle public/private" style="cursor:pointer">
             <input type="checkbox" onchange="this.form.submit()" {% if not link.is_private %}checked{% endif %}>
             <span class="slide-knob"></span>
           </label>
-          <span class="text-sm" style="color:{% if link.is_private %}#3b82f6{% else %}#f59e0b{% endif %};font-weight:500">
-            {{ 'Private' if link.is_private else 'Public' }}
-          </span>
+          <span class="text-sm">Public</span>
         </form>
 
         {# Password button + popup #}
@@ -79,19 +78,24 @@
         <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:.5rem">
           <div style="min-width:0;flex:1">
             <a href="{{ item.url }}" target="_blank" rel="noopener" style="font-weight:500;word-break:break-word">{{ item.title or item.url }}</a>
-            {% if item.title and item.url != item.title %}
-            <p class="text-muted text-sm" style="margin:.15rem 0 .3rem;word-break:break-all">{{ item.url }}</p>
-            {% endif %}
-            {% if item.shortlink_code %}
-            <div style="margin-top:.3rem;display:flex;align-items:center;gap:.4rem">
+            <div style="margin-top:.35rem;display:flex;flex-wrap:wrap;align-items:center;gap:.4rem">
+              {# Actual URL as a copy button #}
+              <a href="{{ item.url }}" target="_blank" rel="noopener"
+                 class="badge badge-neutral" style="font-size:.72rem;text-decoration:none;max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"
+                 title="{{ item.url }}">{{ item.url | truncate(50) }}</a>
+              <button class="btn btn-ghost btn-sm" style="padding:1px 6px;font-size:.72rem"
+                      data-copy="{{ item.url }}" title="Copy URL">📋</button>
+              {# Shortlink (only if one was created at add time) #}
+              {% if item.shortlink_code %}
+              <span style="color:var(--color-text-dim);font-size:.7rem">·</span>
               <a href="https://{{ baseDomain }}/{{ item.shortlink_code }}" target="_blank" rel="noopener"
-                 class="badge badge-neutral" style="font-family:monospace;font-size:.75rem;text-decoration:none">
+                 class="badge badge-info" style="font-family:monospace;font-size:.72rem;text-decoration:none">
                 {{ baseDomain }}/{{ item.shortlink_code }}
               </a>
-              <button class="btn btn-ghost btn-sm" style="padding:1px 6px;font-size:.75rem"
+              <button class="btn btn-ghost btn-sm" style="padding:1px 6px;font-size:.72rem"
                       data-copy="https://{{ baseDomain }}/{{ item.shortlink_code }}" title="Copy shortlink">📋</button>
+              {% endif %}
             </div>
-            {% endif %}
           </div>
           <form method="POST" action="/b/{{ link.code }}/delete/{{ item.id }}" style="margin:0;flex-shrink:0">
             <button class="btn btn-ghost btn-sm" data-confirm="Remove this bookmark?">✕</button>

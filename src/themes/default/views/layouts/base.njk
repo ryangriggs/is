@@ -104,6 +104,9 @@
     }
     .slide-toggle input:checked + .slide-knob { background: var(--color-success); }
     .slide-toggle input:checked + .slide-knob::before { transform: translateX(22px); }
+    /* Visibility toggle variant: blue = private (unchecked), orange = public (checked) */
+    .slide-toggle-vis .slide-knob { background: #3b82f6 !important; }
+    .slide-toggle-vis input:checked + .slide-knob { background: #f59e0b !important; }
 
     /* Key modal */
     .key-modal-backdrop {
