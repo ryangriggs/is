@@ -28,7 +28,7 @@
   <li>✓ Up to {{ tier.max_file_size_mb }} MB uploads</li>
   {% if tier.allowed_image_types %}
   {% set imgTypes = tier.allowed_image_types.split(',') %}
-  <li>✓ Image types: {% for t in imgTypes %}{{ t.replace('image/','').upper() }}{% if not loop.last %}, {% endif %}{% endfor %}</li>
+  <li>✓ Image types: {% for t in imgTypes %}{{ t | replace('image/','') | upper }}{% if not loop.last %}, {% endif %}{% endfor %}</li>
   {% endif %}
 
   {% if tier.allow_raw_html %}
