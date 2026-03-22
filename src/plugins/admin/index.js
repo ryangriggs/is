@@ -484,6 +484,7 @@ async function adminPlugin(fastify) {
       'github_repo_url', 'update_check_hours',
       'watermark_position', 'watermark_size_pct',
       'ad_interstitial_seconds', 'ad_image_height',
+      'stripe_enabled',
     ]
     for (const key of allowed) {
       if (req.body[key] !== undefined) {
@@ -491,6 +492,17 @@ async function adminPlugin(fastify) {
           `INSERT INTO settings(key, value, updated_at) VALUES(?,?,?)
            ON CONFLICT(key) DO UPDATE SET value=excluded.value, updated_at=excluded.updated_at`,
           key, String(req.body[key]), Date.now()
+        )
+      }
+    }
+    // Stripe secret fields: only update if non-empty (blank = keep existing)
+    for (const key of ['stripe_secret_key', 'stripe_webhook_secret']) {
+      const val = (req.body[key] || '').trim()
+      if (val) {
+        db.run(
+          `INSERT INTO settings(key, value, updated_at) VALUES(?,?,?)
+           ON CONFLICT(key) DO UPDATE SET value=excluded.value, updated_at=excluded.updated_at`,
+          key, val, Date.now()
         )
       }
     }

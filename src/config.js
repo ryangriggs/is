@@ -51,9 +51,6 @@ const config = Object.freeze({
   RESEND_API_KEY: optional('RESEND_API_KEY', ''),
   RESEND_FROM_EMAIL: optional('RESEND_FROM_EMAIL', ''),
 
-  STRIPE_SECRET_KEY: optional('STRIPE_SECRET_KEY', ''),
-  STRIPE_WEBHOOK_SECRET: optional('STRIPE_WEBHOOK_SECRET', ''),
-
   get IS_PROD() { return this.NODE_ENV === 'production' },
   get IS_DEV() { return this.NODE_ENV === 'development' },
 })

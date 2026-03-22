@@ -145,6 +145,42 @@
       </div>
 
       <div class="card mb-3">
+        <h2 class="card-title mb-3">Stripe Payments</h2>
+        <form method="POST" action="/admin/settings">
+          <div class="form-group">
+            <label class="label">Payments</label>
+            <select name="stripe_enabled" class="select">
+              <option value="false" {% if settings.stripe_enabled != 'true' %}selected{% endif %}>Disabled</option>
+              <option value="true" {% if settings.stripe_enabled == 'true' %}selected{% endif %}>Enabled</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="label">Secret Key <span class="text-muted" style="font-weight:400">(sk_live_... or sk_test_...)</span></label>
+            <input type="password" name="stripe_secret_key" class="input"
+              placeholder="{{ '(set — leave blank to keep)' if settings.stripe_secret_key else 'sk_live_...' }}"
+              autocomplete="off">
+          </div>
+          <div class="form-group">
+            <label class="label">Webhook Signing Secret <span class="text-muted" style="font-weight:400">(whsec_...)</span></label>
+            <input type="password" name="stripe_webhook_secret" class="input"
+              placeholder="{{ '(set — leave blank to keep)' if settings.stripe_webhook_secret else 'whsec_...' }}"
+              autocomplete="off">
+            <p class="text-xs text-muted mt-1">
+              Webhook endpoint: <code>https://{{ baseDomain }}/stripe/webhook</code><br>
+              Events: <code>checkout.session.completed</code>, <code>customer.subscription.updated</code>,
+              <code>customer.subscription.deleted</code>, <code>invoice.payment_failed</code>
+            </p>
+          </div>
+          <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+            <button type="submit" class="btn btn-primary btn-sm">Save</button>
+            {% if settings.stripe_secret_key %}
+            <a href="https://dashboard.stripe.com" target="_blank" rel="noopener" class="btn btn-ghost btn-sm">Stripe Dashboard ↗</a>
+            {% endif %}
+          </div>
+        </form>
+      </div>
+
+      <div class="card mb-3">
         <h2 class="card-title mb-3">Update Settings</h2>
         <form method="POST" action="/admin/settings">
           <div class="form-group">

@@ -3,12 +3,9 @@ import config from '../../config.js'
 import { requireAuth } from '../../core/auth.js'
 
 async function stripePlugin(fastify) {
-  if (!config.STRIPE_SECRET_KEY) return  // Stripe not configured — skip
-
-  const stripe = new Stripe(config.STRIPE_SECRET_KEY)
   const db = fastify.db
 
-  // Raw body parser for webhook signature verification (scoped to this plugin)
+  // Raw body parser for webhook signature verification (scoped to this plugin only)
   fastify.addContentTypeParser('application/json', { parseAs: 'buffer' }, (req, body, done) => {
     try {
       req.rawBody = body
@@ -18,13 +15,31 @@ async function stripePlugin(fastify) {
     }
   })
 
+  // Read Stripe config from DB settings
+  function getStripeConfig() {
+    const rows = db.all(
+      "SELECT key, value FROM settings WHERE key IN ('stripe_enabled','stripe_secret_key','stripe_webhook_secret')"
+    )
+    const s = Object.fromEntries(rows.map(r => [r.key, r.value]))
+    return {
+      enabled: s.stripe_enabled === 'true',
+      secretKey: s.stripe_secret_key || '',
+      webhookSecret: s.stripe_webhook_secret || '',
+    }
+  }
+
   // ----------------------------------------------------------------
   // POST /stripe/checkout — start a Stripe Checkout Session
   // ----------------------------------------------------------------
   fastify.post('/stripe/checkout', { preHandler: requireAuth }, async (req, reply) => {
     if (req.subdomain !== '') return reply.callNotFound()
-    const { tier: tierName, interval } = req.body || {}
+    const cfg = getStripeConfig()
+    if (!cfg.enabled || !cfg.secretKey) {
+      req.session.flash = { type: 'error', message: 'Payments are not currently enabled.' }
+      return reply.redirect('/pricing')
+    }
 
+    const { tier: tierName, interval } = req.body || {}
     if (!tierName || !['monthly', 'yearly'].includes(interval)) {
       req.session.flash = { type: 'error', message: 'Invalid plan selection.' }
       return reply.redirect('/pricing')
@@ -38,12 +53,14 @@ async function stripePlugin(fastify) {
 
     const priceId = interval === 'yearly' ? tier.stripe_price_id_yearly : tier.stripe_price_id_monthly
     if (!priceId) {
-      req.session.flash = { type: 'error', message: 'Payment not yet configured for this plan. Please contact support.' }
+      req.session.flash = { type: 'error', message: 'Payment not configured for this plan. Please contact support.' }
       return reply.redirect('/pricing')
     }
 
     const user = db.get('SELECT * FROM users WHERE id = ?', req.session.userId)
     if (!user) return reply.redirect('/login')
+
+    const stripe = new Stripe(cfg.secretKey)
 
     // Create or retrieve Stripe customer
     let customerId = user.stripe_customer_id
@@ -77,6 +94,11 @@ async function stripePlugin(fastify) {
   // ----------------------------------------------------------------
   fastify.post('/stripe/portal', { preHandler: requireAuth }, async (req, reply) => {
     if (req.subdomain !== '') return reply.callNotFound()
+    const cfg = getStripeConfig()
+    if (!cfg.enabled || !cfg.secretKey) {
+      req.session.flash = { type: 'error', message: 'Payments are not currently enabled.' }
+      return reply.redirect('/profile')
+    }
 
     const user = db.get('SELECT stripe_customer_id FROM users WHERE id = ?', req.session.userId)
     if (!user?.stripe_customer_id) {
@@ -84,6 +106,7 @@ async function stripePlugin(fastify) {
       return reply.redirect('/pricing')
     }
 
+    const stripe = new Stripe(cfg.secretKey)
     const portalSession = await stripe.billingPortal.sessions.create({
       customer: user.stripe_customer_id,
       return_url: `https://${config.BASE_DOMAIN}/profile`,
@@ -96,11 +119,17 @@ async function stripePlugin(fastify) {
   // POST /stripe/webhook — handle Stripe events
   // ----------------------------------------------------------------
   fastify.post('/stripe/webhook', async (req, reply) => {
+    const cfg = getStripeConfig()
+    if (!cfg.secretKey || !cfg.webhookSecret) {
+      return reply.code(503).send({ error: 'Stripe not configured' })
+    }
+
     const sig = req.headers['stripe-signature']
+    const stripe = new Stripe(cfg.secretKey)
     let event
 
     try {
-      event = stripe.webhooks.constructEvent(req.rawBody, sig, config.STRIPE_WEBHOOK_SECRET)
+      event = stripe.webhooks.constructEvent(req.rawBody, sig, cfg.webhookSecret)
     } catch (err) {
       fastify.log.warn({ err }, 'Stripe webhook signature verification failed')
       return reply.code(400).send({ error: 'Invalid signature' })
@@ -111,16 +140,13 @@ async function stripePlugin(fastify) {
         const session = event.data.object
         if (session.mode !== 'subscription') break
         const sub = await stripe.subscriptions.retrieve(session.subscription)
-        await applySubscription(sub)
+        applySubscription(sub)
         break
       }
-
       case 'customer.subscription.updated': {
-        const sub = event.data.object
-        await applySubscription(sub)
+        applySubscription(event.data.object)
         break
       }
-
       case 'customer.subscription.deleted': {
         const sub = event.data.object
         const user = db.get('SELECT id FROM users WHERE stripe_subscription_id = ?', sub.id)
@@ -134,7 +160,6 @@ async function stripePlugin(fastify) {
         }
         break
       }
-
       case 'invoice.payment_failed': {
         const invoice = event.data.object
         if (invoice.subscription) {
@@ -150,7 +175,7 @@ async function stripePlugin(fastify) {
     return reply.send({ received: true })
   })
 
-  async function applySubscription(sub) {
+  function applySubscription(sub) {
     const tierName = sub.metadata?.tier
     const userId = sub.metadata?.user_id
       ? Number(sub.metadata.user_id)
@@ -160,8 +185,6 @@ async function stripePlugin(fastify) {
 
     const interval = sub.items?.data?.[0]?.price?.recurring?.interval === 'year' ? 'yearly' : 'monthly'
     const periodEnd = sub.current_period_end ? sub.current_period_end * 1000 : null
-
-    // Only grant the tier if subscription is active/trialing (no trials used but handle gracefully)
     const activeStatuses = ['active', 'trialing']
     const newTier = activeStatuses.includes(sub.status) && tierName ? tierName : 'free'
 

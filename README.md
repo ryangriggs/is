@@ -66,8 +66,6 @@ Copy `.env.example` to `.env` and edit:
 | `ADMIN_EMAIL` | Admin account email | — |
 | `ADMIN_PASSWORD` | Set to pre-configure admin password; leave blank to auto-generate | — |
 | `THEME` | Theme folder name inside `src/themes/` | `default` |
-| `STRIPE_SECRET_KEY` | Stripe secret key (`sk_live_...`) — leave blank to disable payments | — |
-| `STRIPE_WEBHOOK_SECRET` | Stripe webhook signing secret (`whsec_...`) | — |
 | `RESEND_API_KEY` | Resend API key for transactional email | — |
 | `RESEND_FROM_EMAIL` | From address for outgoing email | — |
 
@@ -79,10 +77,9 @@ Stripe is optional. Leave `STRIPE_SECRET_KEY` blank and the payment UI is hidden
 
 ### 1. Create a Stripe account and get your keys
 
-In the [Stripe Dashboard](https://dashboard.stripe.com/):
+In the [Stripe Dashboard](https://dashboard.stripe.com/), go to **Developers → API keys** and copy your **Secret key** (`sk_live_...`). Use `sk_test_...` keys during development.
 
-- **API keys** → copy your **Secret key** (`sk_live_...`) into `STRIPE_SECRET_KEY`
-- Use `sk_test_...` keys during development
+Stripe keys are stored in the database and managed from **Admin → Settings → Stripe Payments** — no `.env` changes required.
 
 ### 2. Create products and prices
 
@@ -115,13 +112,11 @@ Stripe must notify your app when subscriptions change (new signups, renewals, ca
    - `customer.subscription.updated`
    - `customer.subscription.deleted`
    - `invoice.payment_failed`
-4. Copy the **Signing secret** (`whsec_...`) into `STRIPE_WEBHOOK_SECRET`
+4. Copy the **Signing secret** (`whsec_...`) into the **Webhook Signing Secret** field in Admin → Settings
 
-### 5. Restart the app
+### 5. Enable Stripe
 
-```bash
-systemctl restart isam
-```
+In **Admin → Settings → Stripe Payments**, set **Payments** to **Enabled** and save. No restart required.
 
 The `/pricing` page will now show monthly and yearly subscription options for each paid tier.
 
