@@ -1,0 +1,45 @@
+{# Reusable tier feature list — expects `tier` in scope #}
+<ul style="list-style:none;padding:0;margin:0 0 1.5rem;font-size:.875rem;display:flex;flex-direction:column;gap:.4rem">
+  {% if tier.max_links_per_hour > 0 %}
+  <li>✓ {{ tier.max_links_per_hour }} links/hour</li>
+  {% else %}
+  <li>✓ Unlimited link creation</li>
+  {% endif %}
+
+  {% if tier.max_links_total > 0 %}
+  <li>✓ Up to {{ tier.max_links_total }} total links</li>
+  {% else %}
+  <li>✓ Unlimited total links</li>
+  {% endif %}
+
+  {% if tier.max_images_total > 0 %}
+  <li>✓ Up to {{ tier.max_images_total }} images</li>
+  {% else %}
+  <li>✓ Unlimited images</li>
+  {% endif %}
+
+  {% if tier.max_text_total > 0 %}
+  <li>✓ Up to {{ tier.max_text_total }} text pastes</li>
+  {% else %}
+  <li>✓ Unlimited text pastes</li>
+  {% endif %}
+
+  <li>✓ {{ tier.max_ddns_entries }} DDNS {{ 'entry' if tier.max_ddns_entries == 1 else 'entries' }}</li>
+  <li>✓ Up to {{ tier.max_file_size_mb }} MB uploads</li>
+
+  {% if tier.allow_raw_html %}
+  <li>✓ HTML pastes</li>
+  {% else %}
+  <li style="color:var(--color-text-dim)">✗ HTML pastes</li>
+  {% endif %}
+
+  {% if tier.show_ads %}
+  <li style="color:var(--color-text-dim)">· Ad-supported</li>
+  {% else %}
+  <li>✓ No ads</li>
+  {% endif %}
+
+  {% if tier.allow_ad_campaigns %}
+  <li>✓ Run ad campaigns</li>
+  {% endif %}
+</ul>

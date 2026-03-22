@@ -676,24 +676,31 @@ async function adminPlugin(fastify) {
 
   fastify.post('/admin/account-tiers', async (req, reply) => {
     if (req.subdomain !== '') return reply.callNotFound()
-    const { name, label, description, price, max_links_total, max_images_total, max_text_total, max_links_per_hour,
+    const { name, label, description, price, price_yearly, stripe_price_id_monthly, stripe_price_id_yearly,
+      max_links_total, max_images_total, max_text_total, max_links_per_hour,
       max_ddns_entries, max_file_size_mb, allow_raw_html, show_ads, allow_ad_campaigns, is_enabled, allow_watermark } = req.body || {}
     if (!name?.trim()) {
       req.session.flash = { type: 'error', message: 'Name required.' }
       return reply.redirect('/admin/account-tiers')
     }
     db.run(
-      `INSERT INTO account_tiers(name,label,description,price,max_links_total,max_images_total,max_text_total,max_links_per_hour,max_ddns_entries,max_file_size_mb,allow_raw_html,show_ads,allow_ad_campaigns,is_enabled,allow_watermark,created_at)
-       VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+      `INSERT INTO account_tiers(name,label,description,price,price_yearly,stripe_price_id_monthly,stripe_price_id_yearly,
+         max_links_total,max_images_total,max_text_total,max_links_per_hour,max_ddns_entries,max_file_size_mb,
+         allow_raw_html,show_ads,allow_ad_campaigns,is_enabled,allow_watermark,created_at)
+       VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
        ON CONFLICT(name) DO UPDATE SET label=excluded.label, description=excluded.description,
-         price=excluded.price, max_links_total=excluded.max_links_total,
+         price=excluded.price, price_yearly=excluded.price_yearly,
+         stripe_price_id_monthly=excluded.stripe_price_id_monthly,
+         stripe_price_id_yearly=excluded.stripe_price_id_yearly,
+         max_links_total=excluded.max_links_total,
          max_images_total=excluded.max_images_total, max_text_total=excluded.max_text_total,
          max_links_per_hour=excluded.max_links_per_hour, max_ddns_entries=excluded.max_ddns_entries,
          max_file_size_mb=excluded.max_file_size_mb, allow_raw_html=excluded.allow_raw_html,
          show_ads=excluded.show_ads, allow_ad_campaigns=excluded.allow_ad_campaigns,
          is_enabled=excluded.is_enabled, allow_watermark=excluded.allow_watermark`,
       name.trim().toLowerCase(), label || name.trim(), description?.trim() || null,
-      parseFloat(price) || 0,
+      parseFloat(price) || 0, parseFloat(price_yearly) || 0,
+      stripe_price_id_monthly?.trim() || null, stripe_price_id_yearly?.trim() || null,
       Number(max_links_total) || 0, Number(max_images_total) || 0, Number(max_text_total) || 0,
       Number(max_links_per_hour) || 0,
       (max_ddns_entries === '' || max_ddns_entries == null) ? 5 : Number(max_ddns_entries),

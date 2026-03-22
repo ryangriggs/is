@@ -20,6 +20,12 @@ export function checkLinkLimits(data, db, req) {
   const { ownerId, type } = data
   const ip = req?.ip || data.createdIp || null
 
+  // Admins are exempt from all limits
+  if (ownerId) {
+    const user = db.get('SELECT role FROM users WHERE id = ?', ownerId)
+    if (user?.role === 'admin') return
+  }
+
   if (!ownerId) {
     // Anonymous user: enforce anonymous tier limits by IP
     if (!ip) return

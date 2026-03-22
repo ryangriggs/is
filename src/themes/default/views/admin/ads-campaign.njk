@@ -41,6 +41,10 @@
       <strong>{{ totalClicks }}</strong>
     </div>
     <div>
+      <div class="text-muted text-xs" style="text-transform:uppercase;letter-spacing:.05em">Total Impressions</div>
+      <strong>{{ totalImpressions }}</strong>
+    </div>
+    <div>
       <div class="text-muted text-xs" style="text-transform:uppercase;letter-spacing:.05em">Expires</div>
       <span>{% if campaign.expires_at %}{{ campaign.expires_at | date }}{% else %}Never{% endif %}</span>
     </div>
@@ -71,7 +75,7 @@
           {% else %}
             <span class="badge badge-warning">Pending</span>
           {% endif %}
-          <span class="text-muted">{{ img.click_count }} click{{ 's' if img.click_count != 1 }}</span>
+          <span class="text-muted">{{ img.impression_count }} impression{{ 's' if img.impression_count != 1 }} &bull; {{ img.click_count }} click{{ 's' if img.click_count != 1 }}</span>
         </div>
         {% if img.alt_text %}
         <div class="text-muted">Alt: {{ img.alt_text }}</div>

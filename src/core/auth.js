@@ -1,4 +1,5 @@
 import bcrypt from 'bcryptjs'
+import { createHmac } from 'crypto'
 import { nanoid } from 'nanoid'
 import config from '../config.js'
 
@@ -22,6 +23,13 @@ export async function verifyToken(plain, hash) {
 
 export function generateToken(size = 32) {
   return nanoid(size)
+}
+
+// Keyed HMAC hash — deterministic (allows DB lookup), but requires the server
+// secret to compute, so a stolen DB alone cannot be used to forge tokens.
+// Use this for API tokens and password-reset tokens (not for passwords — use hashPassword).
+export function hashTokenFast(plain) {
+  return createHmac('sha256', config.SESSION_SECRET).update(plain).digest('hex')
 }
 
 // --- Route guards (used as preHandler in route options) ---

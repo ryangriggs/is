@@ -1,12 +1,7 @@
 import fp from 'fastify-plugin'
-import { createHash } from 'crypto'
-import { hashPassword, verifyPassword, requireAuth, generateToken } from '../../core/auth.js'
+import { hashPassword, verifyPassword, requireAuth, generateToken, hashTokenFast } from '../../core/auth.js'
 import config from '../../config.js'
 import { getAdForOwner } from '../../core/ads.js'
-
-function sha256(s) {
-  return createHash('sha256').update(s).digest('hex')
-}
 
 function usernameFromEmail(email) {
   return email.split('@')[0]
@@ -254,7 +249,7 @@ async function usersPlugin(fastify) {
     if (!user) return successView()
 
     const token = generateToken(40)
-    const tokenHash = sha256(token)
+    const tokenHash = hashTokenFast(token)
     const expires = Date.now() + 60 * 60 * 1000 // 1 hour
 
     db.run(
@@ -278,7 +273,7 @@ async function usersPlugin(fastify) {
     if (req.subdomain !== '') return reply.callNotFound()
     const { token } = req.query
     if (!token) return reply.redirect('/forgot-password')
-    const tokenHash = sha256(token)
+    const tokenHash = hashTokenFast(token)
     const user = db.get(
       'SELECT * FROM users WHERE reset_token_hash = ? AND reset_token_expires > ?',
       tokenHash, Date.now()
@@ -296,7 +291,7 @@ async function usersPlugin(fastify) {
     if (req.subdomain !== '') return reply.callNotFound()
     const { token = '', password = '', password2 = '' } = req.body || {}
 
-    const tokenHash = sha256(token)
+    const tokenHash = hashTokenFast(token)
     const user = db.get(
       'SELECT * FROM users WHERE reset_token_hash = ? AND reset_token_expires > ?',
       tokenHash, Date.now()
@@ -525,7 +520,7 @@ async function usersPlugin(fastify) {
   fastify.post('/tokens', { preHandler: requireAuth }, async (req, reply) => {
     const { label = '' } = req.body || {}
     const plain = generateToken(32)
-    const hash = sha256(plain)
+    const hash = hashTokenFast(plain)
     db.run(
       'INSERT INTO api_tokens(user_id, token_hash, label, created_at) VALUES(?,?,?,?)',
       req.session.userId, hash, label.trim() || null, Date.now()
@@ -572,7 +567,12 @@ async function usersPlugin(fastify) {
     const tiers = db.all("SELECT * FROM account_tiers WHERE is_enabled = 1 AND name != 'anonymous' ORDER BY price ASC")
     const currentTier = req.session.subscriptionTier || (req.session.userId ? 'free' : null)
     const ad = getAdForOwner(req.session.userId || null, db)
-    return reply.view('pricing.njk', { tiers, currentTier, ad })
+    let subscriptionInterval = null
+    if (req.session.userId) {
+      const user = db.get('SELECT stripe_subscription_interval FROM users WHERE id = ?', req.session.userId)
+      subscriptionInterval = user?.stripe_subscription_interval || null
+    }
+    return reply.view('pricing.njk', { tiers, currentTier, subscriptionInterval, ad })
   })
 
   // POST /pricing/change — user requests a tier change (manual/admin-side flow for now)

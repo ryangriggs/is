@@ -1,13 +1,8 @@
 import fp from 'fastify-plugin'
-import { createHash } from 'crypto'
 import { createLink } from '../../core/links.js'
 import { normalizeCode } from '../../core/shortcode.js'
-import { generateToken } from '../../core/auth.js'
+import { generateToken, hashTokenFast } from '../../core/auth.js'
 import config from '../../config.js'
-
-function sha256(s) {
-  return createHash('sha256').update(s).digest('hex')
-}
 
 async function apiPlugin(fastify) {
   const db = fastify.db
@@ -19,7 +14,7 @@ async function apiPlugin(fastify) {
     const token = header.startsWith('Bearer ') ? header.slice(7).trim() : null
     if (!token) return reply.code(401).send({ error: 'Missing API token' })
 
-    const hash = sha256(token)
+    const hash = hashTokenFast(token)
     const row = db.get('SELECT * FROM api_tokens WHERE token_hash = ?', hash)
     if (!row) return reply.code(401).send({ error: 'Invalid API token' })
 
@@ -114,7 +109,7 @@ async function apiPlugin(fastify) {
   fastify.post('/a/tokens', { preHandler: apiAuth }, async (req, reply) => {
     const { label = '' } = req.body || {}
     const plain = generateToken(32)
-    const hash = sha256(plain)
+    const hash = hashTokenFast(plain)
     const result = db.run(
       'INSERT INTO api_tokens(user_id, token_hash, label, created_at) VALUES(?,?,?,?)',
       req.apiUserId, hash, label.trim() || null, Date.now()

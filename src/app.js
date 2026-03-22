@@ -46,7 +46,7 @@ export async function buildApp() {
     logger: config.IS_DEV
       ? { level: 'info' }
       : { level: 'warn' },
-    trustProxy: true,
+    trustProxy: 1,        // Trust exactly one proxy hop (nginx); prevents X-Forwarded-For spoofing
     ignoreTrailingSlash: true,
   })
 
@@ -77,10 +77,29 @@ export async function buildApp() {
     cookie: {
       secure: config.IS_PROD,
       httpOnly: true,
-      sameSite: 'lax',
+      sameSite: 'strict',
       maxAge: config.ANON_TOKEN_COOKIE_DAYS * 24 * 60 * 60 * 1000,
     },
     saveUninitialized: false,
+  })
+
+  // CSRF: reject cross-origin state-changing requests.
+  // API routes (/a/*) are excluded — they authenticate via Bearer token, not cookies.
+  app.addHook('preHandler', async (req, reply) => {
+    if (!['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method)) return
+    if (req.url.startsWith('/a/')) return
+    if (req.url === '/stripe/webhook') return  // Stripe webhook verified by signature
+    const origin = req.headers.origin
+    if (!origin) return  // curl / server-to-server — no Origin header, allow
+    try {
+      const originHost = new URL(origin).hostname
+      const siteHost = config.BASE_DOMAIN
+      if (originHost !== siteHost && !originHost.endsWith('.' + siteHost)) {
+        return reply.code(403).send('Forbidden')
+      }
+    } catch {
+      return reply.code(403).send('Forbidden')
+    }
   })
 
   // Body parsers

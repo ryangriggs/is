@@ -57,6 +57,12 @@ export async function initDb() {
       'ALTER TABLE account_tiers ADD COLUMN allow_watermark INTEGER NOT NULL DEFAULT 1',
       'ALTER TABLE users ADD COLUMN stripe_customer_id TEXT',
       'ALTER TABLE users ADD COLUMN stripe_subscription_id TEXT',
+      'ALTER TABLE users ADD COLUMN stripe_subscription_status TEXT',
+      'ALTER TABLE users ADD COLUMN stripe_current_period_end INTEGER',
+      'ALTER TABLE users ADD COLUMN stripe_subscription_interval TEXT',
+      'ALTER TABLE account_tiers ADD COLUMN stripe_price_id_monthly TEXT',
+      'ALTER TABLE account_tiers ADD COLUMN stripe_price_id_yearly TEXT',
+      'ALTER TABLE account_tiers ADD COLUMN price_yearly REAL NOT NULL DEFAULT 0',
     ]
     for (const stmt of addColumns) {
       try { sqlite.prepare(stmt).run() } catch (_) { /* column already exists */ }
@@ -103,6 +109,12 @@ export async function initDb() {
       image_id INTEGER NOT NULL REFERENCES ad_images(id) ON DELETE CASCADE,
       ip TEXT,
       clicked_at INTEGER NOT NULL DEFAULT (strftime('%s','now') * 1000)
+    )`)
+
+    sqlite.exec(`CREATE TABLE IF NOT EXISTS ad_impressions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      image_id INTEGER NOT NULL REFERENCES ad_images(id) ON DELETE CASCADE,
+      shown_at INTEGER NOT NULL DEFAULT (strftime('%s','now') * 1000)
     )`)
 
     // Seed default account tiers (only if none exist yet)

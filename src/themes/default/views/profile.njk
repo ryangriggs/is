@@ -43,10 +43,27 @@
   </form>
 
   <div class="card mt-3" style="padding:1rem">
-    <p class="text-sm text-muted">
+    <p class="text-sm text-muted" style="margin-bottom:{% if profileUser.stripe_subscription_status %}.75rem{% else %}0{% endif %}">
       Account tier: <span class="badge badge-info">{{ profileUser.subscription_tier or 'free' }}</span>
       &nbsp;·&nbsp; Member since {{ profileUser.created_at | date }}
     </p>
+    {% if profileUser.stripe_subscription_status %}
+    <p class="text-sm text-muted" style="margin-bottom:.75rem">
+      Subscription:
+      <strong>{{ profileUser.stripe_subscription_status }}</strong>
+      {% if profileUser.stripe_subscription_interval %}
+        ({{ profileUser.stripe_subscription_interval }})
+      {% endif %}
+      {% if profileUser.stripe_current_period_end %}
+        · renews {{ profileUser.stripe_current_period_end | date }}
+      {% endif %}
+    </p>
+    <form method="POST" action="/stripe/portal" style="display:inline">
+      <button class="btn btn-secondary btn-sm">Manage Subscription</button>
+    </form>
+    {% else %}
+    <a href="/pricing" class="text-sm" style="color:var(--color-primary)">View plans →</a>
+    {% endif %}
   </div>
 </div>
 {% endblock %}

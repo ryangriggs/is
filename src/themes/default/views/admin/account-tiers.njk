@@ -67,6 +67,18 @@
           <input type="number" name="price" class="input" value="{{ tier.price or 0 }}" min="0" step="0.01">
         </div>
         <div>
+          <label class="label">Price ($/year, 0 = same as monthly)</label>
+          <input type="number" name="price_yearly" class="input" value="{{ tier.price_yearly or 0 }}" min="0" step="0.01">
+        </div>
+        <div>
+          <label class="label">Stripe Price ID (monthly)</label>
+          <input type="text" name="stripe_price_id_monthly" class="input" value="{{ tier.stripe_price_id_monthly or '' }}" placeholder="price_...">
+        </div>
+        <div>
+          <label class="label">Stripe Price ID (yearly)</label>
+          <input type="text" name="stripe_price_id_yearly" class="input" value="{{ tier.stripe_price_id_yearly or '' }}" placeholder="price_...">
+        </div>
+        <div>
           <label class="label">Max Links / Hour <span class="text-muted">(0=∞)</span></label>
           <input type="number" name="max_links_per_hour" class="input" value="{{ tier.max_links_per_hour }}" min="0">
         </div>

@@ -72,10 +72,7 @@ async function shortlinksPlugin(fastify) {
     const pathPart = req.params['*'].replace(/%23/gi, '#')
     const destination = pathPart + qs
 
-    console.log('[l-shortcut] raw url    :', rawUrl)
-    console.log('[l-shortcut] params[*]  :', req.params['*'])
-    console.log('[l-shortcut] qs         :', qs)
-    console.log('[l-shortcut] destination:', destination)
+
 
     if (!destination || (!destination.startsWith('http://') && !destination.startsWith('https://'))) {
       return reply.view('home.njk', {
@@ -169,8 +166,7 @@ async function shortlinksPlugin(fastify) {
     }
 
     db.run('UPDATE links SET title = ? WHERE id = ?', newTitle, link.id)
-    const qs = token ? `?code=${code}&token=${token}` : `?code=${code}`
-    return reply.redirect(`/success${qs}`)
+    return reply.redirect(`/success?code=${code}`)
   })
 
   // ----------------------------------------------------------------
@@ -183,6 +179,10 @@ async function shortlinksPlugin(fastify) {
     if (!link || !link.is_active) {
       reply.code(404)
       return reply.view('errors/404.njk', {})
+    }
+    if (link.is_private) {
+      reply.code(403)
+      return reply.view('errors/403.njk', {})
     }
     if (link.type === 'html') {
       reply.header('Content-Type', 'text/html; charset=utf-8')
@@ -222,7 +222,7 @@ async function shortlinksPlugin(fastify) {
     }
 
     if (link.password_hash) {
-      const submitted = req.query.p || req.body?.password
+      const submitted = req.body?.password
       if (!submitted) return reply.view('password.njk', { code, error: null })
       const valid = await verifyToken(submitted, link.password_hash)
       if (!valid) return reply.view('password.njk', { code, error: 'Incorrect password.' })
@@ -323,17 +323,17 @@ async function shortlinksPlugin(fastify) {
         const dest = (destination || '').trim()
         if (!dest.startsWith('http://') && !dest.startsWith('https://')) {
           req.session.flash = { type: 'error', message: 'Invalid URL.' }
-          return reply.redirect(`/manage/${code}?token=${token}`)
+          return reply.redirect(`/manage/${code}`)
         }
         db.run('UPDATE links SET destination = ?, title = ? WHERE id = ?', dest, title || null, link.id)
       } else {
         db.run('UPDATE links SET title = ? WHERE id = ?', title || null, link.id)
       }
       req.session.flash = { type: 'success', message: 'Updated.' }
-      return reply.redirect(`/manage/${code}?token=${token}`)
+      return reply.redirect(`/manage/${code}`)
     }
 
-    return reply.redirect(`/manage/${code}?token=${token}`)
+    return reply.redirect(`/manage/${code}`)
   })
 
   // ----------------------------------------------------------------
@@ -378,7 +378,7 @@ async function shortlinksPlugin(fastify) {
     }
     if (plainToken) {
       setMgmtCookie(reply, req, link.code, plainToken)
-      return reply.redirect(`/success?code=${link.code}&token=${plainToken}`)
+      return reply.redirect(`/success?code=${link.code}`)
     }
     return reply.redirect(`/success?code=${link.code}`)
   }

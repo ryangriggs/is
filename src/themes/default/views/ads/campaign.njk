@@ -48,6 +48,10 @@
           <td>{% if campaign.expires_at %}{{ campaign.expires_at | date }}{% else %}Never{% endif %}</td>
         </tr>
         <tr>
+          <td class="text-muted" style="padding:4px 0">Total Impressions</td>
+          <td>{{ impressions }}</td>
+        </tr>
+        <tr>
           <td class="text-muted" style="padding:4px 0">Total Clicks</td>
           <td>{{ clicks }}</td>
         </tr>
@@ -78,6 +82,7 @@
           {% else %}
             <span class="badge badge-warning">Pending approval</span>
           {% endif %}
+          <span class="text-muted" style="font-size:.78rem;margin-left:.25rem">{{ img.impression_count }} imp &bull; {{ img.click_count }} click{{ 's' if img.click_count != 1 }}</span>
           {% if img.alt_text %}<br><span class="text-muted mt-1">{{ img.alt_text }}</span>{% endif %}
         </div>
       </div>

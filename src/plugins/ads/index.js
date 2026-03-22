@@ -112,17 +112,30 @@ async function adsPlugin(fastify) {
     )
     if (!campaign) { reply.code(404); return reply.view('errors/404.njk', {}) }
 
-    const images = db.all(
-      'SELECT * FROM ad_images WHERE campaign_id = ? ORDER BY created_at DESC',
-      campaign.id
-    )
+    const images = db.all(`
+      SELECT ai.*,
+             COUNT(DISTINCT ac.id) as click_count,
+             COUNT(DISTINCT imp.id) as impression_count
+      FROM ad_images ai
+      LEFT JOIN ad_clicks ac ON ac.image_id = ai.id
+      LEFT JOIN ad_impressions imp ON imp.image_id = ai.id
+      WHERE ai.campaign_id = ?
+      GROUP BY ai.id
+      ORDER BY ai.created_at DESC
+    `, campaign.id)
     const clicks = db.get(
-      `SELECT COUNT(*) as n FROM ad_clicks ai
-       JOIN ad_images img ON img.id = ai.image_id
+      `SELECT COUNT(*) as n FROM ad_clicks ac
+       JOIN ad_images img ON img.id = ac.image_id
        WHERE img.campaign_id = ?`,
       campaign.id
     )
-    return reply.view('ads/campaign.njk', { campaign, images, clicks: clicks?.n || 0 })
+    const impressions = db.get(
+      `SELECT COUNT(*) as n FROM ad_impressions imp
+       JOIN ad_images img ON img.id = imp.image_id
+       WHERE img.campaign_id = ?`,
+      campaign.id
+    )
+    return reply.view('ads/campaign.njk', { campaign, images, clicks: clicks?.n || 0, impressions: impressions?.n || 0 })
   })
 
   // ----------------------------------------------------------------
@@ -225,9 +238,12 @@ async function adsPlugin(fastify) {
     if (!campaign) { reply.code(404); return reply.view('errors/404.njk', {}) }
 
     const images = db.all(`
-      SELECT ai.*, COUNT(ac2.id) as click_count
+      SELECT ai.*,
+             COUNT(DISTINCT ac2.id) as click_count,
+             COUNT(DISTINCT ai2.id) as impression_count
       FROM ad_images ai
       LEFT JOIN ad_clicks ac2 ON ac2.image_id = ai.id
+      LEFT JOIN ad_impressions ai2 ON ai2.image_id = ai.id
       WHERE ai.campaign_id = ?
       GROUP BY ai.id
       ORDER BY ai.created_at DESC
@@ -239,7 +255,13 @@ async function adsPlugin(fastify) {
       WHERE ai.campaign_id = ?
     `, campaign.id)
 
-    return reply.view('admin/ads-campaign.njk', { campaign, images, totalClicks: totalClicks?.n || 0 })
+    const totalImpressions = db.get(`
+      SELECT COUNT(*) as n FROM ad_impressions ai2
+      JOIN ad_images ai ON ai.id = ai2.image_id
+      WHERE ai.campaign_id = ?
+    `, campaign.id)
+
+    return reply.view('admin/ads-campaign.njk', { campaign, images, totalClicks: totalClicks?.n || 0, totalImpressions: totalImpressions?.n || 0 })
   })
 
   // ----------------------------------------------------------------

@@ -21,6 +21,7 @@ export function getAdForOwner(ownerId, db) {
       ORDER BY RANDOM() LIMIT 1
     `, Date.now())
     if (!ad) return null
+    try { db.run('INSERT INTO ad_impressions(image_id, shown_at) VALUES(?,?)', ad.id, Date.now()) } catch (_) {}
     return { imageUrl: `/uploads/ads/${ad.image_path}`, clickUrl: `/ad/c/${ad.id}` }
   } catch (_) { return null }
 }

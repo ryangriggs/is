@@ -8,10 +8,29 @@
     <p class="page-subtitle">Choose the plan that works for you.</p>
   </div>
 
+  {% if flash %}
+  <div class="alert alert-{{ flash.type }}" style="margin-bottom:1.5rem">{{ flash.message }}</div>
+  {% endif %}
+
   {% include "partials/ad-banner.njk" %}
+
+  {# Free tiers — single box per tier #}
+  {% set freeTiers = [] %}
+  {% set paidTiers = [] %}
+  {% for tier in tiers %}
+    {% if tier.price > 0 %}
+      {% set paidTiers = (paidTiers.push(tier), paidTiers) %}
+    {% else %}
+      {% set freeTiers = (freeTiers.push(tier), freeTiers) %}
+    {% endif %}
+  {% endfor %}
+
   <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:1.5rem;align-items:start">
+
+    {# ── Free tiers ── #}
     {% for tier in tiers %}
-    {% set isCurrent = (currentTier == tier.name) or (not currentTier and tier.price == 0) %}
+    {% if tier.price <= 0 %}
+    {% set isCurrent = (currentTier == tier.name) or (not currentTier and not user) %}
     <div class="card" style="position:relative;border:{{ '2px solid var(--color-primary)' if isCurrent else '1px solid var(--color-border)' }}">
 
       {% if isCurrent %}
@@ -20,68 +39,17 @@
 
       <div style="margin-bottom:1.25rem">
         <h2 style="margin:0 0 .25rem;font-size:1.25rem">{{ tier.label or tier.name }}</h2>
-        <div style="font-size:1.75rem;font-weight:700;margin:.5rem 0">
-          {% if tier.price > 0 %}
-            ${{ tier.price }}<span style="font-size:.875rem;font-weight:400;color:var(--color-text-muted)">/mo</span>
-          {% else %}
-            Free
-          {% endif %}
-        </div>
+        <div style="font-size:1.75rem;font-weight:700;margin:.5rem 0">Free</div>
         {% if tier.description %}
         <p style="font-size:.875rem;color:var(--color-text-muted);margin:.5rem 0 0">{{ tier.description }}</p>
         {% endif %}
       </div>
 
-      <ul style="list-style:none;padding:0;margin:0 0 1.5rem;font-size:.875rem;display:flex;flex-direction:column;gap:.4rem">
-        {% if tier.max_links_per_hour > 0 %}
-        <li>✓ {{ tier.max_links_per_hour }} links/hour</li>
-        {% else %}
-        <li>✓ Unlimited link creation</li>
-        {% endif %}
-
-        {% if tier.max_links_total > 0 %}
-        <li>✓ Up to {{ tier.max_links_total }} total links</li>
-        {% else %}
-        <li>✓ Unlimited total links</li>
-        {% endif %}
-
-        {% if tier.max_images_total > 0 %}
-        <li>✓ Up to {{ tier.max_images_total }} images</li>
-        {% else %}
-        <li>✓ Unlimited images</li>
-        {% endif %}
-
-        {% if tier.max_text_total > 0 %}
-        <li>✓ Up to {{ tier.max_text_total }} text pastes</li>
-        {% else %}
-        <li>✓ Unlimited text pastes</li>
-        {% endif %}
-
-        <li>✓ {{ tier.max_ddns_entries }} DDNS {{ 'entry' if tier.max_ddns_entries == 1 else 'entries' }}</li>
-        <li>✓ Up to {{ tier.max_file_size_mb }} MB uploads</li>
-
-        {% if tier.allow_raw_html %}
-        <li>✓ HTML pastes</li>
-        {% else %}
-        <li style="color:var(--color-text-dim)">✗ HTML pastes</li>
-        {% endif %}
-
-        {% if tier.show_ads %}
-        <li style="color:var(--color-text-dim)">· Ad-supported</li>
-        {% else %}
-        <li>✓ No ads</li>
-        {% endif %}
-
-        {% if tier.allow_ad_campaigns %}
-        <li>✓ Run ad campaigns</li>
-        {% endif %}
-      </ul>
+      {% include "partials/tier-features.njk" %}
 
       {% if user %}
         {% if isCurrent %}
           <button class="btn btn-secondary btn-block" disabled>Current Plan</button>
-        {% elif tier.price > 0 %}
-          <button class="btn btn-primary btn-block" disabled title="Payment coming soon">Coming Soon</button>
         {% else %}
           <form method="POST" action="/pricing/change">
             <input type="hidden" name="tier" value="{{ tier.name }}">
@@ -89,9 +57,111 @@
           </form>
         {% endif %}
       {% else %}
+        <a href="/register" class="btn btn-primary btn-block">Get Started Free</a>
+      {% endif %}
+    </div>
+    {% endif %}
+    {% endfor %}
+
+    {# ── Paid tiers — two boxes each (monthly + yearly) ── #}
+    {% for tier in tiers %}
+    {% if tier.price > 0 %}
+
+    {# Monthly box #}
+    {% set isCurrent = (currentTier == tier.name) and (subscriptionInterval == 'monthly') %}
+    <div class="card" style="position:relative;border:{{ '2px solid var(--color-primary)' if isCurrent else '1px solid var(--color-border)' }}">
+
+      {% if isCurrent %}
+      <div style="position:absolute;top:-1px;right:1rem;background:var(--color-primary);color:#fff;font-size:.7rem;font-weight:700;padding:2px 10px;border-radius:0 0 6px 6px;text-transform:uppercase;letter-spacing:.05em">Current Plan</div>
+      {% endif %}
+
+      <div style="margin-bottom:1.25rem">
+        <h2 style="margin:0 0 .25rem;font-size:1.25rem">{{ tier.label or tier.name }}</h2>
+        <div style="font-size:.75rem;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--color-text-muted);margin-bottom:.25rem">Monthly</div>
+        <div style="font-size:1.75rem;font-weight:700;margin:.5rem 0">
+          ${{ tier.price }}<span style="font-size:.875rem;font-weight:400;color:var(--color-text-muted)">/mo</span>
+        </div>
+        {% if tier.description %}
+        <p style="font-size:.875rem;color:var(--color-text-muted);margin:.5rem 0 0">{{ tier.description }}</p>
+        {% endif %}
+      </div>
+
+      {% include "partials/tier-features.njk" %}
+
+      {% if user %}
+        {% if isCurrent %}
+          <form method="POST" action="/stripe/portal">
+            <button class="btn btn-secondary btn-block">Manage Subscription</button>
+          </form>
+        {% elif currentTier == tier.name %}
+          {# Same tier, different interval — switching handled through portal #}
+          <form method="POST" action="/stripe/portal">
+            <button class="btn btn-secondary btn-block">Manage Subscription</button>
+          </form>
+        {% else %}
+          <form method="POST" action="/stripe/checkout">
+            <input type="hidden" name="tier" value="{{ tier.name }}">
+            <input type="hidden" name="interval" value="monthly">
+            <button class="btn btn-primary btn-block">Subscribe Monthly</button>
+          </form>
+        {% endif %}
+      {% else %}
         <a href="/register" class="btn btn-primary btn-block">Get Started</a>
       {% endif %}
     </div>
+
+    {# Yearly box #}
+    {% set yearlyPrice = tier.price_yearly if tier.price_yearly > 0 else (tier.price * 12) %}
+    {% set isCurrent = (currentTier == tier.name) and (subscriptionInterval == 'yearly') %}
+    <div class="card" style="position:relative;border:{{ '2px solid var(--color-primary)' if isCurrent else '1px solid var(--color-border)' }}">
+
+      {% if isCurrent %}
+      <div style="position:absolute;top:-1px;right:1rem;background:var(--color-primary);color:#fff;font-size:.7rem;font-weight:700;padding:2px 10px;border-radius:0 0 6px 6px;text-transform:uppercase;letter-spacing:.05em">Current Plan</div>
+      {% endif %}
+
+      <div style="position:absolute;top:-1px;left:1rem;background:var(--color-success, #16a34a);color:#fff;font-size:.7rem;font-weight:700;padding:2px 10px;border-radius:0 0 6px 6px;text-transform:uppercase;letter-spacing:.05em">Best Value</div>
+
+      <div style="margin-bottom:1.25rem">
+        <h2 style="margin:0 0 .25rem;font-size:1.25rem">{{ tier.label or tier.name }}</h2>
+        <div style="font-size:.75rem;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--color-text-muted);margin-bottom:.25rem">Yearly</div>
+        <div style="font-size:1.75rem;font-weight:700;margin:.5rem 0">
+          ${{ yearlyPrice }}<span style="font-size:.875rem;font-weight:400;color:var(--color-text-muted)">/yr</span>
+        </div>
+        <div style="font-size:.8rem;color:var(--color-success, #16a34a);font-weight:500">
+          ~${{ (yearlyPrice / 12) | round(2) }}/mo
+          {% if tier.price_yearly > 0 and tier.price_yearly < (tier.price * 12) %}
+          · Save ${{ (tier.price * 12 - tier.price_yearly) | round(2) }}
+          {% endif %}
+        </div>
+        {% if tier.description %}
+        <p style="font-size:.875rem;color:var(--color-text-muted);margin:.5rem 0 0">{{ tier.description }}</p>
+        {% endif %}
+      </div>
+
+      {% include "partials/tier-features.njk" %}
+
+      {% if user %}
+        {% if isCurrent %}
+          <form method="POST" action="/stripe/portal">
+            <button class="btn btn-secondary btn-block">Manage Subscription</button>
+          </form>
+        {% elif currentTier == tier.name %}
+          <form method="POST" action="/stripe/portal">
+            <button class="btn btn-secondary btn-block">Manage Subscription</button>
+          </form>
+        {% else %}
+          <form method="POST" action="/stripe/checkout">
+            <input type="hidden" name="tier" value="{{ tier.name }}">
+            <input type="hidden" name="interval" value="yearly">
+            <button class="btn btn-primary btn-block">Subscribe Yearly</button>
+          </form>
+        {% endif %}
+      {% else %}
+        <a href="/register" class="btn btn-primary btn-block">Get Started</a>
+      {% endif %}
+    </div>
+
+    {% endif %}
     {% endfor %}
 
     {% if not tiers.length %}

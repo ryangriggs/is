@@ -66,6 +66,79 @@ Copy `.env.example` to `.env` and edit:
 | `ADMIN_EMAIL` | Admin account email | — |
 | `ADMIN_PASSWORD` | Set to pre-configure admin password; leave blank to auto-generate | — |
 | `THEME` | Theme folder name inside `src/themes/` | `default` |
+| `STRIPE_SECRET_KEY` | Stripe secret key (`sk_live_...`) — leave blank to disable payments | — |
+| `STRIPE_WEBHOOK_SECRET` | Stripe webhook signing secret (`whsec_...`) | — |
+| `RESEND_API_KEY` | Resend API key for transactional email | — |
+| `RESEND_FROM_EMAIL` | From address for outgoing email | — |
+
+---
+
+## Stripe Subscription Payments
+
+Stripe is optional. Leave `STRIPE_SECRET_KEY` blank and the payment UI is hidden entirely.
+
+### 1. Create a Stripe account and get your keys
+
+In the [Stripe Dashboard](https://dashboard.stripe.com/):
+
+- **API keys** → copy your **Secret key** (`sk_live_...`) into `STRIPE_SECRET_KEY`
+- Use `sk_test_...` keys during development
+
+### 2. Create products and prices
+
+For each paid account tier you want to offer, create a **Product** in Stripe with **two Prices** — one monthly and one yearly:
+
+1. Stripe Dashboard → **Products** → **Add product**
+2. Set the name (e.g. "Pro")
+3. Under **Pricing**, add a recurring monthly price (e.g. $9/month)
+4. Add a second recurring yearly price (e.g. $90/year)
+5. Copy both `price_xxx` IDs — you'll enter them in the admin panel
+
+### 3. Configure tiers in the admin panel
+
+1. Log in as admin → **Admin** → **Account Tiers**
+2. For each paid tier, fill in:
+   - **Price ($/month)** — displayed on the pricing page
+   - **Price ($/year)** — displayed on the pricing page (set to 0 to show `price × 12`)
+   - **Stripe Price ID (monthly)** — `price_xxx` from Stripe
+   - **Stripe Price ID (yearly)** — `price_xxx` from Stripe
+3. Save changes
+
+### 4. Set up the Stripe webhook
+
+Stripe must notify your app when subscriptions change (new signups, renewals, cancellations).
+
+1. Stripe Dashboard → **Developers** → **Webhooks** → **Add endpoint**
+2. Set the endpoint URL to `https://yourdomain.com/stripe/webhook`
+3. Select these events to listen for:
+   - `checkout.session.completed`
+   - `customer.subscription.updated`
+   - `customer.subscription.deleted`
+   - `invoice.payment_failed`
+4. Copy the **Signing secret** (`whsec_...`) into `STRIPE_WEBHOOK_SECRET`
+
+### 5. Restart the app
+
+```bash
+systemctl restart isam
+```
+
+The `/pricing` page will now show monthly and yearly subscription options for each paid tier.
+
+### Testing with Stripe CLI (development)
+
+```bash
+stripe listen --forward-to localhost:3000/stripe/webhook
+```
+
+Use Stripe's [test card numbers](https://stripe.com/docs/testing#cards) (e.g. `4242 4242 4242 4242`) in Checkout.
+
+### How subscriptions work
+
+- **Checkout** — users are redirected to Stripe-hosted Checkout; on success, a webhook fires and the account tier is updated immediately
+- **Cancellation** — handled via the Stripe Customer Portal (`/stripe/portal`); access continues until the current period ends (no refunds, no mid-period cutoff)
+- **Payment failure** — subscription status is set to `past_due`; the tier is not changed until the subscription is fully canceled
+- **Admins** — exempt from all tier limits regardless of their subscription status
 
 ---
 
