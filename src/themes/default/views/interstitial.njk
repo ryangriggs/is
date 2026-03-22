@@ -24,7 +24,7 @@
 </section>
 <script>
   var secs = {{ seconds }};
-  var dest = {{ destination | dump }};
+  var dest = {{ destination | dump | safe }};
   var label = document.getElementById('cd-label');
   var counter = document.getElementById('countdown');
   var timer = setInterval(function() {
