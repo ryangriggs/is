@@ -69,6 +69,11 @@ async function adminPlugin(fastify) {
     }
   })
 
+  // Simple health check used by update overlay to detect when app is back online
+  fastify.get('/ping', async (req, reply) => {
+    return reply.code(200).send({ ok: true })
+  })
+
   fastify.get('/admin', async (req, reply) => {
     if (req.subdomain !== '') return reply.callNotFound()
     return reply.redirect('/admin/overview')

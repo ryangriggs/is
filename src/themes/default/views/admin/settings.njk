@@ -30,8 +30,8 @@
     </div>
     <div style="display:flex;gap:.5rem;flex-wrap:wrap">
       {% if updateInfo.updateAvailable %}
-      <form method="POST" action="/admin/update/apply" style="margin:0">
-        <button class="btn btn-primary btn-sm" data-confirm="Apply update and restart the app?">⬆ Update Now</button>
+      <form method="POST" action="/admin/update/apply" style="margin:0" id="update-apply-form">
+        <button class="btn btn-primary btn-sm" id="update-apply-btn">⬆ Update Now</button>
       </form>
       {% endif %}
       <form method="POST" action="/admin/update/check" style="margin:0">
@@ -128,4 +128,67 @@
     </div>
   </div>
 </div>
+
+{% if updateInfo.updateAvailable %}
+{# Update overlay — shown after clicking Update Now #}
+<div id="update-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:9999;flex-direction:column;align-items:center;justify-content:center;gap:1.5rem">
+  <style>
+    @keyframes upd-spin { to { transform: rotate(360deg); } }
+    #update-spinner { width:56px;height:56px;border-radius:50%;border:5px solid rgba(255,255,255,.2);border-top-color:#fff;animation:upd-spin .8s linear infinite; }
+    #update-overlay-msg { color:#fff;font-size:1.1rem;font-weight:500;text-align:center; }
+    #update-overlay-sub { color:rgba(255,255,255,.6);font-size:.875rem;text-align:center; }
+  </style>
+  <div id="update-spinner"></div>
+  <div id="update-overlay-msg">Applying update…</div>
+  <div id="update-overlay-sub">Please wait while the app restarts.</div>
+</div>
+<script>
+(function() {
+  var form = document.getElementById('update-apply-form')
+  var btn  = document.getElementById('update-apply-btn')
+  var overlay = document.getElementById('update-overlay')
+  var msg = document.getElementById('update-overlay-msg')
+  var sub = document.getElementById('update-overlay-sub')
+  if (!form || !overlay) return
+
+  form.addEventListener('submit', function(e) {
+    e.preventDefault()
+    if (!confirm('Apply update and restart the app?')) return
+
+    overlay.style.display = 'flex'
+    btn.disabled = true
+
+    // Fire the POST — server will exit shortly after responding
+    fetch(form.action, { method: 'POST', credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' } })
+      .catch(function() {})
+
+    // Wait for restart to begin, then poll /ping until the server responds
+    setTimeout(function() {
+      msg.textContent = 'Waiting for server to restart…'
+      var elapsed = 0
+      var interval = setInterval(function() {
+        elapsed += 1500
+        if (elapsed >= 120000) {
+          clearInterval(interval)
+          msg.textContent = 'Taking longer than expected…'
+          sub.textContent = 'Refresh manually when ready.'
+          return
+        }
+        fetch('/ping', { cache: 'no-store', credentials: 'same-origin' })
+          .then(function(r) {
+            if (r.ok) {
+              clearInterval(interval)
+              msg.textContent = 'Update complete! Reloading…'
+              sub.textContent = ''
+              setTimeout(function() { location.reload() }, 800)
+            }
+          })
+          .catch(function() {}) // still down — keep polling
+      }, 1500)
+    }, 3000)
+  })
+})()
+</script>
+{% endif %}
 {% endblock %}
