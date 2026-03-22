@@ -4,6 +4,7 @@ import config from '../../config.js'
 import { ipMatchesCidr } from '../../core/cidr.js'
 import { invalidateIpCache } from '../../core/ipblock.js'
 import { scanUrl, scanUrlContent } from '../../core/scanner.js'
+import { checkForUpdates, getUpdateStatus, reloadCurrentVersion } from '../../core/updater.js'
 
 async function adminPlugin(fastify) {
   const db = fastify.db
@@ -396,7 +397,7 @@ async function adminPlugin(fastify) {
       const entries = readdirSync(join(__dir, '../../themes'), { withFileTypes: true })
       availableThemes = entries.filter(e => e.isDirectory()).map(e => e.name)
     } catch (_) {}
-    return reply.view('admin/settings.njk', { settings: settingsMap, availableThemes })
+    return reply.view('admin/settings.njk', { settings: settingsMap, availableThemes, updateInfo: getUpdateStatus() })
   })
 
   fastify.post('/admin/settings', async (req, reply) => {
@@ -405,6 +406,7 @@ async function adminPlugin(fastify) {
       'site_name', 'site_tagline', 'registration_open',
       'require_login_to_create', 'max_links_anonymous',
       'max_file_size_mb', 'allowed_image_types', 'ads_enabled', 'active_theme',
+      'github_repo_url', 'update_check_hours',
     ]
     for (const key of allowed) {
       if (req.body[key] !== undefined) {
@@ -625,6 +627,43 @@ async function adminPlugin(fastify) {
     db.run('DELETE FROM account_tiers WHERE id = ?', Number(req.params.id))
     req.session.flash = { type: 'success', message: 'Tier deleted.' }
     return reply.redirect('/admin/account-tiers')
+  })
+
+  // ----------------------------------------------------------------
+  // POST /admin/update/check — force a remote version check
+  // ----------------------------------------------------------------
+  fastify.post('/admin/update/check', async (req, reply) => {
+    if (req.subdomain !== '') return reply.callNotFound()
+    const repoUrl = db.get("SELECT value FROM settings WHERE key = 'github_repo_url'")?.value
+    const result = await checkForUpdates(repoUrl, { force: true })
+    if (result) {
+      req.session.flash = result.updateAvailable
+        ? { type: 'info', message: `Update available: v${result.latest} (current: v${result.current})` }
+        : { type: 'success', message: `Up to date (v${result.current})` }
+    } else {
+      req.session.flash = { type: 'error', message: 'Could not reach update server. Check GitHub repo URL.' }
+    }
+    return reply.redirect('/admin/settings')
+  })
+
+  // ----------------------------------------------------------------
+  // POST /admin/update/apply — git pull then restart via PM2
+  // ----------------------------------------------------------------
+  fastify.post('/admin/update/apply', async (req, reply) => {
+    if (req.subdomain !== '') return reply.callNotFound()
+    const { execSync } = await import('child_process')
+    try {
+      const out = execSync('git pull', { cwd: process.cwd(), timeout: 60000 })
+      console.log('[updater] git pull output:', out.toString())
+      reloadCurrentVersion()
+      req.session.flash = { type: 'success', message: 'Update applied. App is restarting...' }
+      await reply.redirect('/admin/settings')
+      setTimeout(() => process.exit(0), 500)
+    } catch (err) {
+      console.error('[updater] git pull failed:', err.message)
+      req.session.flash = { type: 'error', message: 'Update failed: ' + (err.stderr?.toString() || err.message) }
+      return reply.redirect('/admin/settings')
+    }
   })
 
   // Add theme to settings allowed list and list available themes

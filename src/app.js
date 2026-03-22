@@ -19,6 +19,7 @@ import { HookRegistry } from './core/hooks.js'
 import { extractSubdomain } from './core/subdomain.js'
 import { SqliteSessionStore } from './core/auth.js'
 import pluginLoader from './plugins/loader.js'
+import { checkForUpdates, getUpdateStatus } from './core/updater.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
@@ -159,10 +160,18 @@ export async function buildApp() {
     if (req.session.flash) delete req.session.flash
 
     let unreadMessages = 0
+    let showUpdateBanner = false
+    let updateLatest = null
     if (req.session.role === 'admin') {
       try {
         unreadMessages = db.get('SELECT COUNT(*) as n FROM messages WHERE is_read = 0')?.n || 0
       } catch (_) {}
+      const status = getUpdateStatus()
+      if (status.updateAvailable) {
+        updateLatest = status.latest
+        const dismissed = req.cookies?.upd_dismissed
+        showUpdateBanner = dismissed !== status.latest
+      }
     }
 
     reply.locals = {
@@ -187,11 +196,24 @@ export async function buildApp() {
       flash,
       unreadMessages,
       appVersion: version,
+      showUpdateBanner,
+      updateLatest,
     }
   })
 
   // Load all feature plugins
   await app.register(pluginLoader)
+
+  // Schedule periodic update checks
+  const doUpdateCheck = async () => {
+    try {
+      const repoUrl = db.get("SELECT value FROM settings WHERE key = 'github_repo_url'")?.value
+      const hours = parseInt(db.get("SELECT value FROM settings WHERE key = 'update_check_hours'")?.value || '24')
+      await checkForUpdates(repoUrl, { maxAgeHours: hours })
+    } catch (_) {}
+  }
+  setTimeout(doUpdateCheck, 10000)          // Initial check 10s after startup
+  setInterval(doUpdateCheck, 3600 * 1000)   // Re-check every hour (cached by module)
 
   // Error handlers
   app.setNotFoundHandler(async (req, reply) => {
