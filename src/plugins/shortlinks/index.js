@@ -60,7 +60,8 @@ async function shortlinksPlugin(fastify) {
   // GET /l/* — quick-create from address bar (subdomain or path)
   // ----------------------------------------------------------------
   fastify.get('/l/*', async (req, reply) => {
-    const destination = req.params['*']
+    // Use raw URL to preserve query string (req.params['*'] strips it)
+    const destination = req.raw.url.replace(/^\/l\//, '')
     if (!destination || (!destination.startsWith('http://') && !destination.startsWith('https://'))) {
       return reply.view('home.njk', {
         flash: { type: 'info', message: `Usage: l.${config.BASE_DOMAIN}/https://your-url-here` }
@@ -72,7 +73,8 @@ async function shortlinksPlugin(fastify) {
   // Also handle l. subdomain via wildcard
   fastify.get('/*', async (req, reply) => {
     if (req.subdomain !== 'l') return reply.callNotFound()
-    const destination = req.params['*']
+    // Use raw URL to preserve query string (req.params['*'] strips it)
+    const destination = req.raw.url.slice(1)
     if (!destination || (!destination.startsWith('http://') && !destination.startsWith('https://'))) {
       return reply.view('home.njk', {
         flash: { type: 'info', message: `Usage: l.${config.BASE_DOMAIN}/https://your-url-here` }
