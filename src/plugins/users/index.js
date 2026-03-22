@@ -569,7 +569,7 @@ async function usersPlugin(fastify) {
   // ----------------------------------------------------------------
   fastify.get('/pricing', async (req, reply) => {
     if (req.subdomain !== '') return reply.callNotFound()
-    const tiers = db.all('SELECT * FROM account_tiers WHERE is_enabled = 1 ORDER BY price ASC')
+    const tiers = db.all("SELECT * FROM account_tiers WHERE is_enabled = 1 AND name != 'anonymous' ORDER BY price ASC")
     const currentTier = req.session.subscriptionTier || (req.session.userId ? 'free' : null)
     const ad = getAdForOwner(req.session.userId || null, db)
     return reply.view('pricing.njk', { tiers, currentTier, ad })

@@ -167,13 +167,6 @@
         </li>
         {% if user %}
           <li><a href="/dashboard" class="{% if currentPath == '/dashboard' %}active{% endif %}">Dashboard</a></li>
-          {% if user.role == 'admin' %}
-            <li>
-              <a href="/admin" class="{% if '/admin' in currentPath %}active{% endif %}">
-                Admin{% if unreadMessages > 0 %} <span class="badge badge-danger badge-pulse" style="font-size:.65rem">{{ unreadMessages }}</span>{% endif %}
-              </a>
-            </li>
-          {% endif %}
         {% endif %}
         <li><a href="/pricing">Pricing</a></li>
         <li><a href="/contact">Contact</a></li>
@@ -200,6 +193,9 @@
               <a href="/pricing">Subscription</a>
               <a href="/tokens">API Tokens</a>
               <a href="/ads">Ad Campaigns</a>
+              {% if user.role == 'admin' %}
+              <a href="/admin">Admin{% if unreadMessages > 0 %} <span class="badge badge-danger badge-pulse" style="font-size:.65rem">{{ unreadMessages }}</span>{% endif %}</a>
+              {% endif %}
               <div class="drop-divider"></div>
               <form method="POST" action="/logout" style="margin:0">
                 <button type="submit">Log out</button>
@@ -228,9 +224,6 @@
         <a href="/d">🌍 Dynamic DNS</a>
         <div class="mob-divider"></div>
         <a href="/dashboard">Dashboard</a>
-        {% if user.role == 'admin' %}
-          <a href="/admin">Admin{% if unreadMessages > 0 %} <span class="badge badge-danger badge-pulse" style="font-size:.65rem">{{ unreadMessages }}</span>{% endif %}</a>
-        {% endif %}
         <a href="/pricing">Pricing</a>
         <a href="/contact">Contact</a>
         <div class="mob-divider"></div>
