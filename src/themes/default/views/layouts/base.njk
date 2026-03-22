@@ -141,11 +141,14 @@
   <nav class="nav" style="position:sticky;top:0;z-index:200">
     <div class="container nav-inner">
       <a href="/" class="nav-logo">
-        {% if siteLogo %}<img src="{{ siteLogo }}" alt="{{ siteName }}">{% endif %}
-        <span class="nav-logo-text">{{ siteName }}</span>
+        {% if siteLogo %}
+          <img src="{{ siteLogo }}" alt="{{ siteName }}" style="max-height:32px;max-width:140px;object-fit:contain;display:block">
+        {% else %}
+          <span class="nav-logo-text">{{ siteName }}</span>
+        {% endif %}
       </a>
 
-      {# ── Desktop nav ── #}
+      {# ── Desktop nav links (hidden on mobile) ── #}
       <ul class="nav-links">
         {% if user %}
           {# + New — first, bright #}
@@ -161,11 +164,6 @@
               <a href="/d">🌍 Dynamic DNS</a>
             </div>
           </li>
-        {% endif %}
-
-        <li><a href="/contact">Contact</a></li>
-
-        {% if user %}
           <li><a href="/dashboard" class="{% if currentPath == '/dashboard' %}active{% endif %}">Dashboard</a></li>
           {% if user.role == 'admin' %}
             <li>
@@ -174,9 +172,17 @@
               </a>
             </li>
           {% endif %}
+        {% endif %}
+        <li><a href="/contact">Contact</a></li>
+        <li>
+          <button id="theme-toggle" class="btn btn-ghost btn-sm" title="Toggle theme" style="padding:6px 8px;font-size:1rem">🌙</button>
+        </li>
+      </ul>
 
-          {# Avatar dropdown #}
-          <li class="nav-avatar-wrap">
+      {# ── Always-visible right section: avatar/login + mobile controls ── #}
+      <div class="nav-actions">
+        {% if user %}
+          <div class="nav-avatar-wrap">
             <button class="nav-avatar-btn" id="avatar-btn" title="Account">
               {% if user.displayName %}{{ user.displayName[0] | upper }}{% elif user.email %}{{ user.email[0] | upper }}{% else %}?{% endif %}
             </button>
@@ -196,20 +202,12 @@
                 <button type="submit">Log out</button>
               </form>
             </div>
-          </li>
+          </div>
         {% else %}
-          <li><a href="/login">Login</a></li>
-          <li><a href="/register" class="btn btn-primary btn-sm">Sign up</a></li>
+          <a href="/login" class="btn btn-ghost btn-sm">Login</a>
+          <a href="/register" class="btn btn-primary btn-sm">Sign up</a>
         {% endif %}
-
-        <li>
-          <button id="theme-toggle" class="btn btn-ghost btn-sm" title="Toggle theme" style="padding:6px 8px;font-size:1rem">🌙</button>
-        </li>
-      </ul>
-
-      {# ── Mobile right: theme + hamburger ── #}
-      <div class="nav-mobile-right">
-        <button id="theme-toggle-mob" class="btn btn-ghost btn-sm" title="Toggle theme" style="padding:6px 8px;font-size:1rem">🌙</button>
+        <button id="theme-toggle-mob" class="btn btn-ghost btn-sm nav-mob-only" title="Toggle theme" style="padding:6px 8px;font-size:1rem">🌙</button>
         <button class="nav-hamburger" id="hamburger-btn" title="Menu">☰</button>
       </div>
     </div>
@@ -314,7 +312,7 @@
     <div class="container">
       <p>
         &copy; {{ siteName }} &mdash;
-        <a href="https://github.com/your-repo/is.am" target="_blank" rel="noopener">Open Source</a>
+        <a href="{{ githubRepoUrl }}" target="_blank" rel="noopener">Open Source</a>
         &nbsp;&bull;&nbsp;
         <a href="/report">Report a link</a>
         &nbsp;&bull;&nbsp;

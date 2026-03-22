@@ -54,6 +54,7 @@ export async function initDb() {
       'ALTER TABLE account_tiers ADD COLUMN price REAL NOT NULL DEFAULT 0',
       'ALTER TABLE account_tiers ADD COLUMN description TEXT',
       'ALTER TABLE account_tiers ADD COLUMN is_enabled INTEGER NOT NULL DEFAULT 1',
+      'ALTER TABLE account_tiers ADD COLUMN allow_watermark INTEGER NOT NULL DEFAULT 1',
       'ALTER TABLE users ADD COLUMN stripe_customer_id TEXT',
       'ALTER TABLE users ADD COLUMN stripe_subscription_id TEXT',
     ]
@@ -111,6 +112,12 @@ export async function initDb() {
         .run('free', 'Free', 10, 3, 10, 1, 1, 0)
       sqlite.prepare(`INSERT INTO account_tiers(name,label,max_links_per_hour,max_ddns_entries,max_file_size_mb,allow_raw_html,show_ads,allow_ad_campaigns) VALUES(?,?,?,?,?,?,?,?)`)
         .run('paid', 'Paid', 100, 50, 100, 1, 0, 1)
+    }
+    // Ensure built-in anonymous tier always exists (may be missing on older installs)
+    const anonTier = sqlite.prepare("SELECT id FROM account_tiers WHERE name = 'anonymous'").get()
+    if (!anonTier) {
+      sqlite.prepare(`INSERT INTO account_tiers(name,label,max_links_per_hour,max_links_total,max_images_total,max_text_total,max_ddns_entries,max_file_size_mb,allow_raw_html,show_ads,allow_ad_campaigns) VALUES(?,?,?,?,?,?,?,?,?,?,?)`)
+        .run('anonymous', 'Anonymous (not logged in)', 5, 10, 3, 5, 0, 5, 0, 1, 0)
     }
 
     _db = createSqliteDb(sqlite)

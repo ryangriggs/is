@@ -4,6 +4,7 @@ import { normalizeCode } from '../../core/shortcode.js'
 import { createLink } from '../../core/links.js'
 import { verifyToken } from '../../core/auth.js'
 import config from '../../config.js'
+import { getAdForOwner } from '../../core/ads.js'
 
 async function shortlinksPlugin(fastify) {
   const db = fastify.db
@@ -32,7 +33,8 @@ async function shortlinksPlugin(fastify) {
         (SELECT COUNT(*) FROM tracking) as totalVisits,
         (SELECT COUNT(*) FROM users) as totalUsers
     `)
-    return reply.view('home.njk', { stats })
+    const ad = getAdForOwner(req.session.userId || null, db)
+    return reply.view('home.njk', { stats, ad })
   })
 
   // ----------------------------------------------------------------
@@ -228,22 +230,30 @@ async function shortlinksPlugin(fastify) {
 
     await hooks.run('post:link:visit', { link, req })
 
+    const ad = getAdForOwner(link.owner_id, db)
+
     switch (link.type) {
       case 'text':
-        return reply.view('text-view.njk', { link })
+        return reply.view('text-view.njk', { link, ad })
       case 'html':
-        return reply.view('html-view.njk', { link })
+        return reply.view('html-view.njk', { link, ad })
       case 'image':
-        return reply.redirect(302, `/uploads/${link.destination}`)
+        return reply.view('image-view.njk', { link, ad })
       case 'bookmark': {
         const items = db.all(
           'SELECT * FROM bookmark_items WHERE link_id = ? ORDER BY folder, sort_order, id',
           link.id
         )
-        return reply.view('bookmark-view.njk', { link, items })
+        return reply.view('bookmark-view.njk', { link, items, ad })
       }
-      default:
+      case 'url':
+      default: {
+        if (ad) {
+          const seconds = parseInt(db.get("SELECT value FROM settings WHERE key='ad_interstitial_seconds'")?.value || '5')
+          return reply.view('interstitial.njk', { link, ad, seconds, destination: link.destination })
+        }
         return reply.redirect(302, link.destination)
+      }
     }
   })
 

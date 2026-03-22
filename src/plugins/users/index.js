@@ -2,6 +2,7 @@ import fp from 'fastify-plugin'
 import { createHash } from 'crypto'
 import { hashPassword, verifyPassword, requireAuth, generateToken } from '../../core/auth.js'
 import config from '../../config.js'
+import { getAdForOwner } from '../../core/ads.js'
 
 function sha256(s) {
   return createHash('sha256').update(s).digest('hex')
@@ -91,7 +92,8 @@ async function usersPlugin(fastify) {
     if (req.subdomain !== '') return reply.callNotFound()
     if (req.session.userId) return reply.redirect('/dashboard')
     const setting = db.get(`SELECT value FROM settings WHERE key = 'registration_open'`)
-    return reply.view('register.njk', { registrationClosed: setting?.value === 'false' })
+    const ad = getAdForOwner(null, db)
+    return reply.view('register.njk', { registrationClosed: setting?.value === 'false', ad })
   })
 
   // ----------------------------------------------------------------
@@ -175,7 +177,8 @@ async function usersPlugin(fastify) {
   fastify.get('/login', async (req, reply) => {
     if (req.subdomain !== '') return reply.callNotFound()
     if (req.session.userId) return reply.redirect('/dashboard')
-    return reply.view('login.njk', { next: req.query.next })
+    const ad = getAdForOwner(null, db)
+    return reply.view('login.njk', { next: req.query.next, ad })
   })
 
   // ----------------------------------------------------------------
@@ -186,8 +189,9 @@ async function usersPlugin(fastify) {
     const { login = '', password = '', next } = req.body || {}
     const loginLc = login.trim().toLowerCase()
 
+    const ad = getAdForOwner(null, db)
     if (!loginLc || !password) {
-      return reply.view('login.njk', { error: 'Please enter your email and password.', prefill: login })
+      return reply.view('login.njk', { error: 'Please enter your email and password.', prefill: login, ad })
     }
 
     const user = db.get(
@@ -196,10 +200,10 @@ async function usersPlugin(fastify) {
     )
 
     if (!user || !(await verifyPassword(password, user.password_hash))) {
-      return reply.view('login.njk', { error: 'Invalid email or password.', prefill: login })
+      return reply.view('login.njk', { error: 'Invalid email or password.', prefill: login, ad })
     }
     if (user.is_blocked) {
-      return reply.view('login.njk', { error: 'Your account has been suspended.', prefill: login })
+      return reply.view('login.njk', { error: 'Your account has been suspended.', prefill: login, ad })
     }
 
     db.run('UPDATE users SET last_login = ? WHERE id = ?', Date.now(), user.id)
@@ -324,7 +328,8 @@ async function usersPlugin(fastify) {
   fastify.get('/profile', { preHandler: requireAuth }, async (req, reply) => {
     if (req.subdomain !== '') return reply.callNotFound()
     const user = db.get('SELECT * FROM users WHERE id = ?', req.session.userId)
-    return reply.view('profile.njk', { profileUser: user })
+    const ad = getAdForOwner(req.session.userId, db)
+    return reply.view('profile.njk', { profileUser: user, ad })
   })
 
   // ----------------------------------------------------------------
@@ -432,7 +437,9 @@ async function usersPlugin(fastify) {
       req.session.userId
     )
 
+    const ad = getAdForOwner(req.session.userId, db)
     return reply.view('dashboard.njk', {
+      ad,
       links: userLinks.map(l => ({
         ...l,
         isActive: Boolean(l.is_active),
@@ -511,7 +518,8 @@ async function usersPlugin(fastify) {
       'SELECT id, label, last_used, created_at FROM api_tokens WHERE user_id = ? ORDER BY created_at DESC',
       req.session.userId
     )
-    return reply.view('tokens.njk', { tokens })
+    const ad = getAdForOwner(req.session.userId, db)
+    return reply.view('tokens.njk', { tokens, ad })
   })
 
   fastify.post('/tokens', { preHandler: requireAuth }, async (req, reply) => {
@@ -563,7 +571,8 @@ async function usersPlugin(fastify) {
     if (req.subdomain !== '') return reply.callNotFound()
     const tiers = db.all('SELECT * FROM account_tiers WHERE is_enabled = 1 ORDER BY price ASC')
     const currentTier = req.session.subscriptionTier || (req.session.userId ? 'free' : null)
-    return reply.view('pricing.njk', { tiers, currentTier })
+    const ad = getAdForOwner(req.session.userId || null, db)
+    return reply.view('pricing.njk', { tiers, currentTier, ad })
   })
 
   // POST /pricing/change — user requests a tier change (manual/admin-side flow for now)

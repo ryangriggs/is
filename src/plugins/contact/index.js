@@ -1,18 +1,21 @@
 import fp from 'fastify-plugin'
 import { stripTags } from '../../core/scanner.js'
+import { getAdForOwner } from '../../core/ads.js'
 
 async function contactPlugin(fastify) {
   const db = fastify.db
 
   fastify.get('/contact', async (req, reply) => {
-    return reply.view('contact.njk', {})
+    const ad = getAdForOwner(req.session.userId || null, db)
+    return reply.view('contact.njk', { ad })
   })
 
   fastify.post('/contact', async (req, reply) => {
     const { name = '', email = '', subject = '', body = '' } = req.body || {}
+    const ad = getAdForOwner(req.session.userId || null, db)
     const cleanBody = stripTags(body).slice(0, 4000)
     if (!cleanBody.trim()) {
-      return reply.view('contact.njk', { error: 'Message cannot be empty.', name, email, subject })
+      return reply.view('contact.njk', { error: 'Message cannot be empty.', name, email, subject, ad })
     }
     db.run(
       `INSERT INTO messages(name, email, subject, body, ip, created_at) VALUES(?,?,?,?,?,?)`,

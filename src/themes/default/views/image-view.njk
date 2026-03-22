@@ -3,6 +3,7 @@
 {% block content %}
 <section class="section">
   <div class="container" style="max-width:900px">
+    {% include "partials/ad-banner.njk" %}
     <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem;margin-bottom:1rem">
       <div>
         <h1 style="margin:0;font-size:1.25rem">{{ link.title or 'Image' }}</h1>
@@ -11,9 +12,10 @@
           <a href="/report/{{ link.code }}" class="text-muted">Report</a>
         </p>
       </div>
-      <div style="display:flex;gap:.5rem">
+      <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+        <a href="/{{ link.code }}/raw" class="btn btn-ghost btn-sm" target="_blank">↗ Raw / Direct</a>
         <a href="/uploads/{{ link.destination }}" download class="btn btn-secondary btn-sm">⬇ Download</a>
-        <a href="/i" class="btn btn-ghost btn-sm">+ Upload another</a>
+        <a href="/i" class="btn btn-ghost btn-sm">+ Upload</a>
       </div>
     </div>
 

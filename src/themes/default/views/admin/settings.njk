@@ -92,6 +92,54 @@
       </div>
 
       <div class="card mb-3">
+        <h2 class="card-title mb-3">Watermark</h2>
+        {% if settings.watermark_image_path %}
+        <div style="margin-bottom:.75rem;display:flex;align-items:center;gap:.75rem;flex-wrap:wrap">
+          <img src="/{{ settings.watermark_image_path }}" alt="Watermark" style="max-height:40px;background:repeating-conic-gradient(#ccc 0% 25%, transparent 0% 50%) 0 0/10px 10px;border-radius:4px;padding:4px">
+          <form method="POST" action="/admin/settings/watermark/remove" style="margin:0">
+            <button class="btn btn-ghost btn-sm">Remove</button>
+          </form>
+        </div>
+        {% else %}
+        <p class="text-sm text-muted mb-2">No watermark set.</p>
+        {% endif %}
+        <form method="POST" action="/admin/settings/watermark" enctype="multipart/form-data">
+          <div class="form-group">
+            <label class="label">Watermark PNG</label>
+            <input type="file" name="logo" class="input" accept="image/png">
+            <p class="text-xs text-muted mt-1">Transparent PNG recommended.</p>
+          </div>
+          <button type="submit" class="btn btn-primary btn-sm btn-block">Upload Watermark</button>
+        </form>
+        <form method="POST" action="/admin/settings" style="margin-top:1rem">
+          <div class="form-group">
+            <label class="label">Position</label>
+            <select name="watermark_position" class="select">
+              {% for pos in ['bottom-right','bottom-left','bottom-center','top-right','top-left','top-center','center'] %}
+              <option value="{{ pos }}" {% if settings.watermark_position == pos %}selected{% endif %}>{{ pos }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="label">Size (% of image height)</label>
+            <input type="number" name="watermark_size_pct" class="input" value="{{ settings.watermark_size_pct or '15' }}" min="1" max="100">
+          </div>
+          <button type="submit" class="btn btn-secondary btn-sm btn-block">Save Watermark Settings</button>
+        </form>
+      </div>
+
+      <div class="card mb-3">
+        <h2 class="card-title mb-3">Ads</h2>
+        <form method="POST" action="/admin/settings">
+          <div class="form-group">
+            <label class="label">URL interstitial countdown (seconds)</label>
+            <input type="number" name="ad_interstitial_seconds" class="input" value="{{ settings.ad_interstitial_seconds or '5' }}" min="1" max="60">
+          </div>
+          <button type="submit" class="btn btn-primary btn-sm btn-block">Save</button>
+        </form>
+      </div>
+
+      <div class="card mb-3">
         <h2 class="card-title mb-3">Update Settings</h2>
         <form method="POST" action="/admin/settings">
           <div class="form-group">
@@ -107,6 +155,28 @@
               value="{{ settings.update_check_hours or '24' }}" min="1" max="720">
           </div>
           <button type="submit" class="btn btn-primary btn-block">Save</button>
+        </form>
+      </div>
+
+      <div class="card mb-3">
+        <h2 class="card-title mb-3">Site Logo</h2>
+        {% if siteLogo %}
+        <div style="margin-bottom:.75rem;display:flex;align-items:center;gap:.75rem;flex-wrap:wrap">
+          <img src="{{ siteLogo }}" alt="Current logo" style="max-height:48px;max-width:160px;object-fit:contain;border-radius:4px;background:var(--bg-card);padding:4px">
+          <form method="POST" action="/admin/settings/logo/remove" style="margin:0">
+            <button class="btn btn-ghost btn-sm">Remove (text only)</button>
+          </form>
+        </div>
+        {% else %}
+        <p class="text-sm text-muted mb-2">No logo set — site name shown as text.</p>
+        {% endif %}
+        <form method="POST" action="/admin/settings/logo" enctype="multipart/form-data">
+          <div class="form-group">
+            <label class="label">Upload Logo</label>
+            <input type="file" name="logo" class="input" accept="image/png,image/jpeg,image/gif,image/webp,image/svg+xml">
+            <p class="text-xs text-muted mt-1">PNG, JPG, GIF, WebP, or SVG. Recommended: transparent PNG, height ≤ 64px.</p>
+          </div>
+          <button type="submit" class="btn btn-primary btn-block">Upload Logo</button>
         </form>
       </div>
 

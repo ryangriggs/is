@@ -8,6 +8,7 @@
     <p class="page-subtitle">Choose the plan that works for you.</p>
   </div>
 
+  {% include "partials/ad-banner.njk" %}
   <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:1.5rem;align-items:start">
     {% for tier in tiers %}
     {% set isCurrent = (currentTier == tier.name) or (not currentTier and tier.price == 0) %}

@@ -44,9 +44,9 @@ async function adminPlugin(fastify) {
 
   // Scan links against scan_words on creation; increment hit counter on match
   const hooks = fastify.hooks
-  hooks.on('pre:link:create', async ({ data }) => {
+  hooks.on('pre:link:create', async ({ data, req }) => {
     // Tier limit checks
-    checkLinkLimits(data, db)
+    checkLinkLimits(data, db, req)
 
     // Content scanning
     if (!data.destination) return
@@ -206,6 +206,7 @@ async function adminPlugin(fastify) {
       totalRow = db.get(`SELECT COUNT(*) as n FROM users`)
     }
 
+    const tiers = db.all("SELECT name, label FROM account_tiers WHERE name != 'anonymous' ORDER BY price ASC, name ASC")
     return reply.view('admin/users.njk', {
       users: rows.map(u => ({
         ...u, createdAt: u.created_at,
@@ -216,6 +217,7 @@ async function adminPlugin(fastify) {
       pagination: { page, totalPages: Math.ceil(totalRow.n / perPage), total: totalRow.n },
       query: { q },
       currentUserId: req.session.userId,
+      tiers,
     })
   })
 
@@ -410,6 +412,69 @@ async function adminPlugin(fastify) {
     return reply.view('admin/settings.njk', { settings: settingsMap, availableThemes, updateInfo: getUpdateStatus() })
   })
 
+  fastify.post('/admin/settings/watermark', async (req, reply) => {
+    if (req.subdomain !== '') return reply.callNotFound()
+    let file
+    try { file = await req.file() } catch (_) {}
+    if (!file) {
+      req.session.flash = { type: 'error', message: 'No file selected.' }
+      return reply.redirect('/admin/settings')
+    }
+    if (file.mimetype !== 'image/png') {
+      await file.toBuffer()
+      req.session.flash = { type: 'error', message: 'Watermark must be a PNG (preferably transparent).' }
+      return reply.redirect('/admin/settings')
+    }
+    const { join } = await import('path')
+    const { writeFile } = await import('fs/promises')
+    const buf = await file.toBuffer()
+    await writeFile(join(process.cwd(), 'uploads', 'site-watermark.png'), buf)
+    db.run(`INSERT INTO settings(key,value,updated_at) VALUES('watermark_image_path',?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value,updated_at=excluded.updated_at`, 'uploads/site-watermark.png', Date.now())
+    req.session.flash = { type: 'success', message: 'Watermark image updated.' }
+    return reply.redirect('/admin/settings')
+  })
+
+  fastify.post('/admin/settings/watermark/remove', async (req, reply) => {
+    if (req.subdomain !== '') return reply.callNotFound()
+    db.run(`INSERT INTO settings(key,value,updated_at) VALUES('watermark_image_path','',?) ON CONFLICT(key) DO UPDATE SET value='',updated_at=excluded.updated_at`, Date.now())
+    req.session.flash = { type: 'success', message: 'Watermark removed.' }
+    return reply.redirect('/admin/settings')
+  })
+
+  fastify.post('/admin/settings/logo', async (req, reply) => {
+    if (req.subdomain !== '') return reply.callNotFound()
+    let file
+    try { file = await req.file() } catch (_) {}
+    if (!file) {
+      req.session.flash = { type: 'error', message: 'No file selected.' }
+      return reply.redirect('/admin/settings')
+    }
+    const allowed = new Set(['image/png', 'image/jpeg', 'image/gif', 'image/webp', 'image/svg+xml'])
+    if (!allowed.has(file.mimetype)) {
+      await file.toBuffer()
+      req.session.flash = { type: 'error', message: 'Unsupported file type.' }
+      return reply.redirect('/admin/settings')
+    }
+    const extMap = { 'image/png': '.png', 'image/jpeg': '.jpg', 'image/gif': '.gif', 'image/webp': '.webp', 'image/svg+xml': '.svg' }
+    const ext = extMap[file.mimetype]
+    const filename = `site-logo${ext}`
+    const { join } = await import('path')
+    const { writeFile } = await import('fs/promises')
+    const buf = await file.toBuffer()
+    await writeFile(join(process.cwd(), 'uploads', filename), buf)
+    const logoPath = `/uploads/${filename}`
+    db.run(`INSERT INTO settings(key,value,updated_at) VALUES('site_logo_path',?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value,updated_at=excluded.updated_at`, logoPath, Date.now())
+    req.session.flash = { type: 'success', message: 'Logo updated.' }
+    return reply.redirect('/admin/settings')
+  })
+
+  fastify.post('/admin/settings/logo/remove', async (req, reply) => {
+    if (req.subdomain !== '') return reply.callNotFound()
+    db.run(`INSERT INTO settings(key,value,updated_at) VALUES('site_logo_path','',?) ON CONFLICT(key) DO UPDATE SET value='',updated_at=excluded.updated_at`, Date.now())
+    req.session.flash = { type: 'success', message: 'Logo removed.' }
+    return reply.redirect('/admin/settings')
+  })
+
   fastify.post('/admin/settings', async (req, reply) => {
     if (req.subdomain !== '') return reply.callNotFound()
     const allowed = [
@@ -417,6 +482,8 @@ async function adminPlugin(fastify) {
       'require_login_to_create', 'max_links_anonymous',
       'max_file_size_mb', 'allowed_image_types', 'ads_enabled', 'active_theme',
       'github_repo_url', 'update_check_hours',
+      'watermark_position', 'watermark_size_pct',
+      'ad_interstitial_seconds',
     ]
     for (const key of allowed) {
       if (req.body[key] !== undefined) {
@@ -493,7 +560,8 @@ async function adminPlugin(fastify) {
   fastify.post('/admin/users/:id/tier', async (req, reply) => {
     if (req.subdomain !== '') return reply.callNotFound()
     const { tier } = req.body
-    if (['free', 'paid'].includes(tier)) {
+    const valid = db.get("SELECT name FROM account_tiers WHERE name = ? AND name != 'anonymous'", tier)
+    if (valid) {
       db.run('UPDATE users SET subscription_tier = ? WHERE id = ?', tier, Number(req.params.id))
     }
     req.session.flash = { type: 'success', message: 'Tier updated.' }
@@ -609,27 +677,29 @@ async function adminPlugin(fastify) {
   fastify.post('/admin/account-tiers', async (req, reply) => {
     if (req.subdomain !== '') return reply.callNotFound()
     const { name, label, description, price, max_links_total, max_images_total, max_text_total, max_links_per_hour,
-      max_ddns_entries, max_file_size_mb, allow_raw_html, show_ads, allow_ad_campaigns, is_enabled } = req.body || {}
+      max_ddns_entries, max_file_size_mb, allow_raw_html, show_ads, allow_ad_campaigns, is_enabled, allow_watermark } = req.body || {}
     if (!name?.trim()) {
       req.session.flash = { type: 'error', message: 'Name required.' }
       return reply.redirect('/admin/account-tiers')
     }
     db.run(
-      `INSERT INTO account_tiers(name,label,description,price,max_links_total,max_images_total,max_text_total,max_links_per_hour,max_ddns_entries,max_file_size_mb,allow_raw_html,show_ads,allow_ad_campaigns,is_enabled,created_at)
-       VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+      `INSERT INTO account_tiers(name,label,description,price,max_links_total,max_images_total,max_text_total,max_links_per_hour,max_ddns_entries,max_file_size_mb,allow_raw_html,show_ads,allow_ad_campaigns,is_enabled,allow_watermark,created_at)
+       VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
        ON CONFLICT(name) DO UPDATE SET label=excluded.label, description=excluded.description,
          price=excluded.price, max_links_total=excluded.max_links_total,
          max_images_total=excluded.max_images_total, max_text_total=excluded.max_text_total,
          max_links_per_hour=excluded.max_links_per_hour, max_ddns_entries=excluded.max_ddns_entries,
          max_file_size_mb=excluded.max_file_size_mb, allow_raw_html=excluded.allow_raw_html,
          show_ads=excluded.show_ads, allow_ad_campaigns=excluded.allow_ad_campaigns,
-         is_enabled=excluded.is_enabled`,
+         is_enabled=excluded.is_enabled, allow_watermark=excluded.allow_watermark`,
       name.trim().toLowerCase(), label || name.trim(), description?.trim() || null,
       parseFloat(price) || 0,
       Number(max_links_total) || 0, Number(max_images_total) || 0, Number(max_text_total) || 0,
-      Number(max_links_per_hour) || 0, Number(max_ddns_entries) || 5, Number(max_file_size_mb) || 10,
+      Number(max_links_per_hour) || 0,
+      (max_ddns_entries === '' || max_ddns_entries == null) ? 5 : Number(max_ddns_entries),
+      Number(max_file_size_mb) || 10,
       allow_raw_html === '1' ? 1 : 0, show_ads === '1' ? 1 : 0, allow_ad_campaigns === '1' ? 1 : 0,
-      is_enabled === '1' ? 1 : 0,
+      is_enabled === '1' ? 1 : 0, allow_watermark === '1' ? 1 : 0,
       Date.now()
     )
     req.session.flash = { type: 'success', message: 'Tier saved.' }
@@ -638,6 +708,11 @@ async function adminPlugin(fastify) {
 
   fastify.post('/admin/account-tiers/:id/delete', async (req, reply) => {
     if (req.subdomain !== '') return reply.callNotFound()
+    const tier = db.get('SELECT name FROM account_tiers WHERE id = ?', Number(req.params.id))
+    if (tier?.name === 'anonymous') {
+      req.session.flash = { type: 'error', message: 'The anonymous tier is built-in and cannot be deleted.' }
+      return reply.redirect('/admin/account-tiers')
+    }
     db.run('DELETE FROM account_tiers WHERE id = ?', Number(req.params.id))
     req.session.flash = { type: 'success', message: 'Tier deleted.' }
     return reply.redirect('/admin/account-tiers')

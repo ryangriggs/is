@@ -3,6 +3,7 @@
 {% block content %}
 <section class="section">
   <div class="container" style="max-width:800px">
+    {% include "partials/ad-banner.njk" %}
     <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem;margin-bottom:1rem">
       <div>
         <h1 style="margin:0;font-size:1.25rem">{{ link.title or 'Untitled Paste' }}</h1>

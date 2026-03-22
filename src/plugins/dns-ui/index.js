@@ -3,6 +3,7 @@ import { requireAuth } from '../../core/auth.js'
 import { hashToken, generateToken, verifyToken } from '../../core/auth.js'
 import config from '../../config.js'
 import { getTierForUser } from '../../core/tiers.js'
+import { getAdForOwner } from '../../core/ads.js'
 
 const dynApex = () => `${config.DYN_SUBDOMAIN}.${config.BASE_DOMAIN}`
 
@@ -15,7 +16,8 @@ async function dnsUiPlugin(fastify) {
       req.session.userId
     )
     const isPaid = req.session.subscriptionTier === 'paid' || req.session.role === 'admin'
-    return reply.view('dns-ui.njk', { records, baseDomain: config.BASE_DOMAIN, dynApex: dynApex(), isPaid })
+    const ad = getAdForOwner(req.session.userId || null, db)
+    return reply.view('dns-ui.njk', { records, baseDomain: config.BASE_DOMAIN, dynApex: dynApex(), isPaid, ad })
   })
 
   fastify.post('/d', { preHandler: requireAuth }, async (req, reply) => {

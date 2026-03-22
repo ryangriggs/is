@@ -638,6 +638,12 @@ tbody tr:hover td { background: var(--bg-card-hover); }
 /* ----------------------------------------------------------------
    Hamburger / mobile nav
    ---------------------------------------------------------------- */
+.nav-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
 .nav-hamburger {
   display: none;
   background: none;
@@ -651,6 +657,9 @@ tbody tr:hover td { background: var(--bg-card-hover); }
   transition: background var(--transition);
 }
 .nav-hamburger:hover { background: var(--bg-card-hover); }
+
+/* theme toggle shown only on mobile */
+.nav-mob-only { display: none; }
 
 .nav-mobile-right {
   display: none;
@@ -701,6 +710,10 @@ tbody tr:hover td { background: var(--bg-card-hover); }
   .nav { position: sticky; } /* ensure mobile menu positions correctly */
   .nav-links { display: none !important; }
   .nav-mobile-right { display: flex; }
+  .nav-hamburger { display: block; }
+  .nav-mob-only { display: flex; }
+  /* hide desktop theme toggle (it's in nav-links which is hidden, but just in case) */
+  #theme-toggle { display: none; }
   .hero { padding: 48px 0 40px; }
   .hero-form { flex-direction: column; }
   .container { padding: 0 16px; }

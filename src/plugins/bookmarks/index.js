@@ -3,6 +3,7 @@ import { createLink } from '../../core/links.js'
 import { requireAuth } from '../../core/auth.js'
 import { verifyToken, hashToken } from '../../core/auth.js'
 import config from '../../config.js'
+import { getAdForOwner } from '../../core/ads.js'
 
 function slugify(str) {
   return str.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '').replace(/-+/g, '-').replace(/^-|-$/, '')
@@ -38,7 +39,8 @@ async function bookmarksPlugin(fastify) {
        GROUP BY l.id ORDER BY l.created_at DESC`,
       req.session.userId
     )
-    return reply.view('bookmarks.njk', { collections })
+    const ad = getAdForOwner(req.session.userId || null, db)
+    return reply.view('bookmarks.njk', { collections, ad })
   })
 
   // POST /b — create collection

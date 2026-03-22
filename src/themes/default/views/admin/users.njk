@@ -59,10 +59,11 @@
           </td>
           <td class="td-actions" style="white-space:nowrap">
             <form method="POST" action="/admin/users/{{ u.id }}/tier" style="display:inline;margin-right:.25rem">
-              <select name="tier" class="select" style="width:75px;padding:.2rem .3rem;font-size:.8rem"
+              <select name="tier" class="select" style="width:90px;padding:.2rem .3rem;font-size:.8rem"
                 onchange="this.form.submit()">
-                <option value="free" {% if u.subscriptionTier == 'free' or not u.subscriptionTier %}selected{% endif %}>Free</option>
-                <option value="paid" {% if u.subscriptionTier == 'paid' %}selected{% endif %}>Paid</option>
+                {% for t in tiers %}
+                <option value="{{ t.name }}" {% if u.subscriptionTier == t.name or (not u.subscriptionTier and t.name == 'free') %}selected{% endif %}>{{ t.label or t.name }}</option>
+                {% endfor %}
               </select>
             </form>
             {% if u.id != currentUserId %}

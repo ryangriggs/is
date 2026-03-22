@@ -1,9 +1,13 @@
 import fp from 'fastify-plugin'
 import QRCode from 'qrcode'
+import { getAdForOwner } from '../../core/ads.js'
 
 async function qrPlugin(fastify) {
+  const db = fastify.db
+
   fastify.get('/q', async (req, reply) => {
-    return reply.view('qr.njk', { url: req.query.url || '', size: '400', ecc: 'M' })
+    const ad = getAdForOwner(req.session.userId || null, db)
+    return reply.view('qr.njk', { url: req.query.url || '', size: '400', ecc: 'M', ad })
   })
 
   fastify.post('/q', async (req, reply) => {
@@ -16,7 +20,8 @@ async function qrPlugin(fastify) {
       errorCorrectionLevel: ['L', 'M', 'Q', 'H'].includes(ecc) ? ecc : 'M',
       margin: 2,
     })
-    return reply.view('qr.njk', { url, size, ecc, qrDataUrl })
+    const ad = getAdForOwner(req.session.userId || null, db)
+    return reply.view('qr.njk', { url, size, ecc, qrDataUrl, ad })
   })
 
   // Download QR as PNG

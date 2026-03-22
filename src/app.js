@@ -146,12 +146,14 @@ export async function buildApp() {
     let siteName = config.SITE_NAME
     let siteTagline = config.SITE_TAGLINE
     let siteLogo = config.SITE_LOGO_PATH
+    let githubRepoUrl = 'https://github.com/ryangriggs/is'
     try {
-      const rows = db.all(`SELECT key, value FROM settings WHERE key IN ('site_name','site_tagline','site_logo_path')`)
+      const rows = db.all(`SELECT key, value FROM settings WHERE key IN ('site_name','site_tagline','site_logo_path','github_repo_url')`)
       for (const row of rows) {
         if (row.key === 'site_name' && row.value) siteName = row.value
         if (row.key === 'site_tagline' && row.value) siteTagline = row.value
         if (row.key === 'site_logo_path' && row.value) siteLogo = row.value
+        if (row.key === 'github_repo_url' && row.value) githubRepoUrl = row.value
       }
     } catch (_) {}
 
@@ -190,6 +192,7 @@ export async function buildApp() {
         : null,
       siteName,
       siteTagline,
+      githubRepoUrl,
       siteLogo,
       baseDomain: config.BASE_DOMAIN,
       currentPath: req.url,

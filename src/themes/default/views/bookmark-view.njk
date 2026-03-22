@@ -3,6 +3,7 @@
 {% block content %}
 <section class="section">
   <div class="container" style="max-width:720px">
+    {% include "partials/ad-banner.njk" %}
     <div style="margin-bottom:1.5rem">
       <h1 style="margin:0;font-size:1.5rem">{{ link.title or 'Bookmark Collection' }}</h1>
       <p class="text-muted text-sm" style="margin:.25rem 0 0">{{ items.length }} bookmark{{ 's' if items.length != 1 }}</p>

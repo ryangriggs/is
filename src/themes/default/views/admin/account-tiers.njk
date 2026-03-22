@@ -17,13 +17,15 @@
 
   {% for tier in tiers %}
   <div class="card mb-3" style="{% if not tier.is_enabled %}opacity:.6{% endif %}">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:.5rem">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:{% if tier.name == 'anonymous' %}.5{% else %}1{% endif %}rem;flex-wrap:wrap;gap:.5rem">
       <div style="display:flex;align-items:center;gap:.75rem">
         <h3 style="margin:0;text-transform:capitalize">{{ tier.label or tier.name }}</h3>
-        {% if tier.is_enabled %}
-          <span class="badge badge-success">Enabled</span>
-        {% else %}
-          <span class="badge badge-neutral">Disabled</span>
+        {% if tier.name != 'anonymous' %}
+          {% if tier.is_enabled %}
+            <span class="badge badge-success">Enabled</span>
+          {% else %}
+            <span class="badge badge-neutral">Disabled</span>
+          {% endif %}
         {% endif %}
         {% if tier.price > 0 %}
           <span class="badge badge-info">${{ tier.price }}/mo</span>
@@ -31,16 +33,23 @@
           <span class="badge badge-neutral">Free</span>
         {% endif %}
       </div>
-      <div style="display:flex;gap:.5rem">
-        <form method="POST" action="/admin/account-tiers/{{ tier.id }}/toggle-enabled" style="display:inline">
-          <button class="btn btn-ghost btn-sm">{{ 'Disable' if tier.is_enabled else 'Enable' }}</button>
-        </form>
-        <form method="POST" action="/admin/account-tiers/{{ tier.id }}/delete" style="display:inline">
-          <button class="btn btn-danger btn-sm" data-confirm="Delete tier '{{ tier.name }}'?">Delete</button>
-        </form>
+      <div style="display:flex;gap:.5rem;align-items:center">
+        {% if tier.name == 'anonymous' %}
+          <span class="badge badge-neutral" title="Applies to visitors who are not logged in. Limits are tracked per IP address.">Built-in · IP-based</span>
+        {% else %}
+          <form method="POST" action="/admin/account-tiers/{{ tier.id }}/toggle-enabled" style="display:inline">
+            <button class="btn btn-ghost btn-sm">{{ 'Disable' if tier.is_enabled else 'Enable' }}</button>
+          </form>
+          <form method="POST" action="/admin/account-tiers/{{ tier.id }}/delete" style="display:inline">
+            <button class="btn btn-danger btn-sm" data-confirm="Delete tier '{{ tier.name }}'?">Delete</button>
+          </form>
+        {% endif %}
       </div>
     </div>
 
+    {% if tier.name == 'anonymous' %}
+    <p class="text-sm text-muted" style="margin:0 0 1rem">Applies to visitors who are <strong>not logged in</strong>. Limits are enforced per IP address. DDNS is not available to anonymous users.</p>
+    {% endif %}
     <form method="POST" action="/admin/account-tiers">
       <input type="hidden" name="name" value="{{ tier.name }}">
 
@@ -100,6 +109,13 @@
           <select name="allow_ad_campaigns" class="input">
             <option value="1" {% if tier.allow_ad_campaigns %}selected{% endif %}>Yes</option>
             <option value="0" {% if not tier.allow_ad_campaigns %}selected{% endif %}>No</option>
+          </select>
+        </div>
+        <div>
+          <label class="label">Apply Watermark</label>
+          <select name="allow_watermark" class="input">
+            <option value="1" {% if tier.allow_watermark %}selected{% endif %}>Yes</option>
+            <option value="0" {% if not tier.allow_watermark %}selected{% endif %}>No</option>
           </select>
         </div>
         <input type="hidden" name="is_enabled" value="{{ '1' if tier.is_enabled else '0' }}">

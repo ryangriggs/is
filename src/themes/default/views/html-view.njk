@@ -3,6 +3,7 @@
 {% block content %}
 <section class="section">
   <div class="container">
+    {% include "partials/ad-banner.njk" %}
     <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem;margin-bottom:1rem">
       <div>
         <h1 style="margin:0;font-size:1.25rem">{{ link.title or 'HTML Paste' }}</h1>
@@ -30,12 +31,9 @@
 {% endblock %}
 {% block scripts %}
 <script>
-  // Auto-resize iframe to content
   const frame = document.getElementById('html-frame')
   frame.addEventListener('load', () => {
-    try {
-      frame.style.height = frame.contentDocument.body.scrollHeight + 'px'
-    } catch (_) {}
+    try { frame.style.height = frame.contentDocument.body.scrollHeight + 'px' } catch (_) {}
   })
 </script>
 {% endblock %}
