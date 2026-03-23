@@ -1,5 +1,82 @@
 {% extends "layouts/base.njk" %}
 {% block title %}Settings — Admin — {{ siteName }}{% endblock %}
+{% block head %}
+<style>
+.settings-wrap {
+  max-width: 960px;
+}
+.settings-nav {
+  background: var(--bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: .75rem;
+}
+.settings-nav-links {
+  display: flex;
+  flex-direction: column;
+  gap: .1rem;
+}
+.settings-nav-links a {
+  display: block;
+  padding: .4rem .65rem;
+  border-radius: 4px;
+  font-size: .875rem;
+  color: var(--color-text);
+  text-decoration: none;
+  white-space: nowrap;
+}
+.settings-nav-links a:hover {
+  background: var(--bg-card-hover);
+}
+.settings-nav-save {
+  margin-top: .65rem;
+  padding-top: .65rem;
+  border-top: 1px solid var(--color-border);
+}
+@media (min-width: 640px) {
+  .settings-wrap {
+    display: grid;
+    grid-template-columns: 1fr 148px;
+    gap: 24px;
+    align-items: start;
+  }
+  .settings-content { order: 1; }
+  .settings-nav { order: 2; position: sticky; top: 4.5rem; }
+  .settings-nav-toggle { display: none !important; }
+  .settings-nav-links { display: flex !important; }
+}
+@media (max-width: 639px) {
+  .settings-nav {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    border-radius: 0;
+    border-left: none;
+    border-right: none;
+    border-top: none;
+    margin-bottom: 1rem;
+  }
+  .settings-nav-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    background: none;
+    border: none;
+    font-size: .9rem;
+    font-weight: 600;
+    cursor: pointer;
+    color: var(--color-text);
+    padding: 0;
+  }
+  .settings-nav-links {
+    display: none;
+    margin-top: .5rem;
+  }
+  .settings-nav-links.open { display: flex; }
+}
+</style>
+{% endblock %}
 {% block content %}
 <div class="container">
   <div class="page-header">
@@ -11,7 +88,7 @@
   </div>
 
   {# ── Update status bar ── #}
-  <div class="card mb-4" id="update" style="max-width:900px;display:flex;align-items:center;flex-wrap:wrap;gap:1rem;justify-content:space-between">
+  <div class="card mb-4" id="update" style="max-width:960px;display:flex;align-items:center;flex-wrap:wrap;gap:1rem;justify-content:space-between">
     <div>
       <span style="font-size:.875rem">Current version: <strong>v{{ appVersion }}</strong></span>
       {% if updateInfo.latest %}
@@ -40,92 +117,79 @@
     </div>
   </div>
 
-  <div style="display:grid; grid-template-columns:1fr 1fr; gap:24px; max-width:900px;">
-    <div class="card">
-      <h2 class="card-title mb-3">Site Settings</h2>
-      <form method="POST" action="/admin/settings">
-        <div class="form-group">
-          <label class="label">Site Name</label>
-          <input type="text" name="site_name" class="input" value="{{ settings.site_name }}">
-        </div>
-        <div class="form-group">
-          <label class="label">Site Tagline</label>
-          <input type="text" name="site_tagline" class="input" value="{{ settings.site_tagline }}">
-        </div>
-        <div class="form-group">
-          <label class="label">GDPR Consent Banner</label>
-          <label style="display:flex;align-items:center;gap:.5rem;font-weight:400;cursor:pointer">
-            <input type="checkbox" name="gdpr_enabled" value="true" {% if settings.gdpr_enabled == 'true' %}checked{% endif %}>
-            Show cookie/tracking consent banner to visitors
-          </label>
-          <p class="text-xs text-muted mt-1">Enable for EU/GDPR compliance. Visitors who decline will not have visits or clicks tracked.</p>
-        </div>
-        <div class="form-group">
-          <label class="label">Registration</label>
-          <select name="registration_open" class="select">
-            <option value="true" {% if settings.registration_open == 'true' %}selected{% endif %}>Open</option>
-            <option value="false" {% if settings.registration_open == 'false' %}selected{% endif %}>Closed</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label class="label">Homepage Statistics</label>
-          <div style="display:flex;flex-direction:column;gap:.4rem">
-            <label style="display:flex;align-items:center;gap:.5rem;font-weight:400;cursor:pointer">
-              <input type="checkbox" name="stat_show_links" value="true" {% if settings.stat_show_links != 'false' %}checked{% endif %}> Links Created
-            </label>
-            <label style="display:flex;align-items:center;gap:.5rem;font-weight:400;cursor:pointer">
-              <input type="checkbox" name="stat_show_visits" value="true" {% if settings.stat_show_visits != 'false' %}checked{% endif %}> Total Visits
-            </label>
-            <label style="display:flex;align-items:center;gap:.5rem;font-weight:400;cursor:pointer">
-              <input type="checkbox" name="stat_show_users" value="true" {% if settings.stat_show_users != 'false' %}checked{% endif %}> Users
-            </label>
-          </div>
-        </div>
-        <button type="submit" class="btn btn-primary btn-block">Save Settings</button>
-      </form>
-    </div>
+  <div class="settings-wrap">
 
-    <div>
-      <div class="card mb-3">
-        <h2 class="card-title mb-3">Watermark</h2>
-        {% if settings.watermark_image_path %}
-        <div style="margin-bottom:.75rem;display:flex;align-items:center;gap:.75rem;flex-wrap:wrap">
-          <img src="/{{ settings.watermark_image_path }}" alt="Watermark" style="max-height:40px;background:repeating-conic-gradient(#ccc 0% 25%, transparent 0% 50%) 0 0/10px 10px;border-radius:4px;padding:4px">
-          <form method="POST" action="/admin/settings/watermark/remove" style="margin:0">
-            <button class="btn btn-ghost btn-sm">Remove</button>
-          </form>
+    {# ── Floating navigation ── #}
+    <nav class="settings-nav">
+      <button class="settings-nav-toggle" id="settings-nav-toggle" type="button">
+        <span>☰ Sections</span><span id="settings-nav-arrow">▾</span>
+      </button>
+      <div class="settings-nav-links" id="settings-nav-links">
+        <a href="#s-site">Site</a>
+        <a href="#s-watermark">Watermark</a>
+        <a href="#s-ads">Ads</a>
+        <a href="#s-stripe">Stripe</a>
+        <a href="#s-updates">Updates</a>
+        <a href="#s-logo">Logo</a>
+        <a href="#s-theme">Theme</a>
+        <div class="settings-nav-save">
+          <button type="submit" form="main-settings-form" class="btn btn-primary btn-sm" style="width:100%">Save</button>
         </div>
-        {% else %}
-        <p class="text-sm text-muted mb-2">No watermark set.</p>
-        {% endif %}
-        <form method="POST" action="/admin/settings/watermark" enctype="multipart/form-data">
+      </div>
+    </nav>
+
+    {# ── Single-column settings content ── #}
+    <div class="settings-content">
+
+      {# Main form — covers all fields that POST to /admin/settings #}
+      <form id="main-settings-form" method="POST" action="/admin/settings">
+
+        {# ── Site Settings ── #}
+        <div class="card mb-4" id="s-site">
+          <h2 class="card-title mb-3">Site Settings</h2>
           <div class="form-group">
-            <label class="label">Watermark PNG</label>
-            <input type="file" name="logo" class="input" accept="image/png">
-            <p class="text-xs text-muted mt-1">Transparent PNG recommended.</p>
+            <label class="label">Site Name</label>
+            <input type="text" name="site_name" class="input" value="{{ settings.site_name }}">
           </div>
-          <button type="submit" class="btn btn-primary btn-sm btn-block">Upload Watermark</button>
-        </form>
-        <form method="POST" action="/admin/settings" style="margin-top:1rem">
           <div class="form-group">
-            <label class="label">Position</label>
-            <select name="watermark_position" class="select">
-              {% for pos in ['bottom-right','bottom-left','bottom-center','top-right','top-left','top-center','center'] %}
-              <option value="{{ pos }}" {% if settings.watermark_position == pos %}selected{% endif %}>{{ pos }}</option>
-              {% endfor %}
+            <label class="label">Site Tagline</label>
+            <input type="text" name="site_tagline" class="input" value="{{ settings.site_tagline }}">
+          </div>
+          <div class="form-group">
+            <label class="label">GDPR Consent Banner</label>
+            <label style="display:flex;align-items:center;gap:.5rem;font-weight:400;cursor:pointer">
+              <input type="checkbox" name="gdpr_enabled" value="true" {% if settings.gdpr_enabled == 'true' %}checked{% endif %}>
+              Show cookie/tracking consent banner to visitors
+            </label>
+            <p class="text-xs text-muted mt-1">Enable for EU/GDPR compliance. Visitors who decline will not have visits or clicks tracked.</p>
+          </div>
+          <div class="form-group">
+            <label class="label">Registration</label>
+            <select name="registration_open" class="select">
+              <option value="true" {% if settings.registration_open == 'true' %}selected{% endif %}>Open</option>
+              <option value="false" {% if settings.registration_open == 'false' %}selected{% endif %}>Closed</option>
             </select>
           </div>
           <div class="form-group">
-            <label class="label">Size (% of image height)</label>
-            <input type="number" name="watermark_size_pct" class="input" value="{{ settings.watermark_size_pct or '15' }}" min="1" max="100">
+            <label class="label">Homepage Statistics</label>
+            <div style="display:flex;flex-direction:column;gap:.4rem">
+              <label style="display:flex;align-items:center;gap:.5rem;font-weight:400;cursor:pointer">
+                <input type="checkbox" name="stat_show_links" value="true" {% if settings.stat_show_links != 'false' %}checked{% endif %}> Links Created
+              </label>
+              <label style="display:flex;align-items:center;gap:.5rem;font-weight:400;cursor:pointer">
+                <input type="checkbox" name="stat_show_visits" value="true" {% if settings.stat_show_visits != 'false' %}checked{% endif %}> Total Visits
+              </label>
+              <label style="display:flex;align-items:center;gap:.5rem;font-weight:400;cursor:pointer">
+                <input type="checkbox" name="stat_show_users" value="true" {% if settings.stat_show_users != 'false' %}checked{% endif %}> Users
+              </label>
+            </div>
           </div>
-          <button type="submit" class="btn btn-secondary btn-sm btn-block">Save Watermark Settings</button>
-        </form>
-      </div>
+          <button type="submit" class="btn btn-primary btn-sm">Save Site Settings</button>
+        </div>
 
-      <div class="card mb-3">
-        <h2 class="card-title mb-3">Ads</h2>
-        <form method="POST" action="/admin/settings">
+        {# ── Ads ── #}
+        <div class="card mb-4" id="s-ads">
+          <h2 class="card-title mb-3">Ads</h2>
           <div class="form-group">
             <label class="label">URL interstitial countdown (seconds)</label>
             <input type="number" name="ad_interstitial_seconds" class="input" value="{{ settings.ad_interstitial_seconds or '5' }}" min="1" max="60">
@@ -135,13 +199,12 @@
             <input type="number" name="ad_image_height" class="input" value="{{ settings.ad_image_height or '90' }}" min="40" max="400">
             <p class="text-xs text-muted mt-1">Images are scaled to this height and centered. Width fills the container.</p>
           </div>
-          <button type="submit" class="btn btn-primary btn-sm btn-block">Save</button>
-        </form>
-      </div>
+          <button type="submit" class="btn btn-primary btn-sm">Save Ads</button>
+        </div>
 
-      <div class="card mb-3">
-        <h2 class="card-title mb-3">Stripe Payments</h2>
-        <form method="POST" action="/admin/settings">
+        {# ── Stripe ── #}
+        <div class="card mb-4" id="s-stripe">
+          <h2 class="card-title mb-3">Stripe Payments</h2>
           <div class="form-group">
             <label class="label">Payments</label>
             <select name="stripe_enabled" class="select">
@@ -167,17 +230,16 @@
             </p>
           </div>
           <div style="display:flex;gap:.5rem;flex-wrap:wrap">
-            <button type="submit" class="btn btn-primary btn-sm">Save</button>
+            <button type="submit" class="btn btn-primary btn-sm">Save Stripe</button>
             {% if settings.stripe_secret_key %}
             <a href="https://dashboard.stripe.com" target="_blank" rel="noopener" class="btn btn-ghost btn-sm">Stripe Dashboard ↗</a>
             {% endif %}
           </div>
-        </form>
-      </div>
+        </div>
 
-      <div class="card mb-3">
-        <h2 class="card-title mb-3">Update Settings</h2>
-        <form method="POST" action="/admin/settings">
+        {# ── Update Settings ── #}
+        <div class="card mb-4" id="s-updates">
+          <h2 class="card-title mb-3">Update Settings</h2>
           <div class="form-group">
             <label class="label">GitHub Repo URL</label>
             <input type="url" name="github_repo_url" class="input"
@@ -190,11 +252,68 @@
             <input type="number" name="update_check_hours" class="input"
               value="{{ settings.update_check_hours or '24' }}" min="1" max="720">
           </div>
-          <button type="submit" class="btn btn-primary btn-block">Save</button>
-        </form>
-      </div>
+          <button type="submit" class="btn btn-primary btn-sm">Save Updates</button>
+        </div>
 
-      <div class="card mb-3">
+        {# ── Watermark settings (position/size only — inside main form) ── #}
+        <div class="card mb-4" id="s-watermark">
+          <h2 class="card-title mb-3">Watermark</h2>
+
+          {# Image upload — separate form, can't nest inside main form #}
+          {% if settings.watermark_image_path %}
+          <div style="margin-bottom:.75rem;display:flex;align-items:center;gap:.75rem;flex-wrap:wrap">
+            <img src="/{{ settings.watermark_image_path }}" alt="Watermark" style="max-height:40px;background:repeating-conic-gradient(#ccc 0% 25%, transparent 0% 50%) 0 0/10px 10px;border-radius:4px;padding:4px">
+            <form method="POST" action="/admin/settings/watermark/remove" style="margin:0">
+              <button class="btn btn-ghost btn-sm">Remove</button>
+            </form>
+          </div>
+          {% else %}
+          <p class="text-sm text-muted mb-2">No watermark set.</p>
+          {% endif %}
+          <form method="POST" action="/admin/settings/watermark" enctype="multipart/form-data" class="mb-3">
+            <div class="form-group">
+              <label class="label">Watermark PNG</label>
+              <input type="file" name="logo" class="input" accept="image/png">
+              <p class="text-xs text-muted mt-1">Transparent PNG recommended.</p>
+            </div>
+            <button type="submit" class="btn btn-secondary btn-sm">Upload Watermark</button>
+          </form>
+
+          {# Position/size — part of main form via form= attribute #}
+          <div class="form-group">
+            <label class="label">Position</label>
+            <select name="watermark_position" class="select">
+              {% for pos in ['bottom-right','bottom-left','bottom-center','top-right','top-left','top-center','center'] %}
+              <option value="{{ pos }}" {% if settings.watermark_position == pos %}selected{% endif %}>{{ pos }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="label">Size (% of image height)</label>
+            <input type="number" name="watermark_size_pct" class="input" value="{{ settings.watermark_size_pct or '15' }}" min="1" max="100">
+          </div>
+          <button type="submit" class="btn btn-secondary btn-sm">Save Watermark Settings</button>
+        </div>
+
+        {# ── Theme ── #}
+        <div class="card mb-4" id="s-theme">
+          <h2 class="card-title mb-3">Theme</h2>
+          <div class="form-group">
+            <label class="label">Active Theme</label>
+            <select name="active_theme" class="select" id="theme-select">
+              {% for t in availableThemes %}
+              <option value="{{ t }}" {% if t == settings.active_theme or (not settings.active_theme and t == 'default') %}selected{% endif %}>{{ t }}</option>
+              {% endfor %}
+            </select>
+            <p class="text-xs text-muted mt-1">Takes effect on next server restart.</p>
+          </div>
+          <button type="submit" class="btn btn-secondary btn-sm">Save Theme</button>
+        </div>
+
+      </form>{# end main-settings-form #}
+
+      {# ── Site Logo — separate (multipart) ── #}
+      <div class="card mb-4" id="s-logo">
         <h2 class="card-title mb-3">Site Logo</h2>
         {% if siteLogo %}
         <div style="margin-bottom:.75rem;display:flex;align-items:center;gap:.75rem;flex-wrap:wrap">
@@ -212,27 +331,12 @@
             <input type="file" name="logo" class="input" accept="image/png,image/jpeg,image/gif,image/webp,image/svg+xml">
             <p class="text-xs text-muted mt-1">PNG, JPG, GIF, WebP, or SVG. Recommended: transparent PNG, height ≤ 64px.</p>
           </div>
-          <button type="submit" class="btn btn-primary btn-block">Upload Logo</button>
+          <button type="submit" class="btn btn-primary btn-sm">Upload Logo</button>
         </form>
       </div>
 
-      <div class="card">
-        <h2 class="card-title mb-3">Theme</h2>
-        <form method="POST" action="/admin/settings">
-          <div class="form-group">
-            <label class="label">Active Theme</label>
-            <select name="active_theme" class="select" id="theme-select">
-              {% for t in availableThemes %}
-              <option value="{{ t }}" {% if t == settings.active_theme or (not settings.active_theme and t == 'default') %}selected{% endif %}>{{ t }}</option>
-              {% endfor %}
-            </select>
-            <p class="text-xs text-muted mt-1">Takes effect on next server restart.</p>
-          </div>
-          <button type="submit" class="btn btn-secondary btn-block">Save Theme</button>
-        </form>
-      </div>
-    </div>
-  </div>
+    </div>{# end settings-content #}
+  </div>{# end settings-wrap #}
 </div>
 
 {% if updateInfo.updateAvailable %}
@@ -264,12 +368,10 @@
     overlay.style.display = 'flex'
     btn.disabled = true
 
-    // Fire the POST — server will exit shortly after responding
     fetch(form.action, { method: 'POST', credentials: 'same-origin',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' } })
       .catch(function() {})
 
-    // Wait for restart to begin, then poll /ping until the server responds
     setTimeout(function() {
       msg.textContent = 'Waiting for server to restart…'
       var elapsed = 0
@@ -290,11 +392,31 @@
               setTimeout(function() { location.reload() }, 800)
             }
           })
-          .catch(function() {}) // still down — keep polling
+          .catch(function() {})
       }, 1500)
     }, 3000)
   })
 })()
 </script>
 {% endif %}
+
+<script>
+// Collapsible nav toggle (mobile only)
+var toggle = document.getElementById('settings-nav-toggle')
+var links = document.getElementById('settings-nav-links')
+var arrow = document.getElementById('settings-nav-arrow')
+if (toggle && links) {
+  toggle.addEventListener('click', function() {
+    var open = links.classList.toggle('open')
+    if (arrow) arrow.textContent = open ? '▴' : '▾'
+  })
+  // Close nav after clicking a section link on mobile
+  links.querySelectorAll('a').forEach(function(a) {
+    a.addEventListener('click', function() {
+      links.classList.remove('open')
+      if (arrow) arrow.textContent = '▾'
+    })
+  })
+}
+</script>
 {% endblock %}
