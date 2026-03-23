@@ -36,10 +36,10 @@ async function sendResetEmail(email, token) {
   const resetUrl = `https://${config.BASE_DOMAIN}/reset-password?token=${token}`
 
   console.log(`[resend] Attempting password reset email to: ${email}`)
-  console.log(`[resend] Reset URL: ${resetUrl}`)
 
   if (!config.RESEND_API_KEY) {
-    console.log('[resend] RESEND_API_KEY not set — skipping send (link logged above)')
+    // Dev mode: log the link since there's no email provider to deliver it
+    console.log(`[resend] RESEND_API_KEY not set — reset URL: ${resetUrl}`)
     return
   }
 
@@ -159,6 +159,9 @@ async function usersPlugin(fastify) {
     )
     const user = db.get('SELECT * FROM users WHERE id = ?', info.lastInsertRowid)
 
+    const pendingCode = req.session.pendingClaimCode || null
+    await new Promise((res, rej) => req.session.regenerate(e => e ? rej(e) : res()))
+    if (pendingCode) req.session.pendingClaimCode = pendingCode
     setSessionFromUser(req, user)
     claimPendingLink(db, req)
 
@@ -179,7 +182,15 @@ async function usersPlugin(fastify) {
   // ----------------------------------------------------------------
   // POST /login
   // ----------------------------------------------------------------
-  fastify.post('/login', async (req, reply) => {
+  fastify.post('/login', {
+    config: {
+      rateLimit: {
+        max: fastify.config.RATE_LIMIT_LOGIN_MAX,
+        timeWindow: fastify.config.RATE_LIMIT_LOGIN_WINDOW_MS,
+        keyGenerator: req => req.ip,
+      }
+    }
+  }, async (req, reply) => {
     if (req.subdomain !== '') return reply.callNotFound()
     const { login = '', password = '', next } = req.body || {}
     const loginLc = login.trim().toLowerCase()
@@ -203,10 +214,15 @@ async function usersPlugin(fastify) {
 
     db.run('UPDATE users SET last_login = ? WHERE id = ?', Date.now(), user.id)
 
+    const pendingCode = req.session.pendingClaimCode || null
+    await new Promise((res, rej) => req.session.regenerate(e => e ? rej(e) : res()))
+    if (pendingCode) req.session.pendingClaimCode = pendingCode
     setSessionFromUser(req, user)
     claimPendingLink(db, req)
 
-    return reply.redirect((next && next.startsWith('/')) ? next : '/dashboard')
+    // Reject open-redirect tricks like //attacker.com or /\attacker.com
+    const safeNext = (next && /^\/[^/\\]/.test(next)) ? next : '/dashboard'
+    return reply.redirect(safeNext)
   })
 
   // ----------------------------------------------------------------
@@ -312,6 +328,7 @@ async function usersPlugin(fastify) {
       hash, user.id
     )
 
+    await new Promise((res, rej) => req.session.regenerate(e => e ? rej(e) : res()))
     setSessionFromUser(req, user)
     req.session.flash = { type: 'success', message: 'Password updated. You are now logged in.' }
     return reply.redirect('/dashboard')
@@ -545,7 +562,9 @@ async function usersPlugin(fastify) {
   // ----------------------------------------------------------------
   fastify.post('/return-to-admin', { preHandler: requireAuth }, async (req, reply) => {
     if (!req.session.impersonatingAdminId) return reply.redirect('/dashboard')
-    req.session.userId = req.session.impersonatingAdminId
+    const impersonatedUserId = req.session.userId
+    const adminId = req.session.impersonatingAdminId
+    req.session.userId = adminId
     req.session.username = req.session.impersonatingAdminUsername
     req.session.role = req.session.impersonatingAdminRole
     req.session.displayName = req.session.impersonatingAdminDisplayName || null
@@ -555,6 +574,12 @@ async function usersPlugin(fastify) {
     delete req.session.impersonatingAdminRole
     delete req.session.impersonatingAdminDisplayName
     delete req.session.impersonatingAdminEmail
+    try {
+      fastify.db.run(
+        'INSERT INTO audit_log(action, admin_id, target_user_id, ip, created_at) VALUES(?,?,?,?,?)',
+        'impersonate_end', adminId, impersonatedUserId, req.ip, Date.now()
+      )
+    } catch (_) {}
     req.session.flash = { type: 'success', message: 'Returned to admin account.' }
     return reply.redirect('/admin/users')
   })

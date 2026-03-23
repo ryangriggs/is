@@ -7,6 +7,17 @@ import { getAdForOwner } from '../../core/ads.js'
 
 const dynApex = () => `${config.DYN_SUBDOMAIN}.${config.BASE_DOMAIN}`
 
+function isValidIp4(ip) {
+  if (!ip) return true
+  if (!/^(\d{1,3}\.){3}\d{1,3}$/.test(ip)) return false
+  return ip.split('.').every(n => Number(n) >= 0 && Number(n) <= 255)
+}
+
+function isValidIp6(ip) {
+  if (!ip) return true
+  return /^[0-9a-fA-F:]+$/.test(ip) && ip.includes(':')
+}
+
 async function dnsUiPlugin(fastify) {
   const db = fastify.db
 
@@ -30,6 +41,14 @@ async function dnsUiPlugin(fastify) {
     }
     if (!ip4.trim() && !ip6.trim()) {
       req.session.flash = { type: 'error', message: 'Provide at least one IP address.' }
+      return reply.redirect('/d')
+    }
+    if (!isValidIp4(ip4.trim())) {
+      req.session.flash = { type: 'error', message: 'Invalid IPv4 address.' }
+      return reply.redirect('/d')
+    }
+    if (!isValidIp6(ip6.trim())) {
+      req.session.flash = { type: 'error', message: 'Invalid IPv6 address.' }
       return reply.redirect('/d')
     }
 
@@ -89,6 +108,14 @@ async function dnsUiPlugin(fastify) {
     if (!record) { reply.code(404); return reply.view('errors/404.njk', {}) }
 
     const { ip4 = '', ip6 = '', ttl } = req.body || {}
+    if (!isValidIp4(ip4.trim())) {
+      req.session.flash = { type: 'error', message: 'Invalid IPv4 address.' }
+      return reply.redirect('/d')
+    }
+    if (!isValidIp6(ip6.trim())) {
+      req.session.flash = { type: 'error', message: 'Invalid IPv6 address.' }
+      return reply.redirect('/d')
+    }
     const isPaid = req.session.subscriptionTier === 'paid' || req.session.role === 'admin'
     const ttlValue = isPaid && ttl ? Math.max(30, Math.min(86400, parseInt(ttl) || record.ttl)) : record.ttl
 

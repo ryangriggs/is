@@ -24,7 +24,8 @@
 </section>
 <script>
   var secs = {{ seconds }};
-  var dest = {{ destination | dump | safe }};
+  var rawDest = document.getElementById('go-btn').getAttribute('href');
+  var dest = (rawDest && (rawDest.startsWith('http://') || rawDest.startsWith('https://'))) ? rawDest : '/';
   var label = document.getElementById('cd-label');
   var counter = document.getElementById('countdown');
   var timer = setInterval(function() {

@@ -65,9 +65,9 @@
     .nav-avatar-drop .drop-divider { height: 1px; background: var(--color-border); margin: 4px 0; }
 
     /* New button dropdown in nav */
-    .nav-new-wrap { position: relative; }
+    .nav-new-wrap { position: absolute; left: 50%; transform: translateX(-50%); }
     .nav-new-drop {
-      position: absolute; right: 0; top: calc(100% + 8px);
+      position: absolute; left: 50%; transform: translateX(-50%); top: calc(100% + 8px);
       background: var(--bg-surface); border: 1px solid var(--color-border);
       border-radius: var(--radius-lg); min-width: 200px;
       box-shadow: 0 8px 24px rgba(0,0,0,0.3); overflow: hidden;
@@ -139,7 +139,7 @@
 <body class="{% block bodyClass %}{% endblock %}">
 
   <nav class="nav" style="position:sticky;top:0;z-index:200">
-    <div class="container nav-inner">
+    <div class="container nav-inner" style="position:relative">
       <a href="/" class="nav-logo">
         {% if siteLogo %}
           <img src="{{ siteLogo }}" alt="{{ siteName }}" style="max-height:32px;max-width:140px;object-fit:contain;display:block">
@@ -147,6 +147,22 @@
           <span class="nav-logo-text">{{ siteName }}</span>
         {% endif %}
       </a>
+
+      {# ── Centered + New button ── #}
+      <div class="nav-new-wrap">
+        <button class="btn btn-primary" id="nav-new-btn" style="gap:4px;font-size:.95rem;padding:.4rem 1rem">+ New ▾</button>
+        <div class="nav-new-drop" id="nav-new-drop">
+          <a href="/">🔗 URL Shortlink</a>
+          <a href="/t">📝 Text Paste</a>
+          <a href="/h">🌐 HTML Paste</a>
+          <a href="/i">🖼️ Image Upload</a>
+          <a href="/q">⬛ QR Code</a>
+          {% if user %}
+          <a href="/b">🔖 Bookmark Collection</a>
+          <a href="/d">🌍 Dynamic DNS</a>
+          {% endif %}
+        </div>
+      </div>
 
       {# ── Desktop nav links (hidden on mobile) ── #}
       <ul class="nav-links">
@@ -160,23 +176,8 @@
         </li>
       </ul>
 
-      {# ── Always-visible right section: + New, hamburger, avatar ── #}
+      {# ── Always-visible right section: hamburger, avatar ── #}
       <div class="nav-actions">
-        {# + New — always visible across all screen sizes #}
-        <div class="nav-new-wrap">
-          <button class="btn btn-primary btn-sm" id="nav-new-btn" style="gap:4px">+ New ▾</button>
-          <div class="nav-new-drop" id="nav-new-drop">
-            <a href="/">🔗 URL Shortlink</a>
-            <a href="/t">📝 Text Paste</a>
-            <a href="/h">🌐 HTML Paste</a>
-            <a href="/i">🖼️ Image Upload</a>
-            <a href="/q">⬛ QR Code</a>
-            {% if user %}
-            <a href="/b">🔖 Bookmark Collection</a>
-            <a href="/d">🌍 Dynamic DNS</a>
-            {% endif %}
-          </div>
-        </div>
         <button class="nav-hamburger" id="hamburger-btn" title="Menu">☰</button>
         {% if user %}
           <div class="nav-avatar-wrap">

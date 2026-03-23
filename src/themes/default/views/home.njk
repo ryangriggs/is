@@ -41,18 +41,24 @@
   <div class="container">
     {% if stats %}
     <div class="stats-grid mb-4">
+      {% if stats.showLinks %}
       <div class="stat-card">
         <div class="stat-value">{{ stats.totalLinks | default(0) }}</div>
         <div class="stat-label">Links Created</div>
       </div>
+      {% endif %}
+      {% if stats.showVisits %}
       <div class="stat-card">
         <div class="stat-value">{{ stats.totalVisits | default(0) }}</div>
         <div class="stat-label">Total Visits</div>
       </div>
+      {% endif %}
+      {% if stats.showUsers %}
       <div class="stat-card">
         <div class="stat-value">{{ stats.totalUsers | default(0) }}</div>
         <div class="stat-label">Users</div>
       </div>
+      {% endif %}
     </div>
     {% endif %}
 

@@ -27,12 +27,23 @@ async function shortlinksPlugin(fastify) {
   // ----------------------------------------------------------------
   fastify.get('/', async (req, reply) => {
     if (req.subdomain !== '') return reply.callNotFound()
-    const stats = db.get(`
-      SELECT
-        (SELECT COUNT(*) FROM links) as totalLinks,
-        (SELECT COUNT(*) FROM tracking) as totalVisits,
-        (SELECT COUNT(*) FROM users) as totalUsers
-    `)
+    const statSettings = {}
+    for (const r of db.all("SELECT key, value FROM settings WHERE key IN ('stat_show_links','stat_show_visits','stat_show_users')")) {
+      statSettings[r.key] = r.value
+    }
+    const showLinks   = statSettings.stat_show_links   !== 'false'
+    const showVisits  = statSettings.stat_show_visits  !== 'false'
+    const showUsers   = statSettings.stat_show_users   !== 'false'
+    let stats = null
+    if (showLinks || showVisits || showUsers) {
+      const row = db.get(`
+        SELECT
+          (SELECT COUNT(*) FROM links) as totalLinks,
+          (SELECT COUNT(*) FROM tracking) as totalVisits,
+          (SELECT COUNT(*) FROM users) as totalUsers
+      `)
+      stats = { ...row, showLinks, showVisits, showUsers }
+    }
     const ad = getAdForOwner(req.session.userId || null, db)
     return reply.view('home.njk', { stats, ad })
   })

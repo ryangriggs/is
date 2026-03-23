@@ -494,6 +494,15 @@ async function adminPlugin(fastify) {
         )
       }
     }
+    // Checkbox fields: unchecked = absent from body, so explicitly store 'false'
+    for (const key of ['stat_show_links', 'stat_show_visits', 'stat_show_users']) {
+      const val = req.body[key] === 'true' ? 'true' : 'false'
+      db.run(
+        `INSERT INTO settings(key, value, updated_at) VALUES(?,?,?)
+         ON CONFLICT(key) DO UPDATE SET value=excluded.value, updated_at=excluded.updated_at`,
+        key, val, Date.now()
+      )
+    }
     // Stripe secret fields: only update if non-empty (blank = keep existing)
     for (const key of ['stripe_secret_key', 'stripe_webhook_secret']) {
       const val = (req.body[key] || '').trim()
@@ -586,6 +595,10 @@ async function adminPlugin(fastify) {
       req.session.flash = { type: 'error', message: 'User not found.' }
       return reply.redirect('/admin/users')
     }
+    db.run(
+      'INSERT INTO audit_log(action, admin_id, target_user_id, ip, created_at) VALUES(?,?,?,?,?)',
+      'impersonate', req.session.userId, user.id, req.ip, Date.now()
+    )
     req.session.impersonatingAdminId = req.session.userId
     req.session.impersonatingAdminUsername = req.session.username
     req.session.impersonatingAdminRole = req.session.role
@@ -672,6 +685,10 @@ async function adminPlugin(fastify) {
     const { hashPassword } = await import('../../core/auth.js')
     const hash = await hashPassword(password)
     db.run('UPDATE users SET password_hash = ? WHERE id = ?', hash, Number(req.params.id))
+    db.run(
+      'INSERT INTO audit_log(action, admin_id, target_user_id, ip, created_at) VALUES(?,?,?,?,?)',
+      'reset_password', req.session.userId, Number(req.params.id), req.ip, Date.now()
+    )
     req.session.flash = { type: 'success', message: 'Password reset.' }
     return reply.redirect('/admin/users')
   })

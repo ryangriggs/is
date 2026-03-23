@@ -86,8 +86,12 @@ async function adsPlugin(fastify) {
       req.session.flash = { type: 'error', message: 'Campaign name is required.' }
       return reply.redirect('/ads')
     }
-    if (!click_url.trim().startsWith('http')) {
-      req.session.flash = { type: 'error', message: 'A valid click URL is required.' }
+    let parsedClickUrl
+    try {
+      parsedClickUrl = new URL(click_url.trim())
+      if (parsedClickUrl.protocol !== 'http:' && parsedClickUrl.protocol !== 'https:') throw new Error()
+    } catch {
+      req.session.flash = { type: 'error', message: 'A valid http/https click URL is required.' }
       return reply.redirect('/ads')
     }
 
@@ -96,7 +100,7 @@ async function adsPlugin(fastify) {
     const info = db.run(
       `INSERT INTO ad_campaigns(owner_id, name, click_url, is_active, expires_at, created_at)
        VALUES(?,?,?,0,?,?)`,
-      req.session.userId, name.trim(), click_url.trim(), expiresAt, Date.now()
+      req.session.userId, name.trim(), parsedClickUrl.href, expiresAt, Date.now()
     )
     req.session.flash = { type: 'success', message: 'Campaign created. Upload an image to get started.' }
     return reply.redirect(`/ads/${info.lastInsertRowid}`)

@@ -39,7 +39,18 @@ export async function buildApp() {
   let startupTheme = config.THEME || 'default'
   try {
     const themeSetting = db.get("SELECT value FROM settings WHERE key = 'active_theme'")
-    if (themeSetting?.value) startupTheme = themeSetting.value
+    if (themeSetting?.value) {
+      const raw = themeSetting.value
+      // Prevent path traversal: only allow alphanumeric, dash, underscore
+      // and verify the resolved path stays inside the themes directory
+      if (/^[a-zA-Z0-9_-]+$/.test(raw)) {
+        const themesDir = path.join(__dirname, 'themes')
+        const resolved = path.resolve(themesDir, raw)
+        if (resolved.startsWith(themesDir + path.sep) || resolved === themesDir) {
+          startupTheme = raw
+        }
+      }
+    }
   } catch (_) {}
 
   const app = Fastify({
@@ -90,15 +101,20 @@ export async function buildApp() {
     if (req.url.startsWith('/a/')) return
     if (req.url === '/stripe/webhook') return  // Stripe webhook verified by signature
     const origin = req.headers.origin
-    if (!origin) return  // curl / server-to-server — no Origin header, allow
-    try {
-      const originHost = new URL(origin).hostname
-      const siteHost = config.BASE_DOMAIN
-      if (originHost !== siteHost && !originHost.endsWith('.' + siteHost)) {
-        return reply.code(403).send('Forbidden')
-      }
-    } catch {
-      return reply.code(403).send('Forbidden')
+    const referer = req.headers.referer
+    // No Origin and no Referer = server-to-server (curl, etc.) — allow
+    if (!origin && !referer) return
+    const siteHost = config.BASE_DOMAIN
+    const isAllowedHost = (header) => {
+      try {
+        const host = new URL(header).hostname
+        return host === siteHost || host.endsWith('.' + siteHost)
+      } catch { return false }
+    }
+    if (origin) {
+      if (!isAllowedHost(origin)) return reply.code(403).send('Forbidden')
+    } else if (referer) {
+      if (!isAllowedHost(referer)) return reply.code(403).send('Forbidden')
     }
   })
 
@@ -125,6 +141,7 @@ export async function buildApp() {
     root: path.join(process.cwd(), 'uploads'),
     prefix: '/uploads/',
     decorateReply: false,
+    list: false,  // Never expose directory listings
   })
 
   // Nunjucks views with multi-path theme support

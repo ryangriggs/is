@@ -118,6 +118,16 @@ export async function initDb() {
       shown_at INTEGER NOT NULL DEFAULT (strftime('%s','now') * 1000)
     )`)
 
+    sqlite.exec(`CREATE TABLE IF NOT EXISTS audit_log (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      action TEXT NOT NULL,
+      admin_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      target_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      details TEXT,
+      ip TEXT,
+      created_at INTEGER NOT NULL
+    )`)
+
     // Seed default account tiers (only if none exist yet)
     const tierCount = sqlite.prepare('SELECT COUNT(*) as n FROM account_tiers').get()
     if (tierCount.n === 0) {

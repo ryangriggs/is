@@ -59,6 +59,20 @@
             <option value="false" {% if settings.registration_open == 'false' %}selected{% endif %}>Closed</option>
           </select>
         </div>
+        <div class="form-group">
+          <label class="label">Homepage Statistics</label>
+          <div style="display:flex;flex-direction:column;gap:.4rem">
+            <label style="display:flex;align-items:center;gap:.5rem;font-weight:400;cursor:pointer">
+              <input type="checkbox" name="stat_show_links" value="true" {% if settings.stat_show_links != 'false' %}checked{% endif %}> Links Created
+            </label>
+            <label style="display:flex;align-items:center;gap:.5rem;font-weight:400;cursor:pointer">
+              <input type="checkbox" name="stat_show_visits" value="true" {% if settings.stat_show_visits != 'false' %}checked{% endif %}> Total Visits
+            </label>
+            <label style="display:flex;align-items:center;gap:.5rem;font-weight:400;cursor:pointer">
+              <input type="checkbox" name="stat_show_users" value="true" {% if settings.stat_show_users != 'false' %}checked{% endif %}> Users
+            </label>
+          </div>
+        </div>
         <button type="submit" class="btn btn-primary btn-block">Save Settings</button>
       </form>
     </div>
