@@ -1,14 +1,14 @@
 {% extends "layouts/base.njk" %}
-{% block title %}Text Paste — {{ siteName }}{% endblock %}
+{% block title %}{{ 'Edit Paste' if editCode else 'Text Paste' }} — {{ siteName }}{% endblock %}
 {% block content %}
 <section class="section">
   <div class="container" style="max-width:720px">
-    <h1 class="section-title">Text Paste</h1>
+    <h1 class="section-title">{{ 'Edit Paste' if editCode else 'Text Paste' }}</h1>
 
     {% if error %}<div class="alert alert-error mb-3">{{ error }}</div>{% endif %}
 
     <div class="card">
-      <form method="POST" action="/t">
+      <form method="POST" action="{{ '/t/' + editCode + '/edit' if editCode else '/t' }}">
         <div class="form-group">
           <label class="label" for="title">Title <span class="text-muted">(optional)</span></label>
           <input id="title" type="text" name="title" class="input" value="{{ title }}" placeholder="Untitled paste">
@@ -21,11 +21,16 @@
         {% if user %}
         <div class="form-group">
           <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer">
-            <input type="checkbox" name="is_private" value="1"> Private (only visible to you)
+            <input type="checkbox" name="is_private" value="1" {% if isPrivate %}checked{% endif %}> Private (only visible to you)
           </label>
         </div>
         {% endif %}
-        <button type="submit" class="btn btn-primary btn-block">Create Paste</button>
+        <div style="display:flex;gap:.75rem">
+          {% if editCode %}
+          <a href="/{{ editCode }}" class="btn btn-ghost">Cancel</a>
+          {% endif %}
+          <button type="submit" class="btn btn-primary{% if not editCode %} btn-block{% endif %}">{{ 'Update Paste' if editCode else 'Create Paste' }}</button>
+        </div>
       </form>
     </div>
     {% include "partials/ad-banner.njk" %}

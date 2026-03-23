@@ -77,34 +77,31 @@
         <h3 style="font-size:.875rem;text-transform:uppercase;letter-spacing:.05em;color:var(--color-text-muted);margin:1rem 0 .5rem">{{ item.folder }}</h3>
       {% endif %}
       <div class="card" style="margin-bottom:.5rem;padding:.75rem 1rem">
-        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:.5rem">
-          <div style="min-width:0;flex:1">
-            <a href="{{ item.url }}" target="_blank" rel="noopener"
-               style="font-weight:500;word-break:break-word">{{ item.title or item.url }}</a>
-            <div style="display:flex;align-items:center;gap:.35rem;flex-wrap:wrap;margin-top:.3rem">
-              <span class="text-muted text-xs truncate" style="max-width:260px">{{ item.url }}</span>
-              <button class="btn btn-ghost btn-sm" style="padding:1px 6px;font-size:.72rem"
-                      data-copy="{{ item.url }}" title="Copy URL">📋</button>
-              {% if item.shortlink_code %}
-              <button class="btn btn-ghost btn-sm" style="padding:1px 6px;font-size:.72rem"
-                      data-copy="https://{{ baseDomain }}/{{ item.shortlink_code }}"
-                      title="Copy shortlink {{ baseDomain }}/{{ item.shortlink_code }}">🔗 Copy shortlink</button>
-              {% endif %}
-            </div>
-            <details style="margin-top:.5rem">
-              <summary class="text-sm" style="cursor:pointer;color:var(--color-text-muted);list-style:none;display:inline-flex;align-items:center;gap:.3rem">✏️ Rename</summary>
-              <form method="POST" action="/b/{{ link.code }}/rename/{{ item.id }}"
-                    style="display:flex;gap:.4rem;margin-top:.4rem">
-                <input type="text" name="title" class="input" value="{{ item.title or '' }}"
-                       placeholder="Bookmark name" style="flex:1;font-size:.875rem;padding:.35rem .6rem">
-                <button type="submit" class="btn btn-primary btn-sm">Save</button>
-              </form>
-            </details>
+        {# Title row #}
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:.5rem;margin-bottom:.4rem">
+          <a href="{{ item.url }}" target="_blank" rel="noopener"
+             style="font-weight:500;word-break:break-word;min-width:0;flex:1">{{ item.title or item.url }}</a>
+          <div style="display:flex;gap:.35rem;flex-shrink:0">
+            {% if item.shortlink_code %}
+            <button class="btn btn-ghost btn-sm" style="font-size:.75rem"
+                    data-copy="https://{{ baseDomain }}/{{ item.shortlink_code }}"
+                    title="Copy shortlink">📋</button>
+            {% endif %}
+            <button class="btn btn-ghost btn-sm" style="font-size:.75rem"
+                    onclick="this.closest('.card').querySelector('.rename-form').style.display=this.closest('.card').querySelector('.rename-form').style.display==='none'?'flex':'none'">✏️</button>
+            <form method="POST" action="/b/{{ link.code }}/delete/{{ item.id }}" style="margin:0">
+              <button class="btn btn-ghost btn-sm" style="font-size:.75rem" data-confirm="Remove this bookmark?">🗑️</button>
+            </form>
           </div>
-          <form method="POST" action="/b/{{ link.code }}/delete/{{ item.id }}" style="margin:0;flex-shrink:0">
-            <button class="btn btn-ghost btn-sm" data-confirm="Remove this bookmark?">✕</button>
-          </form>
         </div>
+        <div class="text-muted text-xs" style="word-break:break-all">{{ item.url }}</div>
+        {# Inline rename form — hidden by default #}
+        <form class="rename-form" method="POST" action="/b/{{ link.code }}/rename/{{ item.id }}"
+              style="display:none;gap:.4rem;margin-top:.5rem">
+          <input type="text" name="title" class="input" value="{{ item.title or '' }}"
+                 placeholder="Bookmark name" style="flex:1;font-size:.875rem;padding:.35rem .6rem">
+          <button type="submit" class="btn btn-primary btn-sm">Save</button>
+        </form>
       </div>
     {% endfor %}
     {% else %}

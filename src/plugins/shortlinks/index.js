@@ -10,9 +10,11 @@ async function shortlinksPlugin(fastify) {
   const db = fastify.db
   const hooks = fastify.hooks
 
-  // Track visits
+  // Track visits (respects GDPR consent cookie when gdpr_enabled)
   hooks.on('post:link:visit', async ({ link, req }) => {
     try {
+      const gdprSetting = db.get("SELECT value FROM settings WHERE key = 'gdpr_enabled'")
+      if (gdprSetting?.value === 'true' && req.cookies?.gdpr_consent !== 'accepted') return
       db.run(
         `INSERT INTO tracking(link_id, visited_at, ip, user_agent, referer) VALUES(?,?,?,?,?)`,
         link.id, Date.now(), req.ip,

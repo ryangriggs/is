@@ -19,18 +19,19 @@
         {% set currentFolder = item.folder %}
       {% endif %}
       <div class="card" style="margin-bottom:.5rem;padding:.75rem 1rem">
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:.75rem">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:.5rem">
           <a href="{{ item.url }}" target="_blank" rel="noopener"
              style="font-weight:500;word-break:break-word;min-width:0;flex:1">{{ item.title or item.url }}</a>
           {% if item.shortlink_code %}
-          <button class="btn btn-ghost btn-sm" style="flex-shrink:0;padding:2px 7px;font-size:.75rem"
+          <button class="btn btn-ghost btn-sm" style="flex-shrink:0;font-size:.75rem"
                   data-copy="https://{{ baseDomain }}/{{ item.shortlink_code }}"
-                  title="Copy shortlink: {{ baseDomain }}/{{ item.shortlink_code }}">📋</button>
+                  title="Copy shortlink">📋</button>
           {% endif %}
         </div>
         {% if item.description %}
         <p class="text-muted text-sm" style="margin:.35rem 0 0">{{ item.description }}</p>
         {% endif %}
+        <div class="text-muted text-xs" style="margin-top:.25rem;word-break:break-all">{{ item.url }}</div>
       </div>
     {% endfor %}
     {% else %}

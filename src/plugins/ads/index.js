@@ -52,10 +52,13 @@ async function adsPlugin(fastify) {
     }
 
     try {
-      db.run(
-        'INSERT INTO ad_clicks(image_id, ip, clicked_at) VALUES(?,?,?)',
-        ad.id, req.ip, Date.now()
-      )
+      const gdprSetting = db.get("SELECT value FROM settings WHERE key = 'gdpr_enabled'")
+      if (gdprSetting?.value !== 'true' || req.cookies?.gdpr_consent === 'accepted') {
+        db.run(
+          'INSERT INTO ad_clicks(image_id, ip, clicked_at) VALUES(?,?,?)',
+          ad.id, req.ip, Date.now()
+        )
+      }
     } catch (_) {}
 
     return reply.redirect(302, ad.click_url)

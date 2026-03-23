@@ -1,5 +1,5 @@
 {% extends "layouts/base.njk" %}
-{% block title %}HTML Paste — {{ siteName }}{% endblock %}
+{% block title %}{{ 'Edit HTML Paste' if editCode else 'HTML Paste' }} — {{ siteName }}{% endblock %}
 
 {% block head %}
 <link rel="stylesheet" href="https://unpkg.com/jodit@4/es2021/jodit.min.css">
@@ -12,13 +12,13 @@
 {% block content %}
 <section class="section">
   <div class="container" style="max-width:900px">
-    <h1 class="section-title">HTML Paste</h1>
-    <p class="section-subtitle">Share HTML snippets or full pages. Rendered in a sandboxed frame.</p>
+    <h1 class="section-title">{{ 'Edit HTML Paste' if editCode else 'HTML Paste' }}</h1>
+    {% if not editCode %}<p class="section-subtitle">Share HTML snippets or full pages. Rendered in a sandboxed frame.</p>{% endif %}
 
     {% if error %}<div class="alert alert-error mb-3">{{ error }}</div>{% endif %}
 
     <div class="card">
-      <form method="POST" action="/h" id="html-paste-form">
+      <form method="POST" action="{{ '/h/' + editCode + '/edit' if editCode else '/h' }}" id="html-paste-form">
         <div class="form-group">
           <label class="label" for="title">Title <span class="text-muted">(optional)</span></label>
           <input id="title" type="text" name="title" class="input" value="{{ title }}" placeholder="Untitled HTML">
@@ -30,11 +30,16 @@
         {% if user %}
         <div class="form-group" style="margin-top:1rem">
           <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer">
-            <input type="checkbox" name="is_private" value="1"> Private
+            <input type="checkbox" name="is_private" value="1" {% if isPrivate %}checked{% endif %}> Private
           </label>
         </div>
         {% endif %}
-        <button type="submit" class="btn btn-primary btn-block" style="margin-top:1rem">Create HTML Paste</button>
+        <div style="display:flex;gap:.75rem;margin-top:1rem">
+          {% if editCode %}
+          <a href="/{{ editCode }}" class="btn btn-ghost">Cancel</a>
+          {% endif %}
+          <button type="submit" class="btn btn-primary{% if not editCode %} btn-block{% endif %}">{{ 'Update HTML Paste' if editCode else 'Create HTML Paste' }}</button>
+        </div>
       </form>
     </div>
     {% include "partials/ad-banner.njk" %}

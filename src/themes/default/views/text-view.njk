@@ -14,7 +14,10 @@
       </div>
       <div style="display:flex;gap:.5rem">
         <button class="btn btn-secondary btn-sm" data-copy-target="paste-content">📋 Copy</button>
-        <a href="/" class="btn btn-ghost btn-sm">+ New paste</a>
+        {% if user and user.id == link.owner_id %}
+        <a href="/t/{{ link.code }}/edit" class="btn btn-ghost btn-sm">✏️ Edit</a>
+        {% endif %}
+        <a href="/t" class="btn btn-ghost btn-sm">+ New paste</a>
       </div>
     </div>
 

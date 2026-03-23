@@ -9,6 +9,7 @@ const DEFAULTS = {
   site_logo_path: config.SITE_LOGO_PATH,
   ads_enabled: 'false',
   analytics_enabled: 'true',
+  gdpr_enabled: 'false',
 }
 
 export async function seed() {

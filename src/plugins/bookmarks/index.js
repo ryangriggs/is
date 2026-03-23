@@ -224,10 +224,16 @@ async function bookmarksPlugin(fastify) {
       }
 
       const count = db.get('SELECT COUNT(*) as n FROM bookmark_items WHERE link_id = ?', link.id)
-      db.run(
+      const qaResult = db.run(
         `INSERT INTO bookmark_items(link_id, url, title, description, folder, sort_order) VALUES(?,?,?,?,?,?)`,
         link.id, url, url, null, null, count.n
       )
+      try {
+        const { link: shortlink } = await createLink(db, hooks, {
+          type: 'url', destination: url, ownerId: req.session.userId, req,
+        })
+        db.run('UPDATE bookmark_items SET shortlink_code = ? WHERE id = ?', shortlink.code, qaResult.lastInsertRowid)
+      } catch (_) {}
 
       req.session.flash = { type: 'success', message: `Added to "${link.title}".` }
       return reply.redirect(`/b/${link.code}`)

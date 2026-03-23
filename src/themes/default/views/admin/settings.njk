@@ -53,6 +53,14 @@
           <input type="text" name="site_tagline" class="input" value="{{ settings.site_tagline }}">
         </div>
         <div class="form-group">
+          <label class="label">GDPR Consent Banner</label>
+          <label style="display:flex;align-items:center;gap:.5rem;font-weight:400;cursor:pointer">
+            <input type="checkbox" name="gdpr_enabled" value="true" {% if settings.gdpr_enabled == 'true' %}checked{% endif %}>
+            Show cookie/tracking consent banner to visitors
+          </label>
+          <p class="text-xs text-muted mt-1">Enable for EU/GDPR compliance. Visitors who decline will not have visits or clicks tracked.</p>
+        </div>
+        <div class="form-group">
           <label class="label">Registration</label>
           <select name="registration_open" class="select">
             <option value="true" {% if settings.registration_open == 'true' %}selected{% endif %}>Open</option>

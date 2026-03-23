@@ -495,7 +495,7 @@ async function adminPlugin(fastify) {
       }
     }
     // Checkbox fields: unchecked = absent from body, so explicitly store 'false'
-    for (const key of ['stat_show_links', 'stat_show_visits', 'stat_show_users']) {
+    for (const key of ['stat_show_links', 'stat_show_visits', 'stat_show_users', 'gdpr_enabled']) {
       const val = req.body[key] === 'true' ? 'true' : 'false'
       db.run(
         `INSERT INTO settings(key, value, updated_at) VALUES(?,?,?)

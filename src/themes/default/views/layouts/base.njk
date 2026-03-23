@@ -65,9 +65,9 @@
     .nav-avatar-drop .drop-divider { height: 1px; background: var(--color-border); margin: 4px 0; }
 
     /* New button dropdown in nav */
-    .nav-new-wrap { position: absolute; left: 50%; transform: translateX(-50%); }
+    .nav-new-wrap { position: relative; }
     .nav-new-drop {
-      position: absolute; left: 50%; transform: translateX(-50%); top: calc(100% + 8px);
+      position: absolute; left: 0; top: calc(100% + 8px);
       background: var(--bg-surface); border: 1px solid var(--color-border);
       border-radius: var(--radius-lg); min-width: 200px;
       box-shadow: 0 8px 24px rgba(0,0,0,0.3); overflow: hidden;
@@ -139,7 +139,7 @@
 <body class="{% block bodyClass %}{% endblock %}">
 
   <nav class="nav" style="position:sticky;top:0;z-index:200">
-    <div class="container nav-inner" style="position:relative">
+    <div class="container nav-inner">
       <a href="/" class="nav-logo">
         {% if siteLogo %}
           <img src="{{ siteLogo }}" alt="{{ siteName }}" style="max-height:32px;max-width:140px;object-fit:contain;display:block">
@@ -148,33 +148,35 @@
         {% endif %}
       </a>
 
-      {# ── Centered + New button ── #}
-      <div class="nav-new-wrap">
-        <button class="btn btn-primary" id="nav-new-btn" style="gap:4px;font-size:.95rem;padding:.4rem 1rem">+ New ▾</button>
-        <div class="nav-new-drop" id="nav-new-drop">
-          <a href="/">🔗 URL Shortlink</a>
-          <a href="/t">📝 Text Paste</a>
-          <a href="/h">🌐 HTML Paste</a>
-          <a href="/i">🖼️ Image Upload</a>
-          <a href="/q">⬛ QR Code</a>
-          {% if user %}
-          <a href="/b">🔖 Bookmark Collection</a>
-          <a href="/d">🌍 Dynamic DNS</a>
-          {% endif %}
+      {# ── Center group: + New button + desktop nav links ── #}
+      <div style="display:flex;align-items:center;gap:.5rem">
+        <div class="nav-new-wrap">
+          <button class="btn btn-primary" id="nav-new-btn" style="gap:4px;font-size:.95rem;padding:.4rem 1rem">+ New ▾</button>
+          <div class="nav-new-drop" id="nav-new-drop">
+            <a href="/">🔗 URL Shortlink</a>
+            <a href="/t">📝 Text Paste</a>
+            <a href="/h">🌐 HTML Paste</a>
+            <a href="/i">🖼️ Image Upload</a>
+            <a href="/q">⬛ QR Code</a>
+            {% if user %}
+            <a href="/b">🔖 Bookmark Collection</a>
+            <a href="/d">🌍 Dynamic DNS</a>
+            {% endif %}
+          </div>
         </div>
-      </div>
 
-      {# ── Desktop nav links (hidden on mobile) ── #}
-      <ul class="nav-links">
-        {% if user %}
-          <li><a href="/dashboard" class="{% if currentPath == '/dashboard' %}active{% endif %}">Dashboard</a></li>
-        {% endif %}
-        <li><a href="/pricing">Pricing</a></li>
-        <li><a href="/contact">Contact</a></li>
-        <li>
-          <button id="theme-toggle" class="btn btn-ghost btn-sm" title="Toggle theme" style="padding:6px 8px;font-size:1rem">🌙</button>
-        </li>
-      </ul>
+        {# Desktop nav links (hidden on mobile via CSS) #}
+        <ul class="nav-links">
+          {% if user %}
+            <li><a href="/dashboard" class="{% if currentPath == '/dashboard' %}active{% endif %}">Dashboard</a></li>
+          {% endif %}
+          <li><a href="/pricing">Pricing</a></li>
+          <li><a href="/contact">Contact</a></li>
+          <li>
+            <button id="theme-toggle" class="btn btn-ghost btn-sm" title="Toggle theme" style="padding:6px 8px;font-size:1rem">🌙</button>
+          </li>
+        </ul>
+      </div>
 
       {# ── Always-visible right section: hamburger, avatar ── #}
       <div class="nav-actions">
@@ -285,6 +287,29 @@
     document.getElementById('key-modal').addEventListener('click', function(e) {
       if (e.target === this) this.remove()
     })
+  </script>
+  {% endif %}
+
+  {% if gdprEnabled and not gdprConsent %}
+  <div id="gdpr-banner" style="position:fixed;bottom:0;left:0;right:0;z-index:500;background:var(--bg-surface);border-top:1px solid var(--color-border);padding:.875rem 1.25rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.75rem;box-shadow:0 -4px 16px rgba(0,0,0,.2)">
+    <p style="margin:0;font-size:.875rem;color:var(--color-text-muted);flex:1;min-width:200px">
+      We use cookies and collect visit data (IP address, browser, referrer) to operate this service.
+      <a href="/privacy" style="color:var(--color-primary)">Privacy policy</a>
+    </p>
+    <div style="display:flex;gap:.5rem;flex-shrink:0">
+      <button id="gdpr-decline" class="btn btn-ghost btn-sm">Decline</button>
+      <button id="gdpr-accept" class="btn btn-primary btn-sm">Accept</button>
+    </div>
+  </div>
+  <script>
+    function gdprSetConsent(val) {
+      var d = new Date(); d.setFullYear(d.getFullYear() + 1)
+      document.cookie = 'gdpr_consent=' + val + ';expires=' + d.toUTCString() + ';path=/;SameSite=Lax'
+      var b = document.getElementById('gdpr-banner')
+      if (b) b.remove()
+    }
+    document.getElementById('gdpr-accept').addEventListener('click', function(){ gdprSetConsent('accepted') })
+    document.getElementById('gdpr-decline').addEventListener('click', function(){ gdprSetConsent('declined') })
   </script>
   {% endif %}
 

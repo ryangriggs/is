@@ -14,6 +14,9 @@
       </div>
       <div style="display:flex;gap:.5rem">
         <a href="/{{ link.code }}/raw" class="btn btn-ghost btn-sm" target="_blank">↗ Raw / Embed</a>
+        {% if user and user.id == link.owner_id %}
+        <a href="/h/{{ link.code }}/edit" class="btn btn-ghost btn-sm">✏️ Edit</a>
+        {% endif %}
         <a href="/h" class="btn btn-ghost btn-sm">+ New paste</a>
       </div>
     </div>

@@ -184,14 +184,16 @@ export async function buildApp() {
     let siteLogo = config.SITE_LOGO_PATH
     let githubRepoUrl = 'https://github.com/ryangriggs/is'
     let adImageHeight = '90'
+    let gdprEnabled = false
     try {
-      const rows = db.all(`SELECT key, value FROM settings WHERE key IN ('site_name','site_tagline','site_logo_path','github_repo_url','ad_image_height')`)
+      const rows = db.all(`SELECT key, value FROM settings WHERE key IN ('site_name','site_tagline','site_logo_path','github_repo_url','ad_image_height','gdpr_enabled')`)
       for (const row of rows) {
         if (row.key === 'site_name' && row.value) siteName = row.value
         if (row.key === 'site_tagline' && row.value) siteTagline = row.value
         if (row.key === 'site_logo_path' && row.value) siteLogo = row.value
         if (row.key === 'github_repo_url' && row.value) githubRepoUrl = row.value
         if (row.key === 'ad_image_height' && row.value) adImageHeight = row.value
+        if (row.key === 'gdpr_enabled') gdprEnabled = row.value === 'true'
       }
     } catch (_) {}
 
@@ -240,6 +242,8 @@ export async function buildApp() {
       appVersion: version,
       showUpdateBanner,
       updateLatest,
+      gdprEnabled,
+      gdprConsent: req.cookies?.gdpr_consent || null,
     }
   })
 
