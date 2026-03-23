@@ -6,8 +6,17 @@ async function qrPlugin(fastify) {
   const db = fastify.db
 
   fastify.get('/q', async (req, reply) => {
+    const { url = '', size = '400', ecc = 'M' } = req.query
     const ad = getAdForOwner(req.session.userId || null, db)
-    return reply.view('qr.njk', { url: req.query.url || '', size: '400', ecc: 'M', ad })
+    let qrDataUrl = null
+    if (url.trim()) {
+      qrDataUrl = await QRCode.toDataURL(url.trim(), {
+        width: Math.min(Math.max(parseInt(size) || 400, 100), 1000),
+        errorCorrectionLevel: ['L', 'M', 'Q', 'H'].includes(ecc) ? ecc : 'M',
+        margin: 2,
+      })
+    }
+    return reply.view('qr.njk', { url, size, ecc, qrDataUrl, ad })
   })
 
   fastify.post('/q', async (req, reply) => {

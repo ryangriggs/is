@@ -141,6 +141,7 @@
           <td class="td-actions">
             <div class="td-actions-inner">
               <button class="btn btn-ghost btn-sm" data-copy="https://{{ baseDomain }}/{{ link.code }}" title="Copy">📋</button>
+              <a href="/q?url=https://{{ baseDomain }}/{{ link.code }}" class="btn btn-ghost btn-sm" title="QR Code">⬛</a>
               <a href="/dashboard/edit/{{ link.id }}" class="btn btn-secondary btn-sm" title="Edit">✏️</a>
               <form method="POST" action="/dashboard/delete/{{ link.id }}" style="display:inline">
                 <button type="submit" class="btn btn-danger btn-sm" data-confirm="Delete this link?" title="Delete">🗑</button>
