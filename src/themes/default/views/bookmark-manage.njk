@@ -13,7 +13,7 @@
       </div>
       <div style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:center">
 
-        {# Visibility toggle — orange=public, blue=private, labels both sides #}
+        {# Visibility toggle #}
         <form method="POST" action="/b/{{ link.code }}/visibility" style="margin:0;display:flex;align-items:center;gap:.5rem">
           <span class="text-sm">Private</span>
           <label class="slide-toggle slide-toggle-vis" title="Toggle public/private" style="cursor:pointer">
@@ -23,7 +23,7 @@
           <span class="text-sm">Public</span>
         </form>
 
-        {# Password button + popup — only relevant for public collections #}
+        {# Password button + popup #}
         {% if not link.is_private %}
         <div class="pw-popup-wrap">
           <button type="button" id="pw-btn" class="btn btn-ghost btn-sm"
@@ -76,32 +76,36 @@
         {% set currentFolder = item.folder %}
         <h3 style="font-size:.875rem;text-transform:uppercase;letter-spacing:.05em;color:var(--color-text-muted);margin:1rem 0 .5rem">{{ item.folder }}</h3>
       {% endif %}
-      <div class="card" style="margin-bottom:.5rem;padding:.75rem 1rem">
-        {# Title row #}
-        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:.5rem;margin-bottom:.4rem">
-          <a href="{{ item.url }}" target="_blank" rel="noopener"
+      <div class="card bm-item" style="margin-bottom:.5rem;padding:.75rem 1rem">
+        <div style="display:flex;align-items:center;gap:.5rem">
+          {# Title area: link shown normally, input shown when editing #}
+          <a class="bm-title" href="{{ item.url }}" target="_blank" rel="noopener"
              style="font-weight:500;word-break:break-word;min-width:0;flex:1">{{ item.title or item.url }}</a>
-          <div style="display:flex;gap:.35rem;flex-shrink:0">
+          <input class="bm-edit-input input" type="text"
+                 value="{{ item.title or '' }}"
+                 style="display:none;flex:1;min-width:0;font-size:.875rem;padding:.3rem .5rem">
+
+          {# Buttons #}
+          <div style="display:flex;gap:.3rem;flex-shrink:0;align-items:center">
             {% if item.shortlink_code %}
-            <button class="btn btn-ghost btn-sm" style="font-size:.75rem"
+            <button class="btn btn-ghost btn-sm"
                     data-copy="https://{{ baseDomain }}/{{ item.shortlink_code }}"
-                    title="Copy shortlink">📋</button>
+                    title="Copy shortlink"
+                    style="font-size:.8rem">Copy</button>
             {% endif %}
-            <button class="btn btn-ghost btn-sm" style="font-size:.75rem"
-                    onclick="this.closest('.card').querySelector('.rename-form').style.display=this.closest('.card').querySelector('.rename-form').style.display==='none'?'flex':'none'">✏️</button>
+            <button class="btn btn-ghost btn-sm bm-edit-btn" style="font-size:.8rem">Edit</button>
+            <button class="btn btn-primary btn-sm bm-save-btn" style="display:none;font-size:.8rem">Save</button>
+            <button class="btn btn-ghost btn-sm bm-cancel-btn" style="display:none;font-size:.8rem">Cancel</button>
+            {# Hidden rename form — submitted by JS #}
+            <form class="bm-rename-form" method="POST" action="/b/{{ link.code }}/rename/{{ item.id }}" style="display:none">
+              <input type="hidden" class="bm-rename-value" name="title">
+            </form>
             <form method="POST" action="/b/{{ link.code }}/delete/{{ item.id }}" style="margin:0">
-              <button class="btn btn-ghost btn-sm" style="font-size:.75rem" data-confirm="Remove this bookmark?">🗑️</button>
+              <button class="btn btn-ghost btn-sm" style="font-size:.8rem;color:var(--color-danger)"
+                      data-confirm="Remove this bookmark?">Delete</button>
             </form>
           </div>
         </div>
-        <div class="text-muted text-xs" style="word-break:break-all">{{ item.url }}</div>
-        {# Inline rename form — hidden by default #}
-        <form class="rename-form" method="POST" action="/b/{{ link.code }}/rename/{{ item.id }}"
-              style="display:none;gap:.4rem;margin-top:.5rem">
-          <input type="text" name="title" class="input" value="{{ item.title or '' }}"
-                 placeholder="Bookmark name" style="flex:1;font-size:.875rem;padding:.35rem .6rem">
-          <button type="submit" class="btn btn-primary btn-sm">Save</button>
-        </form>
       </div>
     {% endfor %}
     {% else %}
@@ -111,6 +115,7 @@
 </section>
 
 <script>
+  // Password popup
   var pwBtn = document.getElementById('pw-btn')
   var pwPopup = document.getElementById('pw-popup')
   if (pwBtn && pwPopup) {
@@ -121,5 +126,52 @@
     document.addEventListener('click', function() { pwPopup.classList.remove('open') })
     pwPopup.addEventListener('click', function(e) { e.stopPropagation() })
   }
+
+  // Inline edit for each bookmark item
+  document.querySelectorAll('.bm-item').forEach(function(card) {
+    var titleEl = card.querySelector('.bm-title')
+    var editInput = card.querySelector('.bm-edit-input')
+    var editBtn = card.querySelector('.bm-edit-btn')
+    var saveBtn = card.querySelector('.bm-save-btn')
+    var cancelBtn = card.querySelector('.bm-cancel-btn')
+    var renameForm = card.querySelector('.bm-rename-form')
+    var renameValue = card.querySelector('.bm-rename-value')
+
+    if (!editBtn || !titleEl || !editInput) return
+
+    function startEdit() {
+      editInput.value = titleEl.textContent.trim()
+      titleEl.style.display = 'none'
+      editInput.style.display = ''
+      editBtn.style.display = 'none'
+      saveBtn.style.display = ''
+      cancelBtn.style.display = ''
+      editInput.focus()
+      editInput.select()
+    }
+
+    function cancelEdit() {
+      titleEl.style.display = ''
+      editInput.style.display = 'none'
+      editBtn.style.display = ''
+      saveBtn.style.display = 'none'
+      cancelBtn.style.display = 'none'
+    }
+
+    function doSave() {
+      var val = editInput.value.trim()
+      if (!val) { cancelEdit(); return }
+      renameValue.value = val
+      renameForm.submit()
+    }
+
+    editBtn.addEventListener('click', startEdit)
+    cancelBtn.addEventListener('click', cancelEdit)
+    saveBtn.addEventListener('click', doSave)
+    editInput.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') { e.preventDefault(); doSave() }
+      if (e.key === 'Escape') { cancelEdit() }
+    })
+  })
 </script>
 {% endblock %}
