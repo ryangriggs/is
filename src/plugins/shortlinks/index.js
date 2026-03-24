@@ -234,6 +234,14 @@ async function shortlinksPlugin(fastify) {
       return reply.view('errors/404.njk', { message: 'This link has expired.' })
     }
 
+    if (link.is_private) {
+      const isOwner = req.session.userId && link.owner_id === req.session.userId
+      if (!isOwner) {
+        reply.code(403)
+        return reply.view('errors/403.njk', {})
+      }
+    }
+
     if (link.password_hash) {
       const submitted = req.body?.password
       if (!submitted) return reply.view('password.njk', { code, error: null })

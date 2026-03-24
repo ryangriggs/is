@@ -34,6 +34,14 @@ function dateFilter(ts) {
   })
 }
 
+function datetimeFilter(ts) {
+  if (!ts) return '—'
+  return new Date(Number(ts)).toLocaleString('en-US', {
+    year: 'numeric', month: 'short', day: 'numeric',
+    hour: 'numeric', minute: '2-digit', hour12: true,
+  })
+}
+
 export async function buildApp() {
   const db = await initDb()
   initSettingsCache(db)
@@ -160,6 +168,7 @@ export async function buildApp() {
     configure(paths, opts) {
       const env = nunjucks.configure(paths, opts)
       env.addFilter('date', dateFilter)
+      env.addFilter('datetime', datetimeFilter)
       return env
     }
   }

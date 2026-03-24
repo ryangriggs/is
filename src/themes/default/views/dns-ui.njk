@@ -52,7 +52,7 @@
             <span class="badge badge-neutral" style="margin-left:.5rem;font-size:.65rem">TTL {{ r.ttl or 300 }}s</span>
           </div>
           <div style="display:flex;gap:.4rem;align-items:center">
-            <span class="text-muted text-xs">Updated {{ r.updated_at | date }}</span>
+            <span class="text-muted text-xs" title="{{ r.updated_at | datetime }}">Last update: {{ r.updated_at | datetime }}</span>
             <span class="btn btn-ghost btn-sm" style="pointer-events:none">Edit ▾</span>
           </div>
         </summary>
