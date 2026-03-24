@@ -129,7 +129,7 @@ async function dnsUiPlugin(fastify) {
   })
 
   fastify.post('/d/delete/:id', { preHandler: requireAuth }, async (req, reply) => {
-    db.run('DELETE FROM dns_records WHERE id = ? AND user_id = ?', req.params.id, req.session.userId)
+    db.run('DELETE FROM dns_records WHERE id = ? AND user_id = ?', Number(req.params.id), req.session.userId)
     if (fastify.invalidateDnsCache) fastify.invalidateDnsCache()
     req.session.flash = { type: 'success', message: 'Record deleted.' }
     return reply.redirect('/d')

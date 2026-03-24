@@ -1,5 +1,67 @@
 {% extends "layouts/base.njk" %}
 {% block title %}Admin — {{ siteName }}{% endblock %}
+{% block head %}
+<style>
+.admin-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 1.25rem 1rem;
+  text-decoration: none;
+  color: var(--color-text);
+  gap: .3rem;
+  border-radius: var(--radius-lg);
+  background: var(--bg-card);
+  border: 1px solid var(--color-border);
+  transition: background 150ms, box-shadow 150ms, transform 150ms;
+}
+.admin-card:hover {
+  background: var(--bg-card-hover);
+  color: var(--color-text);
+  box-shadow: var(--shadow-glow);
+  transform: translateY(-2px);
+}
+.admin-card-icon { font-size: 1.6rem; line-height: 1; }
+.admin-card-label { font-size: .85rem; font-weight: 600; }
+.admin-card-sub { font-size: .75rem; color: var(--color-text-muted); }
+.admin-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 12px;
+}
+.attention-bar {
+  display: flex;
+  gap: .75rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.5rem;
+}
+.attention-item {
+  display: flex;
+  align-items: center;
+  gap: .6rem;
+  padding: .65rem 1rem;
+  border-radius: var(--radius-lg);
+  text-decoration: none;
+  font-size: .875rem;
+  font-weight: 600;
+  flex: 1;
+  min-width: 180px;
+}
+.attention-item-reports {
+  background: rgba(245,158,11,.12);
+  border: 1px solid rgba(245,158,11,.35);
+  color: #d97706;
+}
+.attention-item-messages {
+  background: rgba(239,68,68,.12);
+  border: 1px solid rgba(239,68,68,.35);
+  color: #dc2626;
+}
+.attention-item:hover { filter: brightness(1.1); }
+</style>
+{% endblock %}
 {% block content %}
 <div class="container">
   <div class="page-header">
@@ -7,9 +69,27 @@
       <h1 class="page-title">Admin Dashboard</h1>
       <p class="page-subtitle">Site overview and management</p>
     </div>
+    <a href="/admin/settings" class="btn btn-ghost btn-sm">⚙️ Settings</a>
   </div>
 
-  <div class="stats-grid">
+  {# ── Needs Attention ── #}
+  {% if stats.pendingReports > 0 or stats.unreadMessages > 0 %}
+  <div class="attention-bar">
+    {% if stats.pendingReports > 0 %}
+    <a href="/admin/reports" class="attention-item attention-item-reports">
+      🚩 <span>{{ stats.pendingReports }} pending report{{ 's' if stats.pendingReports != 1 }}</span>
+    </a>
+    {% endif %}
+    {% if stats.unreadMessages > 0 %}
+    <a href="/admin/messages" class="attention-item attention-item-messages">
+      ✉️ <span>{{ stats.unreadMessages }} unread message{{ 's' if stats.unreadMessages != 1 }}</span>
+    </a>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  {# ── Stats ── #}
+  <div class="stats-grid" style="margin-bottom:2rem">
     <div class="stat-card">
       <div class="stat-value">{{ stats.totalLinks }}</div>
       <div class="stat-label">Total Links</div>
@@ -26,56 +106,67 @@
       <div class="stat-value">{{ stats.visitsToday }}</div>
       <div class="stat-label">Visits Today</div>
     </div>
-    <div class="stat-card">
-      <div class="stat-value {% if stats.pendingReports > 0 %}text-warning{% endif %}">{{ stats.pendingReports }}</div>
-      <div class="stat-label">Pending Reports</div>
-    </div>
   </div>
 
-  <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:24px;">
-    <div class="card">
-      <h2 class="card-title mb-3">Quick Access</h2>
-      <div style="display:flex; flex-direction:column; gap:8px;">
-        <a href="/admin/links" class="btn btn-secondary">🔗 Manage Links</a>
-        <a href="/admin/users" class="btn btn-secondary">👥 Manage Users</a>
-        <a href="/admin/reports" class="btn btn-secondary {% if stats.pendingReports > 0 %}btn-warning{% endif %}">
-          🚩 Reports {% if stats.pendingReports > 0 %}<span class="badge badge-warning">{{ stats.pendingReports }}</span>{% endif %}
-        </a>
-        <a href="/admin/dns" class="btn btn-secondary">🌐 DNS Records</a>
-        <a href="/admin/blocked-ips" class="btn btn-secondary">🛡 Blocked IPs</a>
-        <a href="/admin/messages" class="btn btn-secondary">
-          ✉️ Messages
-          {% if unreadMessages > 0 %}
-            <span class="badge badge-danger badge-pulse">{{ unreadMessages }}</span>
-          {% endif %}
-        </a>
-        <a href="/admin/scan-words" class="btn btn-secondary">🔍 Scan Words</a>
-        <a href="/admin/account-tiers" class="btn btn-secondary">⚡ Account Tiers</a>
-        <a href="/admin/ads" class="btn btn-secondary">📢 Ad Campaigns</a>
-        <a href="/admin/settings" class="btn btn-secondary">⚙️ Settings</a>
-      </div>
-    </div>
-
-    <div class="card">
-      <h2 class="card-title mb-3">Recent Links</h2>
-      {% if recentLinks.length == 0 %}
-        <p class="text-muted text-sm">No links yet.</p>
-      {% else %}
-        {% for link in recentLinks %}
-        <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid var(--border);">
-          <div style="display:flex;align-items:center;gap:.5rem;min-width:0">
-            <span class="badge badge-neutral" style="font-size:.7rem;flex-shrink:0">{{ link.type }}</span>
-            <a href="https://{{ baseDomain }}/{{ link.code }}" target="_blank" rel="noopener"
-              class="font-mono text-sm" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
-              {{ baseDomain }}/{{ link.code }}
-            </a>
-          </div>
-          <span class="text-xs text-muted" style="flex-shrink:0;margin-left:.5rem">{{ link.createdAt | date }}</span>
-        </div>
-        {% endfor %}
-        <a href="/admin/links" class="btn btn-ghost btn-sm mt-2">View all →</a>
-      {% endif %}
-    </div>
+  {# ── Content & Users ── #}
+  <h2 style="font-size:.75rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--color-text-muted);margin-bottom:.6rem">Content &amp; Users</h2>
+  <div class="admin-card-grid" style="margin-bottom:1.75rem">
+    <a href="/admin/links" class="admin-card">
+      <span class="admin-card-icon">🔗</span>
+      <span class="admin-card-label">Links</span>
+      <span class="admin-card-sub">{{ stats.totalLinks }} total</span>
+    </a>
+    <a href="/admin/users" class="admin-card">
+      <span class="admin-card-icon">👥</span>
+      <span class="admin-card-label">Users</span>
+      <span class="admin-card-sub">{{ stats.totalUsers }} total</span>
+    </a>
+    <a href="/admin/reports" class="admin-card" style="{% if stats.pendingReports > 0 %}border-color:rgba(245,158,11,.5){% endif %}">
+      <span class="admin-card-icon">🚩</span>
+      <span class="admin-card-label">Reports</span>
+      <span class="admin-card-sub">{% if stats.pendingReports > 0 %}{{ stats.pendingReports }} pending{% else %}None pending{% endif %}</span>
+    </a>
+    <a href="/admin/messages" class="admin-card" style="{% if stats.unreadMessages > 0 %}border-color:rgba(239,68,68,.5){% endif %}">
+      <span class="admin-card-icon">✉️</span>
+      <span class="admin-card-label">Messages</span>
+      <span class="admin-card-sub">{% if stats.unreadMessages > 0 %}{{ stats.unreadMessages }} unread{% else %}All read{% endif %}</span>
+    </a>
+    <a href="/admin/ads" class="admin-card">
+      <span class="admin-card-icon">📢</span>
+      <span class="admin-card-label">Ad Campaigns</span>
+      <span class="admin-card-sub">&nbsp;</span>
+    </a>
+    <a href="/admin/account-tiers" class="admin-card">
+      <span class="admin-card-icon">⚡</span>
+      <span class="admin-card-label">Account Tiers</span>
+      <span class="admin-card-sub">&nbsp;</span>
+    </a>
   </div>
+
+  {# ── System ── #}
+  <h2 style="font-size:.75rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--color-text-muted);margin-bottom:.6rem">System</h2>
+  <div class="admin-card-grid">
+    <a href="/admin/settings" class="admin-card">
+      <span class="admin-card-icon">⚙️</span>
+      <span class="admin-card-label">Settings</span>
+      <span class="admin-card-sub">&nbsp;</span>
+    </a>
+    <a href="/admin/blocked-ips" class="admin-card">
+      <span class="admin-card-icon">🛡</span>
+      <span class="admin-card-label">Blocked IPs</span>
+      <span class="admin-card-sub">{% if stats.totalBlockedIps > 0 %}{{ stats.totalBlockedIps }} blocked{% else %}None{% endif %}</span>
+    </a>
+    <a href="/admin/scan-words" class="admin-card">
+      <span class="admin-card-icon">🔍</span>
+      <span class="admin-card-label">Scan Words</span>
+      <span class="admin-card-sub">&nbsp;</span>
+    </a>
+    <a href="/admin/dns" class="admin-card">
+      <span class="admin-card-icon">🌍</span>
+      <span class="admin-card-label">DNS Records</span>
+      <span class="admin-card-sub">{% if stats.totalDnsRecords > 0 %}{{ stats.totalDnsRecords }} records{% else %}None{% endif %}</span>
+    </a>
+  </div>
+
 </div>
 {% endblock %}

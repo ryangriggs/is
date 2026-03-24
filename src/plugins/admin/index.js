@@ -92,16 +92,14 @@ async function adminPlugin(fastify) {
         (SELECT COUNT(*) FROM users) as totalUsers,
         (SELECT COUNT(*) FROM tracking) as totalVisits,
         (SELECT COUNT(*) FROM tracking WHERE visited_at >= ?) as visitsToday,
-        (SELECT COUNT(*) FROM reports WHERE status = 'pending') as pendingReports
+        (SELECT COUNT(*) FROM reports WHERE status = 'pending') as pendingReports,
+        (SELECT COUNT(*) FROM messages WHERE is_read = 0) as unreadMessages,
+        (SELECT COUNT(*) FROM dns_records) as totalDnsRecords,
+        (SELECT COUNT(*) FROM blocked_ips) as totalBlockedIps
     `, todayStart)
-
-    const recentLinks = db.all(
-      `SELECT code, type, created_at FROM links ORDER BY created_at DESC LIMIT 10`
-    )
 
     return reply.view('admin/index.njk', {
       stats,
-      recentLinks: recentLinks.map(l => ({ ...l, createdAt: l.created_at })),
       currentUserId: req.session.userId,
     })
   })
