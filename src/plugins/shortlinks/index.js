@@ -5,6 +5,8 @@ import { createLink } from '../../core/links.js'
 import { verifyToken } from '../../core/auth.js'
 import config from '../../config.js'
 import { getAdForOwner } from '../../core/ads.js'
+import { getSetting } from '../../core/settings-cache.js'
+import { bufferTracking } from '../../core/write-buffer.js'
 
 async function shortlinksPlugin(fastify) {
   const db = fastify.db
@@ -13,14 +15,14 @@ async function shortlinksPlugin(fastify) {
   // Track visits (respects GDPR consent cookie when gdpr_enabled)
   hooks.on('post:link:visit', async ({ link, req }) => {
     try {
-      const gdprSetting = db.get("SELECT value FROM settings WHERE key = 'gdpr_enabled'")
-      if (gdprSetting?.value === 'true' && req.cookies?.gdpr_consent !== 'accepted') return
-      db.run(
-        `INSERT INTO tracking(link_id, visited_at, ip, user_agent, referer) VALUES(?,?,?,?,?)`,
-        link.id, Date.now(), req.ip,
-        req.headers['user-agent'] || '',
-        req.headers['referer'] || req.headers['referrer'] || ''
-      )
+      if (getSetting('gdpr_enabled') === 'true' && req.cookies?.gdpr_consent !== 'accepted') return
+      bufferTracking({
+        linkId: link.id,
+        visitedAt: Date.now(),
+        ip: req.ip,
+        userAgent: req.headers['user-agent'] || '',
+        referer: req.headers['referer'] || req.headers['referrer'] || '',
+      })
     } catch (_) {}
   })
 
@@ -29,13 +31,9 @@ async function shortlinksPlugin(fastify) {
   // ----------------------------------------------------------------
   fastify.get('/', async (req, reply) => {
     if (req.subdomain !== '') return reply.callNotFound()
-    const statSettings = {}
-    for (const r of db.all("SELECT key, value FROM settings WHERE key IN ('stat_show_links','stat_show_visits','stat_show_users')")) {
-      statSettings[r.key] = r.value
-    }
-    const showLinks   = statSettings.stat_show_links   !== 'false'
-    const showVisits  = statSettings.stat_show_visits  !== 'false'
-    const showUsers   = statSettings.stat_show_users   !== 'false'
+    const showLinks  = getSetting('stat_show_links')  !== 'false'
+    const showVisits = getSetting('stat_show_visits') !== 'false'
+    const showUsers  = getSetting('stat_show_users')  !== 'false'
     let stats = null
     if (showLinks || showVisits || showUsers) {
       const row = db.get(`

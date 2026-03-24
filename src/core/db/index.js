@@ -128,6 +128,11 @@ export async function initDb() {
       created_at INTEGER NOT NULL
     )`)
 
+    // Missing indexes — added here so existing installs pick them up on next start
+    sqlite.exec(`CREATE INDEX IF NOT EXISTS idx_api_tokens_hash ON api_tokens(token_hash)`)
+    sqlite.exec(`CREATE INDEX IF NOT EXISTS idx_blocked_ips_cidr ON blocked_ips(cidr)`)
+    sqlite.exec(`CREATE INDEX IF NOT EXISTS idx_tracking_link_visited ON tracking(link_id, visited_at)`)
+
     // Seed default account tiers (only if none exist yet)
     const tierCount = sqlite.prepare('SELECT COUNT(*) as n FROM account_tiers').get()
     if (tierCount.n === 0) {

@@ -5,6 +5,7 @@ import { createLink } from '../../core/links.js'
 import { getTierForUser } from '../../core/tiers.js'
 import { applyWatermark } from '../../core/watermark.js'
 import { getAdForOwner } from '../../core/ads.js'
+import { getSetting } from '../../core/settings-cache.js'
 
 const ALLOWED_TYPES = new Set(['image/jpeg', 'image/png', 'image/gif', 'image/webp'])
 const MIME_TO_EXT = {
@@ -65,20 +66,19 @@ async function imageUploadPlugin(fastify) {
       const { writeFile } = await import('fs/promises')
       await writeFile(filepath, buf)
 
-      // Apply watermark if tier allows it and settings are configured
+      // Apply watermark out-of-band — respond immediately, process in background
       if (tier.allow_watermark) {
-        try {
-          const wmSettings = {}
-          const wmRows = db.all(`SELECT key, value FROM settings WHERE key IN ('watermark_image_path','watermark_position','watermark_size_pct')`)
-          for (const r of wmRows) wmSettings[r.key] = r.value
-          const wmBuf = await applyWatermark(filepath, wmSettings)
-          if (wmBuf) {
-            await writeFile(filepath, wmBuf)
-            fileSize = wmBuf.length
-          }
-        } catch (wmErr) {
-          console.log('[watermark] skipped:', wmErr.message)
+        const wmSettings = {
+          watermark_image_path: getSetting('watermark_image_path'),
+          watermark_position:   getSetting('watermark_position'),
+          watermark_size_pct:   getSetting('watermark_size_pct'),
         }
+        setImmediate(async () => {
+          try {
+            const wmBuf = await applyWatermark(filepath, wmSettings)
+            if (wmBuf) await writeFile(filepath, wmBuf)
+          } catch (_) {}
+        })
       }
     } catch {
       return reply.view('image-create.njk', { error: 'Failed to save file. Please try again.', ad })

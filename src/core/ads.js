@@ -1,3 +1,5 @@
+import { bufferImpression } from './write-buffer.js'
+
 // Returns an ad object { imageUrl, clickUrl } if the link owner's tier has ads enabled,
 // or null if ads should not be shown.
 export function getAdForOwner(ownerId, db) {
@@ -21,7 +23,7 @@ export function getAdForOwner(ownerId, db) {
       ORDER BY RANDOM() LIMIT 1
     `, Date.now())
     if (!ad) return null
-    try { db.run('INSERT INTO ad_impressions(image_id, shown_at) VALUES(?,?)', ad.id, Date.now()) } catch (_) {}
+    bufferImpression(ad.id)
     return { imageUrl: `/uploads/ads/${ad.image_path}`, clickUrl: `/ad/c/${ad.id}` }
   } catch (_) { return null }
 }

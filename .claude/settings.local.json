@@ -17,7 +17,8 @@
       "Bash(netstat -ano)",
       "Bash(python3 -m json.tool)",
       "Bash(ls \"C:/temp/is.am/.env\"*)",
-      "Bash(ls \"C:/temp/is.am\"/*.md)"
+      "Bash(ls \"C:/temp/is.am\"/*.md)",
+      "Bash(grep -E \"\\\\.\\(md|txt|json\\)$\")"
     ]
   }
 }

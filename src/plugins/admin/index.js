@@ -3,6 +3,7 @@ import { requireAdmin } from '../../core/auth.js'
 import config from '../../config.js'
 import { ipMatchesCidr } from '../../core/cidr.js'
 import { invalidateIpCache } from '../../core/ipblock.js'
+import { invalidateSettingsCache } from '../../core/settings-cache.js'
 import { scanUrl, scanUrlContent } from '../../core/scanner.js'
 import { checkForUpdates, getUpdateStatus, reloadCurrentVersion } from '../../core/updater.js'
 import { checkLinkLimits } from '../../core/tiers.js'
@@ -430,6 +431,7 @@ async function adminPlugin(fastify) {
     const buf = await file.toBuffer()
     await writeFile(join(process.cwd(), 'uploads', 'site-watermark.png'), buf)
     db.run(`INSERT INTO settings(key,value,updated_at) VALUES('watermark_image_path',?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value,updated_at=excluded.updated_at`, 'uploads/site-watermark.png', Date.now())
+    invalidateSettingsCache()
     req.session.flash = { type: 'success', message: 'Watermark image updated.' }
     return reply.redirect('/admin/settings')
   })
@@ -437,6 +439,7 @@ async function adminPlugin(fastify) {
   fastify.post('/admin/settings/watermark/remove', async (req, reply) => {
     if (req.subdomain !== '') return reply.callNotFound()
     db.run(`INSERT INTO settings(key,value,updated_at) VALUES('watermark_image_path','',?) ON CONFLICT(key) DO UPDATE SET value='',updated_at=excluded.updated_at`, Date.now())
+    invalidateSettingsCache()
     req.session.flash = { type: 'success', message: 'Watermark removed.' }
     return reply.redirect('/admin/settings')
   })
@@ -464,6 +467,7 @@ async function adminPlugin(fastify) {
     await writeFile(join(process.cwd(), 'uploads', filename), buf)
     const logoPath = `/uploads/${filename}`
     db.run(`INSERT INTO settings(key,value,updated_at) VALUES('site_logo_path',?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value,updated_at=excluded.updated_at`, logoPath, Date.now())
+    invalidateSettingsCache()
     req.session.flash = { type: 'success', message: 'Logo updated.' }
     return reply.redirect('/admin/settings')
   })
@@ -471,6 +475,7 @@ async function adminPlugin(fastify) {
   fastify.post('/admin/settings/logo/remove', async (req, reply) => {
     if (req.subdomain !== '') return reply.callNotFound()
     db.run(`INSERT INTO settings(key,value,updated_at) VALUES('site_logo_path','',?) ON CONFLICT(key) DO UPDATE SET value='',updated_at=excluded.updated_at`, Date.now())
+    invalidateSettingsCache()
     req.session.flash = { type: 'success', message: 'Logo removed.' }
     return reply.redirect('/admin/settings')
   })
@@ -514,6 +519,7 @@ async function adminPlugin(fastify) {
         )
       }
     }
+    invalidateSettingsCache()
     req.session.flash = { type: 'success', message: 'Settings saved.' }
     return reply.redirect('/admin/settings')
   })

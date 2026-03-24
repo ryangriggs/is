@@ -20,6 +20,8 @@ import { extractSubdomain } from './core/subdomain.js'
 import { SqliteSessionStore } from './core/auth.js'
 import pluginLoader from './plugins/loader.js'
 import { checkForUpdates, getUpdateStatus } from './core/updater.js'
+import { initSettingsCache, getSetting } from './core/settings-cache.js'
+import { initWriteBuffer } from './core/write-buffer.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
@@ -34,6 +36,8 @@ function dateFilter(ts) {
 
 export async function buildApp() {
   const db = await initDb()
+  initSettingsCache(db)
+  initWriteBuffer(db)
 
   // Read active theme from DB at startup (takes effect on restart after admin changes it)
   let startupTheme = config.THEME || 'default'
@@ -178,24 +182,13 @@ export async function buildApp() {
       return
     }
 
-    // Load branding settings
-    let siteName = config.SITE_NAME
-    let siteTagline = config.SITE_TAGLINE
-    let siteLogo = config.SITE_LOGO_PATH
-    let githubRepoUrl = 'https://github.com/ryangriggs/is'
-    let adImageHeight = '90'
-    let gdprEnabled = false
-    try {
-      const rows = db.all(`SELECT key, value FROM settings WHERE key IN ('site_name','site_tagline','site_logo_path','github_repo_url','ad_image_height','gdpr_enabled')`)
-      for (const row of rows) {
-        if (row.key === 'site_name' && row.value) siteName = row.value
-        if (row.key === 'site_tagline' && row.value) siteTagline = row.value
-        if (row.key === 'site_logo_path' && row.value) siteLogo = row.value
-        if (row.key === 'github_repo_url' && row.value) githubRepoUrl = row.value
-        if (row.key === 'ad_image_height' && row.value) adImageHeight = row.value
-        if (row.key === 'gdpr_enabled') gdprEnabled = row.value === 'true'
-      }
-    } catch (_) {}
+    // Load branding settings from in-memory cache (no DB hit per request)
+    const siteName = getSetting('site_name') || config.SITE_NAME
+    const siteTagline = getSetting('site_tagline') || config.SITE_TAGLINE
+    const siteLogo = getSetting('site_logo_path') || config.SITE_LOGO_PATH
+    const githubRepoUrl = getSetting('github_repo_url') || 'https://github.com/ryangriggs/is'
+    const adImageHeight = getSetting('ad_image_height') || '90'
+    const gdprEnabled = getSetting('gdpr_enabled') === 'true'
 
     // Flash: read and clear
     const flash = req.session.flash || null
