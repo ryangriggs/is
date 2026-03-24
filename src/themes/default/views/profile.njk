@@ -42,28 +42,71 @@
     <button type="submit" class="btn btn-primary btn-block">Save Changes</button>
   </form>
 
-  <div class="card mt-3" style="padding:1rem">
-    <p class="text-sm text-muted" style="margin-bottom:{% if profileUser.stripe_subscription_status %}.75rem{% else %}0{% endif %}">
-      Account tier: <span class="badge badge-info">{{ profileUser.subscription_tier or 'free' }}</span>
-      &nbsp;·&nbsp; Member since {{ profileUser.created_at | date }}
-    </p>
-    {% if profileUser.stripe_subscription_status %}
-    <p class="text-sm text-muted" style="margin-bottom:.75rem">
-      Subscription:
-      <strong>{{ profileUser.stripe_subscription_status }}</strong>
+  <div class="card mt-3">
+    <h2 style="font-size:1rem;font-weight:600;margin:0 0 1rem">Subscription</h2>
+
+    <div style="display:flex;flex-direction:column;gap:.6rem">
+
+      {# Plan name + status #}
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.5rem">
+        <div>
+          <span style="font-weight:600">{{ tierInfo.label or (profileUser.subscription_tier | capitalize) or 'Free' }}</span>
+          {% if profileUser.stripe_subscription_status %}
+            {% if profileUser.stripe_subscription_status == 'active' %}
+              <span class="badge badge-success" style="margin-left:.4rem">Active</span>
+            {% elif profileUser.stripe_subscription_status == 'trialing' %}
+              <span class="badge badge-info" style="margin-left:.4rem">Trial</span>
+            {% elif profileUser.stripe_subscription_status == 'past_due' %}
+              <span class="badge badge-warning" style="margin-left:.4rem">Past Due</span>
+            {% elif profileUser.stripe_subscription_status == 'canceled' or profileUser.stripe_subscription_status == 'cancelled' %}
+              <span class="badge badge-danger" style="margin-left:.4rem">Canceled</span>
+            {% else %}
+              <span class="badge badge-neutral" style="margin-left:.4rem">{{ profileUser.stripe_subscription_status }}</span>
+            {% endif %}
+          {% endif %}
+        </div>
+
+        {# Price #}
+        {% if tierInfo and tierInfo.price > 0 %}
+          {% if profileUser.stripe_subscription_interval == 'yearly' %}
+            {% set displayPrice = tierInfo.price_yearly if tierInfo.price_yearly > 0 else (tierInfo.price * 12) %}
+            <span style="font-size:.95rem;font-weight:600">${{ displayPrice }}<span style="font-weight:400;color:var(--color-text-muted);font-size:.8rem">/yr</span></span>
+          {% else %}
+            <span style="font-size:.95rem;font-weight:600">${{ tierInfo.price }}<span style="font-weight:400;color:var(--color-text-muted);font-size:.8rem">/mo</span></span>
+          {% endif %}
+        {% elif not profileUser.stripe_subscription_status %}
+          <span style="font-size:.95rem;font-weight:600">Free</span>
+        {% endif %}
+      </div>
+
+      {# Billing cycle + renewal #}
       {% if profileUser.stripe_subscription_interval %}
-        ({{ profileUser.stripe_subscription_interval }})
+      <div class="text-sm text-muted">
+        Billing: <strong>{{ profileUser.stripe_subscription_interval | capitalize }}</strong>
+        {% if profileUser.stripe_current_period_end %}
+          &nbsp;·&nbsp;
+          {% if profileUser.stripe_subscription_status == 'canceled' or profileUser.stripe_subscription_status == 'cancelled' %}
+            Access until {{ profileUser.stripe_current_period_end | date }}
+          {% else %}
+            Renews {{ profileUser.stripe_current_period_end | date }}
+          {% endif %}
+        {% endif %}
+      </div>
       {% endif %}
-      {% if profileUser.stripe_current_period_end %}
-        · renews {{ profileUser.stripe_current_period_end | date }}
+
+      {# Member since #}
+      <div class="text-sm text-muted">Member since {{ profileUser.created_at | date }}</div>
+
+    </div>
+
+    <div style="margin-top:1rem;display:flex;gap:.5rem;flex-wrap:wrap;align-items:center">
+      {% if profileUser.stripe_subscription_status %}
+      <form method="POST" action="/stripe/portal" style="margin:0">
+        <button class="btn btn-secondary btn-sm">Manage Subscription</button>
+      </form>
       {% endif %}
-    </p>
-    <form method="POST" action="/stripe/portal" style="display:inline">
-      <button class="btn btn-secondary btn-sm">Manage Subscription</button>
-    </form>
-    {% else %}
-    <a href="/pricing" class="text-sm" style="color:var(--color-primary)">View plans →</a>
-    {% endif %}
+      <a href="/pricing" class="btn btn-ghost btn-sm">View Plans</a>
+    </div>
   </div>
 </div>
 {% endblock %}

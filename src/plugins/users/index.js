@@ -340,8 +340,9 @@ async function usersPlugin(fastify) {
   fastify.get('/profile', { preHandler: requireAuth }, async (req, reply) => {
     if (req.subdomain !== '') return reply.callNotFound()
     const user = db.get('SELECT * FROM users WHERE id = ?', req.session.userId)
+    const tierInfo = db.get('SELECT * FROM account_tiers WHERE name = ?', user?.subscription_tier || 'free')
     const ad = getAdForOwner(req.session.userId, db)
-    return reply.view('profile.njk', { profileUser: user, ad })
+    return reply.view('profile.njk', { profileUser: user, tierInfo, ad })
   })
 
   // ----------------------------------------------------------------
@@ -379,7 +380,8 @@ async function usersPlugin(fastify) {
     }
 
     if (error) {
-      return reply.view('profile.njk', { profileUser: user, error })
+      const tierInfo = db.get('SELECT * FROM account_tiers WHERE name = ?', user?.subscription_tier || 'free')
+      return reply.view('profile.njk', { profileUser: user, tierInfo, error })
     }
 
     // Apply changes
@@ -590,13 +592,18 @@ async function usersPlugin(fastify) {
   fastify.get('/pricing', async (req, reply) => {
     if (req.subdomain !== '') return reply.callNotFound()
     const tiers = db.all("SELECT * FROM account_tiers WHERE is_enabled = 1 AND name != 'anonymous' ORDER BY price ASC")
-    const currentTier = req.session.subscriptionTier || (req.session.userId ? 'free' : null)
-    const ad = getAdForOwner(req.session.userId || null, db)
+    let currentTier = req.session.subscriptionTier || (req.session.userId ? 'free' : null)
     let subscriptionInterval = null
     if (req.session.userId) {
-      const user = db.get('SELECT stripe_subscription_interval FROM users WHERE id = ?', req.session.userId)
-      subscriptionInterval = user?.stripe_subscription_interval || null
+      // Always read from DB — session may be stale after Stripe webhook updates the tier
+      const freshUser = db.get('SELECT subscription_tier, stripe_subscription_interval FROM users WHERE id = ?', req.session.userId)
+      if (freshUser) {
+        currentTier = freshUser.subscription_tier || 'free'
+        req.session.subscriptionTier = currentTier  // keep session in sync
+        subscriptionInterval = freshUser.stripe_subscription_interval || null
+      }
     }
+    const ad = getAdForOwner(req.session.userId || null, db)
     return reply.view('pricing.njk', { tiers, currentTier, subscriptionInterval, ad })
   })
 
