@@ -5,11 +5,8 @@
 {% block content %}
 <section class="hero">
   <div class="container">
-    <h1 class="hero-title">
-      <span class="gradient-text">Shorten.</span> Share.
-      <span class="gradient-text">Track.</span>
-    </h1>
-    <p class="hero-subtitle">{{ siteTagline or "The fastest way to shorten URLs, share files, and manage your links." }}</p>
+    <h1 class="hero-title gradient-text">{{ siteTagline or "Shorten. Share. Track." }}</h1>
+    <p class="hero-subtitle">{{ siteHeroSubtitle or "The fastest way to shorten URLs, share files, and manage your links." }}</p>
 
     <form id="hero-form" method="POST" action="/" class="hero-form">
       <div aria-hidden="true" style="position:absolute;left:-9999px;opacity:0;pointer-events:none;height:0;overflow:hidden">

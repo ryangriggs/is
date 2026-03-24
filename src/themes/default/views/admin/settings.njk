@@ -151,8 +151,19 @@
             <input type="text" name="site_name" class="input" value="{{ settings.site_name }}">
           </div>
           <div class="form-group">
-            <label class="label">Site Tagline</label>
-            <input type="text" name="site_tagline" class="input" value="{{ settings.site_tagline }}">
+            <label class="label">Homepage Title <span class="text-muted text-xs">(large hero text)</span></label>
+            <input type="text" name="site_tagline" class="input" value="{{ settings.site_tagline }}" placeholder="Shorten. Share. Track.">
+            <p class="text-xs text-muted mt-1">Also used as the site meta description and browser tab subtitle.</p>
+          </div>
+          <div class="form-group">
+            <label class="label">Homepage Subtitle <span class="text-muted text-xs">(smaller text below title)</span></label>
+            <input type="text" name="site_hero_subtitle" class="input" value="{{ settings.site_hero_subtitle }}" placeholder="The fastest way to shorten URLs, share files, and manage your links.">
+          </div>
+          <div class="form-group">
+            <label class="label">Favicon Emoji</label>
+            <input type="text" name="favicon_emoji" class="input" value="{{ settings.favicon_emoji or '🔗' }}"
+              placeholder="🔗" maxlength="8" style="max-width:120px;font-size:1.4rem">
+            <p class="text-xs text-muted mt-1">Shown as the browser tab icon when no logo is uploaded. Paste any emoji.</p>
           </div>
           <div class="form-group">
             <label class="label">GDPR Consent Banner</label>

@@ -481,7 +481,8 @@ async function adminPlugin(fastify) {
   fastify.post('/admin/settings', async (req, reply) => {
     if (req.subdomain !== '') return reply.callNotFound()
     const allowed = [
-      'site_name', 'site_tagline', 'registration_open',
+      'site_name', 'site_tagline', 'site_hero_subtitle', 'registration_open',
+      'favicon_emoji',
       'ads_enabled', 'active_theme',
       'github_repo_url', 'update_check_hours',
       'watermark_position', 'watermark_size_pct',

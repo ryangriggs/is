@@ -57,25 +57,25 @@
           </div>
         </summary>
         <div style="padding:.75rem 0 .25rem">
-          <form method="POST" action="/d/{{ r.id }}/edit-ip" style="display:flex;gap:.75rem;flex-wrap:wrap;align-items:flex-end">
+          <form id="edit-{{ r.id }}" method="POST" action="/d/{{ r.id }}/edit-ip"></form>
+          <form id="del-{{ r.id }}" method="POST" action="/d/delete/{{ r.id }}"></form>
+          <div style="display:flex;gap:.75rem;flex-wrap:wrap;align-items:flex-end">
             <div class="form-group" style="flex:1;min-width:160px;margin:0">
               <label class="label" style="font-size:.8rem">IPv4</label>
-              <input type="text" name="ip4" class="input" value="{{ r.ip4 or '' }}" placeholder="1.2.3.4">
+              <input form="edit-{{ r.id }}" type="text" name="ip4" class="input" value="{{ r.ip4 or '' }}" placeholder="1.2.3.4">
             </div>
             <div class="form-group" style="flex:1;min-width:160px;margin:0">
               <label class="label" style="font-size:.8rem">IPv6</label>
-              <input type="text" name="ip6" class="input" value="{{ r.ip6 or '' }}" placeholder="optional">
+              <input form="edit-{{ r.id }}" type="text" name="ip6" class="input" value="{{ r.ip6 or '' }}" placeholder="optional">
             </div>
             <div class="form-group" style="min-width:120px;margin:0">
               <label class="label" style="font-size:.8rem">TTL (s)</label>
-              <input type="number" name="ttl" class="input" value="{{ r.ttl or 300 }}"
+              <input form="edit-{{ r.id }}" type="number" name="ttl" class="input" value="{{ r.ttl or 300 }}"
                 min="30" max="86400" {% if not isPaid %}disabled{% endif %}>
             </div>
-            <button type="submit" class="btn btn-secondary btn-sm" style="align-self:flex-end">Update</button>
-            <form method="POST" action="/d/delete/{{ r.id }}" style="margin:0;align-self:flex-end">
-              <button class="btn btn-danger btn-sm" data-confirm="Delete this record?">Delete</button>
-            </form>
-          </form>
+            <button form="edit-{{ r.id }}" type="submit" class="btn btn-secondary btn-sm" style="align-self:flex-end">Update</button>
+            <button form="del-{{ r.id }}" type="submit" class="btn btn-danger btn-sm" style="align-self:flex-end" data-confirm="Delete this record?">Delete</button>
+          </div>
         </div>
       </details>
       {% endfor %}

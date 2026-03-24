@@ -186,6 +186,8 @@ export async function buildApp() {
     const siteName = getSetting('site_name') || config.SITE_NAME
     const siteTagline = getSetting('site_tagline') || config.SITE_TAGLINE
     const siteLogo = getSetting('site_logo_path') || config.SITE_LOGO_PATH
+    const faviconEmoji = getSetting('favicon_emoji') || '🔗'
+    const siteHeroSubtitle = getSetting('site_hero_subtitle') || ''
     const githubRepoUrl = getSetting('github_repo_url') || 'https://github.com/ryangriggs/is'
     const adImageHeight = getSetting('ad_image_height') || '90'
     const gdprEnabled = getSetting('gdpr_enabled') === 'true'
@@ -227,6 +229,8 @@ export async function buildApp() {
       siteTagline,
       githubRepoUrl,
       siteLogo,
+      faviconEmoji,
+      siteHeroSubtitle,
       adImageHeight,
       baseDomain: config.BASE_DOMAIN,
       currentPath: req.url,
