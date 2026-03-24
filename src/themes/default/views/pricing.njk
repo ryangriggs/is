@@ -86,7 +86,10 @@
           {% else %}
             <form method="POST" action="/pricing/change">
               <input type="hidden" name="tier" value="{{ tier.name }}">
-              <button class="btn btn-secondary btn-block" data-confirm="Switch to {{ tier.label or tier.name }} plan?">Switch to {{ tier.label or tier.name }}</button>
+              {% if subscriptionInterval %}
+              <p class="text-xs text-muted mb-2" style="line-height:1.4">⚠ Switching to Free will not cancel your active subscription or issue a refund. To stop future charges, cancel via <strong>Manage Subscription</strong> first.</p>
+              {% endif %}
+              <button class="btn btn-secondary btn-block" data-confirm="{% if subscriptionInterval %}Switching to Free will not cancel your Stripe subscription or issue a refund for unused time. To cancel billing, use Manage Subscription instead. Switch anyway?{% else %}Switch to {{ tier.label or tier.name }} plan?{% endif %}">Switch to {{ tier.label or tier.name }}</button>
             </form>
           {% endif %}
         {% else %}

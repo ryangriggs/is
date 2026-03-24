@@ -83,10 +83,26 @@
     {% endif %}
 
     <div class="card">
-      <h2 style="font-size:1rem;margin:0 0 1rem">Dynamic Update (cron / script)</h2>
-      <p class="text-muted text-sm">Use your secret key (shown once at creation) to update your IP automatically:</p>
-      <pre style="background:var(--bg-base);padding:1rem;border-radius:8px;overflow-x:auto;font-size:.8rem">curl "https://{{ baseDomain }}/d/update?host=SUBDOMAIN&key=SECRET_KEY&ip=$(curl -s https://api.ipify.org)"</pre>
-      <p class="text-muted text-sm mt-2">Omit <code>&ip=...</code> to use the requesting client's IP automatically.</p>
+      <h2 style="font-size:1rem;margin:0 0 1rem">Auto-Update Setup</h2>
+      <p class="text-muted text-sm mb-3">Use the secret key shown at record creation to keep your IP current. Replace <code>SUBDOMAIN</code> and <code>SECRET_KEY</code> with your values.</p>
+
+      <h3 style="font-size:.85rem;font-weight:600;margin:0 0 .4rem">Update URL</h3>
+      <p class="text-muted text-sm mb-1">Fetch this URL from any device to update the record. Omit <code>&amp;ip=…</code> to use the requesting client's IP automatically.</p>
+      <pre style="background:var(--bg-base);padding:.75rem 1rem;border-radius:8px;overflow-x:auto;font-size:.8rem;margin-bottom:1.25rem">https://{{ baseDomain }}/d/update?host=SUBDOMAIN&key=SECRET_KEY&ip=YOUR.IP.HERE</pre>
+
+      <h3 style="font-size:.85rem;font-weight:600;margin:0 0 .4rem">Linux / macOS — cron</h3>
+      <p class="text-muted text-sm mb-1">Run <code>crontab -e</code> and add this line to update every 5 minutes:</p>
+      <pre style="background:var(--bg-base);padding:.75rem 1rem;border-radius:8px;overflow-x:auto;font-size:.8rem;margin-bottom:1.25rem">*/5 * * * * curl -s "https://{{ baseDomain }}/d/update?host=SUBDOMAIN&key=SECRET_KEY&ip=$(curl -s https://api.ipify.org)" > /dev/null 2>&1</pre>
+
+      <h3 style="font-size:.85rem;font-weight:600;margin:0 0 .4rem">Windows — Task Scheduler + PowerShell</h3>
+      <p class="text-muted text-sm mb-1">Save this as <code>update-dns.ps1</code> and schedule it with Task Scheduler:</p>
+      <pre style="background:var(--bg-base);padding:.75rem 1rem;border-radius:8px;overflow-x:auto;font-size:.8rem;margin-bottom:.75rem">$ip = (Invoke-WebRequest -Uri "https://api.ipify.org" -UseBasicParsing).Content.Trim()
+Invoke-WebRequest -Uri "https://{{ baseDomain }}/d/update?host=SUBDOMAIN&key=SECRET_KEY&ip=$ip" -UseBasicParsing | Out-Null</pre>
+      <p class="text-muted text-sm mb-1">To create the scheduled task, run once in an elevated PowerShell prompt:</p>
+      <pre style="background:var(--bg-base);padding:.75rem 1rem;border-radius:8px;overflow-x:auto;font-size:.8rem;margin-bottom:1rem">$action = New-ScheduledTaskAction -Execute "powershell.exe" -Argument "-NonInteractive -File C:\path\to\update-dns.ps1"
+$trigger = New-ScheduledTaskTrigger -RepetitionInterval (New-TimeSpan -Minutes 5) -Once -At (Get-Date)
+Register-ScheduledTask -TaskName "DynDNS Update" -Action $action -Trigger $trigger -RunLevel Highest</pre>
+
       <p class="text-muted text-sm">Lost your key? Delete the record and recreate it — a new key will be generated.</p>
     </div>
   </div>
