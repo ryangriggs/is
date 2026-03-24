@@ -92,7 +92,7 @@ export async function buildApp() {
     cookie: {
       secure: config.IS_PROD,
       httpOnly: true,
-      sameSite: 'strict',
+      sameSite: 'lax',
       maxAge: config.ANON_TOKEN_COOKIE_DAYS * 24 * 60 * 60 * 1000,
     },
     saveUninitialized: false,
