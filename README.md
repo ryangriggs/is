@@ -75,9 +75,24 @@ Copy `.env.example` to `.env` and edit:
 
 Stripe is optional. Leave `STRIPE_SECRET_KEY` blank and the payment UI is hidden entirely.
 
-### 1. Create a Stripe account and get your keys
+### 1. Create a restricted API key
 
-In the [Stripe Dashboard](https://dashboard.stripe.com/), go to **Developers → API keys** and copy your **Secret key** (`sk_live_...`). Use `sk_test_...` keys during development.
+Using a restricted key limits the blast radius if the key is ever leaked. Do **not** use your secret key (`sk_live_...`) — create a restricted key with only the permissions this app requires.
+
+In the [Stripe Dashboard](https://dashboard.stripe.com/), go to **Developers → API keys → Create restricted key** and set the following permissions — leave everything else at **None**:
+
+| Resource | Permission |
+|---|---|
+| Customers | Read + Write |
+| Checkout Sessions | Read + Write |
+| Subscriptions | Read + Write |
+| Customer Portal Sessions | Write |
+| Prices | Read |
+| Products | Read |
+
+Copy the generated key (`rk_live_...`). Use a `rk_test_...` restricted key during development — create one the same way under test mode.
+
+> **Webhook signature verification** does not require any API permission — it works via the signing secret alone, so no Webhook Endpoints permission is needed.
 
 Stripe keys are stored in the database and managed from **Admin → Settings → Stripe Payments** — no `.env` changes required.
 
@@ -105,14 +120,25 @@ For each paid account tier you want to offer, create a **Product** in Stripe wit
 
 Stripe must notify your app when subscriptions change (new signups, renewals, cancellations).
 
-1. Stripe Dashboard → **Developers** → **Webhooks** → **Add endpoint**
-2. Set the endpoint URL to `https://yourdomain.com/stripe/webhook`
-3. Select these events to listen for:
+1. Stripe Dashboard → **Developers** → **Webhooks** → **Add destination**
+2. Choose **Webhook endpoint**, set the URL to `https://yourdomain.com/stripe/webhook`
+3. Under **Select events**, add exactly these 4 events:
    - `checkout.session.completed`
    - `customer.subscription.updated`
    - `customer.subscription.deleted`
    - `invoice.payment_failed`
-4. Copy the **Signing secret** (`whsec_...`) into the **Webhook Signing Secret** field in Admin → Settings
+4. Click **Add destination**
+5. On the endpoint detail page, find **Signing secret** and click **Reveal** — copy the `whsec_...` value
+6. Paste it into the **Webhook Signing Secret** field in Admin → Settings
+
+> The signing secret is unique to each endpoint. If you create separate test and live endpoints, each will have its own `whsec_...` value.
+
+**For local development**, use the Stripe CLI to forward webhooks to localhost — it prints a temporary signing secret to use while developing:
+
+```bash
+stripe listen --forward-to localhost:3000/stripe/webhook
+# Ready! Your webhook signing secret is whsec_... (^C to quit)
+```
 
 ### 5. Enable Stripe
 
@@ -240,6 +266,79 @@ dig A home.dyn.yourdomain.com +short
 
 ## Running as a service
 
+### Option A — pm2 (recommended)
+
+pm2 is a production process manager for Node.js. It handles restarts on crash, startup on boot, and log management.
+
+```bash
+npm install -g pm2
+```
+
+An `ecosystem.config.cjs` file is included in the project root. Review it and adjust any values, then start the app:
+
+```bash
+pm2 start ecosystem.config.cjs
+```
+
+**Save the process list so it restarts on server reboot:**
+
+```bash
+pm2 save
+pm2 startup   # follow the printed instruction to register the startup hook
+```
+
+**Common pm2 commands:**
+
+```bash
+pm2 status          # show running processes
+pm2 logs is.am      # tail live logs
+pm2 restart is.am   # restart after code changes
+pm2 stop is.am      # stop
+pm2 delete is.am    # remove from pm2
+```
+
+**Updating the app:**
+
+```bash
+git pull
+npm install
+pm2 restart is.am
+```
+
+---
+
+### UV_THREADPOOL_SIZE
+
+Node.js uses a native thread pool (libuv) for file I/O, image processing (Sharp), and DNS lookups. The default pool size is **4 threads**. Under concurrent image uploads this pool can saturate, causing other I/O to queue behind image processing jobs.
+
+The `ecosystem.config.cjs` file sets `UV_THREADPOOL_SIZE: '8'` in the `env` block, which doubles the pool. This is the correct way to set it when using pm2 — setting it in `.env` or `package.json` scripts has no effect on pm2-managed processes.
+
+**To tune the value:**
+
+| Server vCPUs | Recommended `UV_THREADPOOL_SIZE` |
+|---|---|
+| 1 | `8` |
+| 2 | `12` |
+| 4+ | `16` |
+
+Going above 128 has no effect (libuv hard cap). Larger values use more memory (each thread ~8 MB stack) so don't set it higher than needed.
+
+After changing the value in `ecosystem.config.cjs`, apply it with:
+
+```bash
+pm2 restart ecosystem.config.cjs
+```
+
+Verify it took effect:
+
+```bash
+pm2 env is.am | grep UV_THREADPOOL
+```
+
+---
+
+### Option B — systemd
+
 Create `/etc/systemd/system/isam.service`:
 
 ```ini
@@ -254,6 +353,7 @@ WorkingDirectory=/home/youruser/is.am
 ExecStart=/usr/bin/node --experimental-sqlite src/server.js
 Restart=on-failure
 EnvironmentFile=/home/youruser/is.am/.env
+Environment=UV_THREADPOOL_SIZE=8
 
 [Install]
 WantedBy=multi-user.target
