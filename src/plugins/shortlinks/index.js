@@ -61,6 +61,8 @@ async function shortlinksPlugin(fastify) {
     }
   }, async (req, reply) => {
     if (req.subdomain !== '' && req.subdomain !== 'l') return reply.callNotFound()
+    // Honeypot: bots fill hidden fields; silently redirect without creating a link
+    if (req.body?.website) return reply.redirect('/')
     const destination = (req.body?.destination || '').trim()
     if (!destination.startsWith('http://') && !destination.startsWith('https://')) {
       req.session.flash = { type: 'error', message: 'Please enter a valid URL starting with http:// or https://' }

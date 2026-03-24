@@ -15,16 +15,23 @@
       <h1 class="page-title">Dashboard</h1>
       <p class="page-subtitle">Welcome back, <strong>{{ user.displayName or user.email or user.username }}</strong></p>
     </div>
-    <div class="dropdown">
-      <button class="btn btn-primary dropdown-toggle">+ New ▾</button>
-      <div class="dropdown-menu">
-        <a href="/" class="dropdown-item">🔗 URL Shortlink</a>
-        <a href="/t" class="dropdown-item">📝 Text Paste</a>
-        <a href="/h" class="dropdown-item">🌐 HTML Paste</a>
-        <a href="/i" class="dropdown-item">🖼️ Image Upload</a>
-        <a href="/b" class="dropdown-item">🔖 Bookmark Collection</a>
-        <a href="/q" class="dropdown-item">⬛ QR Code</a>
-        <a href="/d" class="dropdown-item">🌐 Dynamic DNS</a>
+    <div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap">
+      {% if dnsRecords.length %}
+      <a href="/d" class="btn btn-ghost btn-sm" title="Manage Dynamic DNS records">🌍 DNS
+        <span style="font-size:.7rem;background:var(--color-primary);color:#fff;border-radius:10px;padding:1px 6px;margin-left:3px">{{ dnsRecords.length }}</span>
+      </a>
+      {% endif %}
+      <div class="dropdown">
+        <button class="btn btn-primary dropdown-toggle">+ New ▾</button>
+        <div class="dropdown-menu">
+          <a href="/" class="dropdown-item">🔗 URL Shortlink</a>
+          <a href="/t" class="dropdown-item">📝 Text Paste</a>
+          <a href="/h" class="dropdown-item">🌐 HTML Paste</a>
+          <a href="/i" class="dropdown-item">🖼️ Image Upload</a>
+          <a href="/b" class="dropdown-item">🔖 Bookmark Collection</a>
+          <a href="/q" class="dropdown-item">⬛ QR Code</a>
+          <a href="/d" class="dropdown-item">🌍 Dynamic DNS</a>
+        </div>
       </div>
     </div>
   </div>
@@ -223,35 +230,5 @@
   {% endif %}
   {% endif %}
 
-  {% if dnsRecords.length %}
-  <div style="margin-top:2rem">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem">
-      <h2 style="font-size:1.1rem;margin:0">Dynamic DNS Records</h2>
-      <a href="/d" class="btn btn-secondary btn-sm">Manage</a>
-    </div>
-    <div class="table-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th>Hostname</th>
-            <th>IPv4</th>
-            <th>IPv6</th>
-            <th>Updated</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for r in dnsRecords %}
-          <tr>
-            <td><code>{{ r.subdomain }}.{{ dynApex }}</code></td>
-            <td>{{ r.ip4 or '—' }}</td>
-            <td>{{ r.ip6 or '—' }}</td>
-            <td class="text-muted text-sm">{{ r.updated_at | date }}</td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
-  </div>
-  {% endif %}
 </div>
 {% endblock %}

@@ -11,7 +11,12 @@ async function contactPlugin(fastify) {
   })
 
   fastify.post('/contact', async (req, reply) => {
-    const { name = '', email = '', subject = '', body = '' } = req.body || {}
+    const { name = '', email = '', subject = '', body = '', website = '' } = req.body || {}
+    // Honeypot: bots fill hidden fields; silently succeed without storing anything
+    if (website) {
+      req.session.flash = { type: 'success', message: 'Message sent. Thank you!' }
+      return reply.redirect('/contact')
+    }
     const ad = getAdForOwner(req.session.userId || null, db)
     const cleanBody = stripTags(body).slice(0, 4000)
     if (!cleanBody.trim()) {
