@@ -31,9 +31,6 @@ async function start() {
     console.log(`\n🚀 is.am running at http://localhost:${config.PORT}`)
     console.log(`   Domain: ${config.BASE_DOMAIN}`)
     console.log(`   DB: ${config.DB_TYPE === 'sqlite' ? config.SQLITE_PATH : config.MYSQL_DATABASE}`)
-    if (config.DNS_ENABLED) {
-      console.log(`   DNS: UDP :${config.DNS_PORT}`)
-    }
 
     // Graceful shutdown
     const shutdown = async (signal) => {

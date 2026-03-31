@@ -16,11 +16,6 @@
       <p class="page-subtitle">Welcome back, <strong>{{ user.displayName or user.email or user.username }}</strong></p>
     </div>
     <div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap">
-      {% if dnsRecords.length %}
-      <a href="/d" class="btn btn-ghost btn-sm" title="Manage Dynamic DNS records">🌍 DNS
-        <span style="font-size:.7rem;background:var(--color-primary);color:#fff;border-radius:10px;padding:1px 6px;margin-left:3px">{{ dnsRecords.length }}</span>
-      </a>
-      {% endif %}
       <div class="dropdown">
         <button class="btn btn-primary dropdown-toggle">+ New ▾</button>
         <div class="dropdown-menu">
@@ -30,7 +25,7 @@
           <a href="/i" class="dropdown-item">🖼️ Image Upload</a>
           <a href="/b" class="dropdown-item">🔖 Bookmark Collection</a>
           <a href="/q" class="dropdown-item">⬛ QR Code</a>
-          <a href="/d" class="dropdown-item">🌍 Dynamic DNS</a>
+          <a href="https://yourddns.com" target="_blank" rel="noopener" class="dropdown-item">🌍 Dynamic DNS ↗</a>
         </div>
       </div>
     </div>

@@ -446,11 +446,6 @@ async function usersPlugin(fastify) {
       WHERE l.owner_id = ?
     `, todayStart, req.session.userId)
 
-    const dnsRecords = db.all(
-      'SELECT * FROM dns_records WHERE user_id = ? ORDER BY subdomain',
-      req.session.userId
-    )
-
     const ad = getAdForOwner(req.session.userId, db)
     return reply.view('dashboard.njk', {
       ad,
@@ -470,8 +465,6 @@ async function usersPlugin(fastify) {
         totalPages: Math.ceil(total / perPage),
         total,
       },
-      dnsRecords,
-      dynApex: `${config.DYN_SUBDOMAIN}.${config.BASE_DOMAIN}`,
       sort, dir,
     })
   })

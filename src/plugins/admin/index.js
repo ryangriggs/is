@@ -94,7 +94,6 @@ async function adminPlugin(fastify) {
         (SELECT COUNT(*) FROM tracking WHERE visited_at >= ?) as visitsToday,
         (SELECT COUNT(*) FROM reports WHERE status = 'pending') as pendingReports,
         (SELECT COUNT(*) FROM messages WHERE is_read = 0) as unreadMessages,
-        (SELECT COUNT(*) FROM dns_records) as totalDnsRecords,
         (SELECT COUNT(*) FROM blocked_ips) as totalBlockedIps
     `, todayStart)
 
@@ -366,29 +365,6 @@ async function adminPlugin(fastify) {
     if (report?.created_ip) unblockIp(report.created_ip)
     req.session.flash = { type: 'success', message: 'IP unblocked.' }
     return reply.redirect('/admin/reports')
-  })
-
-  // ----------------------------------------------------------------
-  // GET /admin/dns
-  // ----------------------------------------------------------------
-  fastify.get('/admin/dns', async (req, reply) => {
-    if (req.subdomain !== '') return reply.callNotFound()
-    const records = db.all(`
-      SELECT d.*, u.username
-      FROM dns_records d
-      LEFT JOIN users u ON u.id = d.user_id
-      ORDER BY d.subdomain
-    `)
-    return reply.view('admin/dns.njk', { records, dynApex: `${config.DYN_SUBDOMAIN}.${config.BASE_DOMAIN}` })
-  })
-
-  fastify.post('/admin/dns/:id/ttl', async (req, reply) => {
-    if (req.subdomain !== '') return reply.callNotFound()
-    const ttl = Math.max(30, Math.min(86400, parseInt(req.body.ttl) || 300))
-    db.run('UPDATE dns_records SET ttl = ? WHERE id = ?', ttl, Number(req.params.id))
-    if (fastify.invalidateDnsCache) fastify.invalidateDnsCache()
-    req.session.flash = { type: 'success', message: `TTL updated to ${ttl}s.` }
-    return reply.redirect('/admin/dns')
   })
 
   // ----------------------------------------------------------------

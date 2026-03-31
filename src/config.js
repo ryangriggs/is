@@ -25,11 +25,6 @@ const config = Object.freeze({
   MYSQL_PASSWORD: optional('MYSQL_PASSWORD', ''),
   MYSQL_DATABASE: optional('MYSQL_DATABASE', 'isam'),
 
-  DNS_ENABLED: optional('DNS_ENABLED', 'true') === 'true',
-  DNS_PORT: Number(optional('DNS_PORT', '5300')),
-  DNS_UPSTREAM: optional('DNS_UPSTREAM', '8.8.8.8'),
-  DYN_SUBDOMAIN: optional('DYN_SUBDOMAIN', 'dyn'),
-
   SITE_NAME: optional('SITE_NAME', 'is.am'),
   SITE_TAGLINE: optional('SITE_TAGLINE', 'Shorten. Share. Track.'),
   SITE_LOGO_PATH: optional('SITE_LOGO_PATH', ''),
