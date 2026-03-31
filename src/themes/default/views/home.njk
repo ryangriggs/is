@@ -24,7 +24,35 @@
         autofocus
       >
       <button type="submit" class="btn btn-primary">Shorten</button>
+      <div style="width:100%;margin-top:.5rem">
+        <button type="button" id="url-opts-toggle" class="btn btn-ghost btn-sm" style="font-size:.8rem;padding:.2rem .6rem">
+          ⚙ Options
+        </button>
+        <div id="url-opts" style="display:none;margin-top:.5rem;padding:.75rem;background:var(--bg-card);border:1px solid var(--color-border);border-radius:var(--radius-lg);flex-direction:column;gap:.5rem">
+          <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer;font-size:.875rem">
+            <input type="checkbox" name="burn_on_read" value="1"> 🔥 Burn on read (one-time link)
+          </label>
+          <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer;font-size:.875rem;flex-wrap:wrap">
+            <span>⏰ Expires:</span>
+            <input type="datetime-local" name="expires_at" id="url-expires" class="input" style="flex:1;min-width:180px;max-width:260px">
+            <button type="button" class="btn btn-ghost btn-sm" onclick="document.getElementById('url-expires').value=''">Clear</button>
+          </label>
+        </div>
+      </div>
     </form>
+    <script>
+    (function(){
+      var btn = document.getElementById('url-opts-toggle')
+      var panel = document.getElementById('url-opts')
+      var open = false
+      btn.addEventListener('click', function(){
+        open = !open
+        panel.style.display = open ? 'flex' : 'none'
+        panel.style.flexDirection = 'column'
+        btn.textContent = open ? '⚙ Options ▲' : '⚙ Options'
+      })
+    })()
+    </script>
 
     <div class="hero-features">
       <a href="/t" class="btn-feature"><span class="feat-icon">📝</span> Text Paste</a>

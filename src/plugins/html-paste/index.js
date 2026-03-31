@@ -15,7 +15,7 @@ async function htmlPastePlugin(fastify) {
   })
 
   fastify.post('/h', async (req, reply) => {
-    const { content = '', title = '', is_private } = req.body || {}
+    const { content = '', title = '', is_private, burn_on_read, expires_at } = req.body || {}
     const ad = getAdForOwner(req.session.userId || null, db)
     if (!content.trim()) {
       return reply.view('html-create.njk', { error: 'Content cannot be empty.', content, title, ad })
@@ -24,11 +24,14 @@ async function htmlPastePlugin(fastify) {
     if (byteSize > MAX_PASTE_BYTES) {
       return reply.view('html-create.njk', { error: 'Paste too large (max 512 KB).', content, title, ad })
     }
+    const expiresAtMs = expires_at ? new Date(expires_at).getTime() : null
     const { link, plainToken } = await createLink(db, hooks, {
       type: 'html',
       destination: content,
       title: title.trim() || null,
       isPrivate: is_private === '1',
+      burnOnRead: burn_on_read === '1',
+      expiresAt: expiresAtMs && !isNaN(expiresAtMs) ? expiresAtMs : null,
       ownerId: req.session.userId || null,
       req,
     })

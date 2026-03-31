@@ -3,7 +3,7 @@ import { hashToken, generateToken } from './auth.js'
 
 // Shared link creation logic used by all content plugins.
 // Returns { link, plainToken } where plainToken is set for anonymous creators.
-export async function createLink(db, hooks, { type, destination, title, meta, isPrivate, ownerId, req }) {
+export async function createLink(db, hooks, { type, destination, title, meta, isPrivate, isEncrypted, burnOnRead, expiresAt, ownerId, req }) {
   const isAnon = !ownerId
   const plainToken = isAnon ? generateToken(32) : null
   const tokenHash = plainToken ? await hashToken(plainToken) : null
@@ -16,6 +16,9 @@ export async function createLink(db, hooks, { type, destination, title, meta, is
     title: title || null,
     meta: meta ? JSON.stringify(meta) : null,
     isPrivate: isPrivate ? 1 : 0,
+    isEncrypted: isEncrypted ? 1 : 0,
+    burnOnRead: burnOnRead ? 1 : 0,
+    expiresAt: expiresAt || null,
     createdAt: Date.now(),
     createdIp: req?.ip || '',
   }
@@ -46,10 +49,11 @@ export async function createLink(db, hooks, { type, destination, title, meta, is
     // Update the winning row with the actual link data
     db.run(
       `UPDATE links SET type=?, destination=?, owner_id=?, manage_token_hash=?, title=?, meta=?,
-       is_private=?, is_active=1, created_ip=?, code=? WHERE id=?`,
+       is_private=?, is_encrypted=?, burn_on_read=?, expires_at=?, is_active=1, created_ip=?, code=? WHERE id=?`,
       insertData.type, insertData.destination, insertData.ownerId,
       insertData.manageTokenHash, insertData.title, insertData.meta,
-      insertData.isPrivate, insertData.createdIp, code, id
+      insertData.isPrivate, insertData.isEncrypted, insertData.burnOnRead, insertData.expiresAt,
+      insertData.createdIp, code, id
     )
     return db.get('SELECT * FROM links WHERE id = ?', id)
   })()

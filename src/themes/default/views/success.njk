@@ -36,6 +36,16 @@
       </p>
       {% endif %}
 
+      {% if link.burn_on_read %}
+      <div class="alert" style="background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);color:#dc2626;margin-bottom:.75rem;font-size:.875rem">
+        🔥 <strong>Burn on read</strong> — this link will be permanently deleted after the first view.
+      </div>
+      {% endif %}
+
+      {% if link.expires_at %}
+      <p class="text-sm text-muted" style="margin-bottom:.75rem">⏰ Expires {{ link.expires_at | datetime }}</p>
+      {% endif %}
+
       {% if qrDataUrl %}
       <div class="qr-code">
         <img src="{{ qrDataUrl }}" alt="QR Code for {{ shortUrl }}" width="160" height="160">

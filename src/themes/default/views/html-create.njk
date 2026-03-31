@@ -27,12 +27,30 @@
           <label class="label" for="content">HTML Content</label>
           <textarea id="content" name="content" required>{{ content }}</textarea>
         </div>
+        {% if not editCode %}
+        <div style="border-top:1px solid var(--color-border);margin-top:1rem;padding-top:.75rem;display:flex;flex-direction:column;gap:.5rem">
+          <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer">
+            <input type="checkbox" name="burn_on_read" value="1"> 🔥 Burn on read (delete after first view)
+          </label>
+          {% if user %}
+          <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer">
+            <input type="checkbox" name="is_private" value="1" {% if isPrivate %}checked{% endif %}> 🔒 Private (only visible to you)
+          </label>
+          {% endif %}
+          <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer;flex-wrap:wrap">
+            <span>⏰ Expires:</span>
+            <input type="datetime-local" name="expires_at" class="input" style="flex:1;min-width:200px;max-width:280px" id="html-expires">
+            <button type="button" class="btn btn-ghost btn-sm" onclick="document.getElementById('html-expires').value=''">Clear</button>
+          </label>
+        </div>
+        {% else %}
         {% if user %}
         <div class="form-group" style="margin-top:1rem">
           <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer">
             <input type="checkbox" name="is_private" value="1" {% if isPrivate %}checked{% endif %}> Private
           </label>
         </div>
+        {% endif %}
         {% endif %}
         <div style="display:flex;gap:.75rem;margin-top:1rem">
           {% if editCode %}

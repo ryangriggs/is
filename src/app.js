@@ -256,6 +256,26 @@ export async function buildApp() {
   // Load all feature plugins
   await app.register(pluginLoader)
 
+  // Cleanup expired links every hour
+  const cleanupExpiredLinks = async () => {
+    try {
+      const now = Date.now()
+      // Collect image files to delete from disk
+      const expiredImages = db.all(
+        "SELECT destination FROM links WHERE type = 'image' AND expires_at IS NOT NULL AND expires_at < ?", now
+      )
+      db.run('DELETE FROM links WHERE expires_at IS NOT NULL AND expires_at < ?', now)
+      for (const img of expiredImages) {
+        try {
+          const { unlink } = await import('fs/promises')
+          await unlink(path.join(process.cwd(), 'uploads', img.destination))
+        } catch (_) {}
+      }
+    } catch (_) {}
+  }
+  setTimeout(cleanupExpiredLinks, 15000)
+  setInterval(cleanupExpiredLinks, 3600 * 1000)
+
   // Schedule periodic update checks
   const doUpdateCheck = async () => {
     try {

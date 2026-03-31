@@ -6,24 +6,112 @@
     {% include "partials/ad-banner.njk" %}
     <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem;margin-bottom:1rem">
       <div>
-        <h1 style="margin:0;font-size:1.25rem">{{ link.title or 'Untitled Paste' }}</h1>
+        <h1 style="margin:0;font-size:1.25rem">
+          {{ link.title or 'Untitled Paste' }}
+          {% if link.is_encrypted %}<span title="Client-side encrypted" style="font-size:.85rem">🔐</span>{% endif %}
+          {% if link.burn_on_read %}<span title="Burned — this was a one-time view" style="font-size:.85rem">🔥</span>{% endif %}
+        </h1>
         <p class="text-muted text-sm" style="margin:.25rem 0 0">
           {{ link.created_at | date }} &bull;
           <a href="/report/{{ link.code }}" class="text-muted">Report</a>
         </p>
       </div>
       <div style="display:flex;gap:.5rem">
+        {% if not link.is_encrypted %}
         <button class="btn btn-secondary btn-sm" data-copy-target="paste-content">📋 Copy</button>
-        {% if user and user.id == link.owner_id %}
+        {% else %}
+        <button class="btn btn-secondary btn-sm" id="copy-decrypted">📋 Copy</button>
+        {% endif %}
+        {% if user and user.id == link.owner_id and not link.is_encrypted %}
         <a href="/t/{{ link.code }}/edit" class="btn btn-ghost btn-sm">✏️ Edit</a>
         {% endif %}
         <a href="/t" class="btn btn-ghost btn-sm">+ New paste</a>
       </div>
     </div>
 
+    {% if link.is_encrypted %}
+    {# Encrypted paste — content decrypted client-side using key from URL fragment #}
+    <div id="dec-loading" class="card" style="padding:2rem;text-align:center;color:var(--color-text-muted)">
+      🔐 Decrypting…
+    </div>
+    <div id="dec-error" class="alert alert-error" style="display:none">
+      <strong>Decryption failed.</strong> The key in the URL may be missing or incorrect.
+      Make sure you copied the complete link including the <code>#key=…</code> portion.
+    </div>
+    <div class="card" id="dec-content-wrap" style="display:none;padding:0;overflow:hidden">
+      <pre id="paste-content" style="margin:0;padding:1.5rem;overflow-x:auto;white-space:pre-wrap;word-break:break-word"></pre>
+    </div>
+    {% else %}
     <div class="card" style="padding:0;overflow:hidden">
       <pre id="paste-content" style="margin:0;padding:1.5rem;overflow-x:auto;white-space:pre-wrap;word-break:break-word">{{ link.destination }}</pre>
     </div>
+    {% endif %}
   </div>
 </section>
+{% endblock %}
+
+{% block scripts %}
+{% if link.is_encrypted %}
+<script>
+(function () {
+  var loading = document.getElementById('dec-loading')
+  var errorEl = document.getElementById('dec-error')
+  var contentWrap = document.getElementById('dec-content-wrap')
+  var pre = document.getElementById('paste-content')
+  var copyBtn = document.getElementById('copy-decrypted')
+
+  var cipherB64 = {{ link.destination | dump | safe }}
+
+  async function importKeyBase64url(b64url) {
+    var b64 = b64url.replace(/-/g, '+').replace(/_/g, '/')
+    var pad = (4 - b64.length % 4) % 4
+    b64 += '==='.slice(0, pad)
+    var bytes = Uint8Array.from(atob(b64), function (c) { return c.charCodeAt(0) })
+    return crypto.subtle.importKey('raw', bytes, { name: 'AES-GCM' }, false, ['decrypt'])
+  }
+
+  async function decryptText(b64payload, key) {
+    var bytes = Uint8Array.from(atob(b64payload), function (c) { return c.charCodeAt(0) })
+    var iv = bytes.slice(0, 12)
+    var ciphertext = bytes.slice(12)
+    var plaintext = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: iv }, key, ciphertext)
+    return new TextDecoder().decode(plaintext)
+  }
+
+  async function decrypt() {
+    var hash = window.location.hash.slice(1) // remove leading #
+    var params = new URLSearchParams(hash)
+    var keyB64url = params.get('key')
+
+    if (!keyB64url) {
+      loading.style.display = 'none'
+      errorEl.style.display = 'block'
+      return
+    }
+
+    try {
+      var key = await importKeyBase64url(keyB64url)
+      var plaintext = await decryptText(cipherB64, key)
+      pre.textContent = plaintext
+      loading.style.display = 'none'
+      contentWrap.style.display = 'block'
+
+      if (copyBtn) {
+        copyBtn.addEventListener('click', function () {
+          navigator.clipboard.writeText(plaintext).then(function () {
+            copyBtn.textContent = '✓ Copied!'
+            setTimeout(function () { copyBtn.textContent = '📋 Copy' }, 2000)
+          })
+        })
+      }
+    } catch (_) {
+      loading.style.display = 'none'
+      errorEl.style.display = 'block'
+    }
+  }
+
+  decrypt()
+})()
+</script>
+{% endif %}
 {% endblock %}

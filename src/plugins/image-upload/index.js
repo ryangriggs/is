@@ -84,11 +84,16 @@ async function imageUploadPlugin(fastify) {
       return reply.view('image-create.njk', { error: 'Failed to save file. Please try again.', ad })
     }
 
+    const burn_on_read = data.fields?.burn_on_read?.value
+    const expires_at = data.fields?.expires_at?.value
+    const expiresAtMs = expires_at ? new Date(expires_at).getTime() : null
     const { link, plainToken } = await createLink(db, hooks, {
       type: 'image',
       destination: filename,
       title: filename,
       meta: { mimetype: data.mimetype },
+      burnOnRead: burn_on_read === '1',
+      expiresAt: expiresAtMs && !isNaN(expiresAtMs) ? expiresAtMs : null,
       ownerId: req.session.userId || null,
       req,
     })

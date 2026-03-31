@@ -251,6 +251,21 @@ async function shortlinksPlugin(fastify) {
 
     await hooks.run('post:link:visit', { link, req })
 
+    // Burn on read: delete link after this visit
+    if (link.burn_on_read) {
+      db.run('DELETE FROM links WHERE id = ?', link.id)
+      if (link.type === 'image') {
+        // Delay file deletion so the browser can still load the image from this page render
+        setTimeout(async () => {
+          try {
+            const { unlink } = await import('fs/promises')
+            const path = await import('path')
+            await unlink(path.join(process.cwd(), 'uploads', link.destination))
+          } catch (_) {}
+        }, 60000)
+      }
+    }
+
     const ad = getAdForOwner(link.owner_id, db)
 
     switch (link.type) {
@@ -387,9 +402,13 @@ async function shortlinksPlugin(fastify) {
   // ----------------------------------------------------------------
 
   async function createUrlAndRedirect(req, reply, destination) {
+    const { burn_on_read, expires_at } = req.body || {}
+    const expiresAtMs = expires_at ? new Date(expires_at).getTime() : null
     const { link, plainToken } = await createLink(db, hooks, {
       type: 'url',
       destination,
+      burnOnRead: burn_on_read === '1',
+      expiresAt: expiresAtMs && !isNaN(expiresAtMs) ? expiresAtMs : null,
       ownerId: req.session.userId || null,
       req,
     })
