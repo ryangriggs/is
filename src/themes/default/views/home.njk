@@ -8,23 +8,25 @@
     <h1 class="hero-title gradient-text">{{ siteTagline or "Shorten. Share. Track." }}</h1>
     <p class="hero-subtitle">{{ siteHeroSubtitle or "The fastest way to shorten URLs, share files, and manage your links." }}</p>
 
-    <form id="hero-form" method="POST" action="/" class="hero-form">
+    <form id="hero-form" method="POST" action="/" style="max-width:600px;margin:0 auto 32px">
       <div aria-hidden="true" style="position:absolute;left:-9999px;opacity:0;pointer-events:none;height:0;overflow:hidden">
         <label for="hp-website">Website</label>
         <input type="text" id="hp-website" name="website" value="" tabindex="-1" autocomplete="off">
       </div>
-      <input
-        id="hero-url"
-        type="url"
-        name="destination"
-        class="input"
-        placeholder="https://your-long-url.com/paste-here"
-        required
-        autocomplete="off"
-        autofocus
-      >
-      <button type="submit" class="btn btn-primary">Shorten</button>
-      <div style="width:100%;margin-top:.5rem">
+      <div style="display:flex;gap:8px">
+        <input
+          id="hero-url"
+          type="url"
+          name="destination"
+          class="input hero-form-input"
+          value="https://"
+          required
+          autocomplete="off"
+          autofocus
+        >
+        <button type="submit" class="btn btn-primary" style="padding:14px 28px;font-size:1rem;white-space:nowrap">Shorten</button>
+      </div>
+      <div style="margin-top:.5rem">
         <button type="button" id="url-opts-toggle" class="btn btn-ghost btn-sm" style="font-size:.8rem;padding:.2rem .6rem">
           ⚙ Options
         </button>
@@ -44,12 +46,27 @@
     (function(){
       var btn = document.getElementById('url-opts-toggle')
       var panel = document.getElementById('url-opts')
+      var input = document.getElementById('hero-url')
       var open = false
+
       btn.addEventListener('click', function(){
         open = !open
         panel.style.display = open ? 'flex' : 'none'
         panel.style.flexDirection = 'column'
         btn.textContent = open ? '⚙ Options ▲' : '⚙ Options'
+      })
+
+      // Keep cursor after https:// when user focuses on an unchanged prefill
+      input.addEventListener('focus', function(){
+        if (this.value === 'https://') {
+          var el = this
+          setTimeout(function(){ el.setSelectionRange(8, 8) }, 0)
+        }
+      })
+
+      // Clear just the prefix if user hasn't typed anything and submits blank
+      input.form.addEventListener('submit', function(){
+        if (input.value === 'https://') input.value = ''
       })
     })()
     </script>

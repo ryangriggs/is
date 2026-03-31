@@ -173,7 +173,7 @@ button, input, select, textarea { font-family: inherit; }
   display: flex;
   gap: 8px;
 }
-.hero-form .input {
+.hero-form .input, .hero-form-input {
   flex: 1;
   font-size: 1rem;
   padding: 14px 18px;
