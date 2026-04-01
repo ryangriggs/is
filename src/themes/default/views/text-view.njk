@@ -59,7 +59,7 @@
     </div>
     {% else %}
     <div class="card" style="padding:0;overflow:hidden">
-      <pre id="paste-content" style="margin:0;padding:1.5rem;overflow-x:auto;white-space:pre-wrap;word-break:break-word">{{ link.destination }}</pre>
+      <pre id="paste-content" style="margin:0;padding:1.5rem;overflow-x:auto;white-space:pre-wrap;word-break:break-word">{{ content }}</pre>
     </div>
     {% endif %}
   </div>
@@ -81,7 +81,7 @@
   var copyBtn    = document.getElementById('copy-decrypted')
 
   // Ciphertext stored server-side — no secret here
-  var cipherB64 = {{ link.destination | dump | safe }}
+  var cipherB64 = {{ content | dump | safe }}
 
   async function importKeyBase64url(b64url) {
     var b64 = b64url.trim().replace(/-/g, '+').replace(/_/g, '/')

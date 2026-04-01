@@ -260,16 +260,19 @@ export async function buildApp() {
   const cleanupExpiredLinks = async () => {
     try {
       const now = Date.now()
-      // Collect image files to delete from disk
       const expiredImages = db.all(
         "SELECT destination FROM links WHERE type = 'image' AND expires_at IS NOT NULL AND expires_at < ?", now
       )
+      const expiredPastes = db.all(
+        "SELECT destination FROM links WHERE type IN ('text', 'html') AND expires_at IS NOT NULL AND expires_at < ?", now
+      )
       db.run('DELETE FROM links WHERE expires_at IS NOT NULL AND expires_at < ?', now)
+      const { unlink } = await import('fs/promises')
       for (const img of expiredImages) {
-        try {
-          const { unlink } = await import('fs/promises')
-          await unlink(path.join(process.cwd(), 'uploads', img.destination))
-        } catch (_) {}
+        await unlink(path.join(process.cwd(), 'uploads', img.destination)).catch(() => {})
+      }
+      for (const paste of expiredPastes) {
+        await unlink(path.join(process.cwd(), 'data', 'pastes', paste.destination)).catch(() => {})
       }
     } catch (_) {}
   }

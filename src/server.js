@@ -9,6 +9,7 @@ if (config.DB_TYPE === 'sqlite') {
   mkdirSync(dirname(config.SQLITE_PATH), { recursive: true })
 }
 mkdirSync('uploads', { recursive: true })
+mkdirSync('data/pastes', { recursive: true })
 
 import { initDb } from './core/db/index.js'
 import { seed } from './core/db/seed.js'

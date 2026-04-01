@@ -1,4 +1,6 @@
 import fp from 'fastify-plugin'
+import path from 'path'
+import { readFile, unlink } from 'fs/promises'
 import QRCode from 'qrcode'
 import { normalizeCode } from '../../core/shortcode.js'
 import { createLink } from '../../core/links.js'
@@ -7,6 +9,8 @@ import config from '../../config.js'
 import { getAdForOwner } from '../../core/ads.js'
 import { getSetting } from '../../core/settings-cache.js'
 import { bufferTracking } from '../../core/write-buffer.js'
+
+const PASTE_DIR = path.join(process.cwd(), 'data', 'pastes')
 
 async function shortlinksPlugin(fastify) {
   const db = fastify.db
@@ -198,8 +202,16 @@ async function shortlinksPlugin(fastify) {
       return reply.view('errors/403.njk', {})
     }
     if (link.type === 'html') {
+      const content = await readFile(path.join(PASTE_DIR, link.destination), 'utf8')
       reply.header('Content-Type', 'text/html; charset=utf-8')
-      return reply.send(link.destination)
+      return reply.send(content)
+    }
+    if (link.type === 'text') {
+      // Don't serve raw ciphertext — send viewer instead
+      if (link.is_encrypted) return reply.redirect(302, `/${code}`)
+      const content = await readFile(path.join(PASTE_DIR, link.destination), 'utf8')
+      reply.header('Content-Type', 'text/plain; charset=utf-8')
+      return reply.send(content)
     }
     if (link.type === 'image') {
       return reply.redirect(302, `/uploads/${link.destination}`)
@@ -249,19 +261,24 @@ async function shortlinksPlugin(fastify) {
       if (!valid) return reply.view('password.njk', { code, error: 'Incorrect password.' })
     }
 
+    // Read paste file content before any burn-on-read deletion so it's in memory
+    let pasteContent = null
+    if (link.type === 'text' || link.type === 'html') {
+      pasteContent = await readFile(path.join(PASTE_DIR, link.destination), 'utf8')
+    }
+
     await hooks.run('post:link:visit', { link, req })
 
-    // Burn on read: delete link after this visit
+    // Burn on read: delete link (and associated file) after this visit
     if (link.burn_on_read) {
       db.run('DELETE FROM links WHERE id = ?', link.id)
-      if (link.type === 'image') {
-        // Delay file deletion so the browser can still load the image from this page render
-        setTimeout(async () => {
-          try {
-            const { unlink } = await import('fs/promises')
-            const path = await import('path')
-            await unlink(path.join(process.cwd(), 'uploads', link.destination))
-          } catch (_) {}
+      if (link.type === 'text' || link.type === 'html') {
+        // Content is already in pasteContent — safe to delete file immediately
+        unlink(path.join(PASTE_DIR, link.destination)).catch(() => {})
+      } else if (link.type === 'image') {
+        // Delay deletion: browser makes a second request for /uploads/{file} after HTML renders
+        setTimeout(() => {
+          unlink(path.join(process.cwd(), 'uploads', link.destination)).catch(() => {})
         }, 60000)
       }
     }
@@ -270,9 +287,9 @@ async function shortlinksPlugin(fastify) {
 
     switch (link.type) {
       case 'text':
-        return reply.view('text-view.njk', { link, ad })
+        return reply.view('text-view.njk', { link, content: pasteContent, ad })
       case 'html':
-        return reply.view('html-view.njk', { link, ad })
+        return reply.view('html-view.njk', { link, content: pasteContent, ad })
       case 'image':
         return reply.view('image-view.njk', { link, ad })
       case 'bookmark': {
