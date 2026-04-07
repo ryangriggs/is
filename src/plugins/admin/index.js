@@ -1,5 +1,9 @@
 import fp from 'fastify-plugin'
+import path from 'path'
+import { unlink } from 'fs/promises'
 import { requireAdmin } from '../../core/auth.js'
+
+const PASTE_DIR = path.join(process.cwd(), 'data', 'pastes')
 import config from '../../config.js'
 import { ipMatchesCidr } from '../../core/cidr.js'
 import { invalidateIpCache } from '../../core/ipblock.js'
@@ -50,10 +54,11 @@ async function adminPlugin(fastify) {
     checkLinkLimits(data, db, req)
 
     // Content scanning
-    if (!data.destination) return
+    const contentToScan = data.rawContent || data.destination
+    if (!contentToScan) return
     const words = db.all('SELECT * FROM scan_words WHERE active = 1')
     if (!words.length) return
-    const matched = scanUrl(data.destination, words)
+    const matched = scanUrl(contentToScan, words)
     if (matched) {
       const word = words.find(w => w.word.toLowerCase() === matched.toLowerCase())
       if (word) {
@@ -128,10 +133,10 @@ async function adminPlugin(fastify) {
         FROM links l
         LEFT JOIN users u ON u.id = l.owner_id
         LEFT JOIN tracking t ON t.link_id = l.id
-        WHERE l.code LIKE ? OR l.destination LIKE ? OR u.username LIKE ?
+        WHERE l.code LIKE ? OR (l.type NOT IN ('text','html') AND l.destination LIKE ?) OR u.username LIKE ?
         GROUP BY l.id ORDER BY ${sortCol} ${dir} LIMIT ? OFFSET ?
       `, like, like, like, perPage, offset)
-      totalRow = db.get(`SELECT COUNT(*) as n FROM links l LEFT JOIN users u ON u.id = l.owner_id WHERE l.code LIKE ? OR l.destination LIKE ? OR u.username LIKE ?`, like, like, like)
+      totalRow = db.get(`SELECT COUNT(*) as n FROM links l LEFT JOIN users u ON u.id = l.owner_id WHERE l.code LIKE ? OR (l.type NOT IN ('text','html') AND l.destination LIKE ?) OR u.username LIKE ?`, like, like, like)
     } else {
       rows = db.all(`
         SELECT l.*, u.username, u.is_blocked as owner_is_blocked, COUNT(t.id) as visit_count
@@ -162,7 +167,11 @@ async function adminPlugin(fastify) {
 
   fastify.post('/admin/links/:id/delete', async (req, reply) => {
     if (req.subdomain !== '') return reply.callNotFound()
+    const link = db.get('SELECT type, destination FROM links WHERE id = ?', Number(req.params.id))
     db.run('DELETE FROM links WHERE id = ?', Number(req.params.id))
+    if (link && (link.type === 'text' || link.type === 'html')) {
+      unlink(path.join(PASTE_DIR, link.destination)).catch(() => {})
+    }
     req.session.flash = { type: 'success', message: 'Link deleted.' }
     return reply.redirect('/admin/links')
   })

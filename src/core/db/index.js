@@ -66,6 +66,10 @@ export async function initDb() {
       "ALTER TABLE account_tiers ADD COLUMN allowed_image_types TEXT NOT NULL DEFAULT 'image/jpeg,image/png,image/gif'",
       'ALTER TABLE links ADD COLUMN is_encrypted INTEGER NOT NULL DEFAULT 0',
       'ALTER TABLE links ADD COLUMN burn_on_read INTEGER NOT NULL DEFAULT 0',
+      // Email verification — existing users default to verified (1) so they are not locked out
+      'ALTER TABLE users ADD COLUMN email_verified INTEGER NOT NULL DEFAULT 1',
+      'ALTER TABLE users ADD COLUMN email_verify_token_hash TEXT',
+      'ALTER TABLE users ADD COLUMN email_verify_token_expires INTEGER',
     ]
     for (const stmt of addColumns) {
       try { sqlite.prepare(stmt).run() } catch (_) { /* column already exists */ }

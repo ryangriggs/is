@@ -56,15 +56,14 @@
   </div>
   {% else %}
 
-  {# Filter bar #}
+  {# Filter bar — type filter is server-side so pagination stays correct #}
+  {% set qsd = '&sort=' + sort + '&dir=' + dir %}
   <div style="display:flex;align-items:center;gap:.75rem;flex-wrap:wrap;margin-bottom:.75rem">
-    <div class="type-pills" id="dash-type-pills">
-      <button type="button" class="type-pill active" data-type="all">All</button>
-      <button type="button" class="type-pill" data-type="url">URL</button>
-      <button type="button" class="type-pill" data-type="text">Text</button>
-      <button type="button" class="type-pill" data-type="html">HTML</button>
-      <button type="button" class="type-pill" data-type="image">Image</button>
-      <button type="button" class="type-pill" data-type="bookmark">Bookmark</button>
+    <div class="type-pills">
+      {% for pill in [['all','All'],['url','URL'],['text','Text'],['html','HTML'],['image','Image'],['bookmark','Bookmark']] %}
+      <a href="?type={{ pill[0] }}&page=1{{ qsd }}"
+         class="type-pill{% if typeFilter == pill[0] %} active{% endif %}">{{ pill[1] }}</a>
+      {% endfor %}
     </div>
     <div style="display:flex;align-items:center;gap:.4rem;margin-left:auto">
       <span style="font-size:.8rem;color:var(--color-text-muted)">Images</span>
@@ -81,7 +80,7 @@
         <tr>
           {% macro sth(label, col) %}
           <th>
-            <a href="?sort={{ col }}&dir={{ 'desc' if (sort == col and dir == 'asc') else 'asc' }}&page=1"
+            <a href="?sort={{ col }}&dir={{ 'desc' if (sort == col and dir == 'asc') else 'asc' }}&page=1{% if typeFilter and typeFilter != 'all' %}&type={{ typeFilter }}{% endif %}"
                style="color:inherit;text-decoration:none;display:inline-flex;align-items:center;gap:3px;user-select:none">
               {{ label }}<span style="font-size:.7rem;opacity:{% if sort == col %}1{% else %}.4{% endif %};color:var(--color-primary)">
                 {% if sort == col %}{{ '↓' if dir == 'desc' else '↑' }}{% else %}↕{% endif %}
@@ -146,6 +145,7 @@
               <a href="/q?url=https://{{ baseDomain }}/{{ link.code }}" class="btn btn-ghost btn-sm" title="QR Code"><svg width="14" height="14" viewBox="0 0 10 10" fill="currentColor" style="display:inline-block;vertical-align:middle"><rect x="0" y="0" width="4" height="4"/><rect x="1" y="1" width="2" height="2" fill="var(--bg-card,#fff)"/><rect x="6" y="0" width="4" height="4"/><rect x="7" y="1" width="2" height="2" fill="var(--bg-card,#fff)"/><rect x="0" y="6" width="4" height="4"/><rect x="1" y="7" width="2" height="2" fill="var(--bg-card,#fff)"/><rect x="6" y="6" width="2" height="2"/><rect x="8" y="8" width="2" height="2"/></svg></a>
               <a href="/dashboard/edit/{{ link.id }}" class="btn btn-secondary btn-sm" title="Edit">✏️</a>
               <form method="POST" action="/dashboard/delete/{{ link.id }}" style="display:inline">
+                <input type="hidden" name="_back" value="?page={{ pagination.page }}&sort={{ sort }}&dir={{ dir }}{% if typeFilter and typeFilter != 'all' %}&type={{ typeFilter }}{% endif %}">
                 <button type="submit" class="btn btn-danger btn-sm" data-confirm="Delete this link?" title="Delete">🗑</button>
               </form>
             </div>
@@ -202,8 +202,9 @@
 
   {% if pagination.totalPages > 1 %}
   <div class="pagination">
+    {% set pqs = '&sort=' + sort + '&dir=' + dir + (('&type=' + typeFilter) if (typeFilter and typeFilter != 'all') else '') %}
     {% if pagination.page > 1 %}
-      <a href="?page={{ pagination.page - 1 }}">‹ Prev</a>
+      <a href="?page={{ pagination.page - 1 }}{{ pqs }}">‹ Prev</a>
     {% else %}
       <span class="disabled">‹ Prev</span>
     {% endif %}
@@ -212,12 +213,12 @@
       {% if p == pagination.page %}
         <span class="active">{{ p }}</span>
       {% else %}
-        <a href="?page={{ p }}">{{ p }}</a>
+        <a href="?page={{ p }}{{ pqs }}">{{ p }}</a>
       {% endif %}
     {% endfor %}
 
     {% if pagination.page < pagination.totalPages %}
-      <a href="?page={{ pagination.page + 1 }}">Next ›</a>
+      <a href="?page={{ pagination.page + 1 }}{{ pqs }}">Next ›</a>
     {% else %}
       <span class="disabled">Next ›</span>
     {% endif %}

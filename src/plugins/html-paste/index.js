@@ -41,6 +41,7 @@ async function htmlPastePlugin(fastify) {
       ;({ link, plainToken } = await createLink(db, hooks, {
         type: 'html',
         destination: filename,
+        rawContent: content,
         title: title.trim() || null,
         isPrivate: is_private === '1',
         burnOnRead: burn_on_read === '1',

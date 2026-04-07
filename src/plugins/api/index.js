@@ -1,8 +1,12 @@
 import fp from 'fastify-plugin'
+import path from 'path'
+import { unlink } from 'fs/promises'
 import { createLink } from '../../core/links.js'
 import { normalizeCode } from '../../core/shortcode.js'
 import { generateToken, hashTokenFast } from '../../core/auth.js'
 import config from '../../config.js'
+
+const PASTE_DIR = path.join(process.cwd(), 'data', 'pastes')
 
 async function apiPlugin(fastify) {
   const db = fastify.db
@@ -49,7 +53,10 @@ async function apiPlugin(fastify) {
               (SELECT COUNT(*) FROM tracking WHERE link_id = links.id) as visits
        FROM links WHERE owner_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?`,
       req.apiUserId, limit, offset
-    )
+    ).map(l => {
+      if (l.type === 'text' || l.type === 'html') { const { destination, ...rest } = l; return rest }
+      return l
+    })
     return reply.send({ links, page, limit })
   })
 
@@ -83,16 +90,21 @@ async function apiPlugin(fastify) {
       normalizeCode(req.params.code), req.apiUserId
     )
     if (!link) return reply.code(404).send({ error: 'Not found' })
+    if (link.type === 'text' || link.type === 'html') { const { destination, ...rest } = link; return reply.send({ link: rest }) }
     return reply.send({ link })
   })
 
   // DELETE /a/links/:code
   fastify.delete('/a/links/:code', { preHandler: apiAuth }, async (req, reply) => {
-    const result = db.run(
-      'DELETE FROM links WHERE code = ? AND owner_id = ?',
+    const link = db.get(
+      'SELECT type, destination FROM links WHERE code = ? AND owner_id = ?',
       normalizeCode(req.params.code), req.apiUserId
     )
-    if (!result.changes) return reply.code(404).send({ error: 'Not found' })
+    if (!link) return reply.code(404).send({ error: 'Not found' })
+    db.run('DELETE FROM links WHERE code = ? AND owner_id = ?', normalizeCode(req.params.code), req.apiUserId)
+    if (link.type === 'text' || link.type === 'html') {
+      unlink(path.join(PASTE_DIR, link.destination)).catch(() => {})
+    }
     return reply.send({ ok: true })
   })
 

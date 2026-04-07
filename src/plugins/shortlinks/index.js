@@ -202,14 +202,16 @@ async function shortlinksPlugin(fastify) {
       return reply.view('errors/403.njk', {})
     }
     if (link.type === 'html') {
-      const content = await readFile(path.join(PASTE_DIR, link.destination), 'utf8')
+      const content = await readFile(path.join(PASTE_DIR, link.destination), 'utf8').catch(() => null)
+      if (content === null) { reply.code(404); return reply.view('errors/404.njk', {}) }
       reply.header('Content-Type', 'text/html; charset=utf-8')
       return reply.send(content)
     }
     if (link.type === 'text') {
       // Don't serve raw ciphertext — send viewer instead
       if (link.is_encrypted) return reply.redirect(302, `/${code}`)
-      const content = await readFile(path.join(PASTE_DIR, link.destination), 'utf8')
+      const content = await readFile(path.join(PASTE_DIR, link.destination), 'utf8').catch(() => null)
+      if (content === null) { reply.code(404); return reply.view('errors/404.njk', {}) }
       reply.header('Content-Type', 'text/plain; charset=utf-8')
       return reply.send(content)
     }
@@ -264,7 +266,11 @@ async function shortlinksPlugin(fastify) {
     // Read paste file content before any burn-on-read deletion so it's in memory
     let pasteContent = null
     if (link.type === 'text' || link.type === 'html') {
-      pasteContent = await readFile(path.join(PASTE_DIR, link.destination), 'utf8')
+      pasteContent = await readFile(path.join(PASTE_DIR, link.destination), 'utf8').catch(() => null)
+      if (pasteContent === null) {
+        reply.code(404)
+        return reply.view('errors/404.njk', {})
+      }
     }
 
     await hooks.run('post:link:visit', { link, req })
@@ -366,6 +372,9 @@ async function shortlinksPlugin(fastify) {
 
     if (action === 'delete') {
       db.run('DELETE FROM links WHERE id = ?', link.id)
+      if (link.type === 'text' || link.type === 'html') {
+        unlink(path.join(PASTE_DIR, link.destination)).catch(() => {})
+      }
       removeMgmtCookie(reply, req, code)
       req.session.flash = { type: 'success', message: 'Deleted.' }
       return reply.redirect('/')

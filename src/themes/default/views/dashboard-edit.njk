@@ -32,17 +32,29 @@
           <input id="destination" type="url" name="destination" class="input" value="{{ link.destination }}" required>
         </div>
         {% elif link.type == 'text' %}
+        {% if link.is_encrypted %}
+        <div class="form-group">
+          <p class="text-muted text-sm">This paste is encrypted. Content cannot be edited from the dashboard.</p>
+        </div>
+        {% else %}
         <div class="form-group">
           <label class="label" for="content">Content</label>
           <textarea id="content" name="content" class="input" rows="16"
-            style="font-family:monospace;resize:vertical" required>{{ link.destination }}</textarea>
+            style="font-family:monospace;resize:vertical" required>{{ content }}</textarea>
         </div>
+        {% endif %}
         {% elif link.type == 'html' %}
+        {% if link.is_encrypted %}
+        <div class="form-group">
+          <p class="text-muted text-sm">This paste is encrypted. Content cannot be edited from the dashboard.</p>
+        </div>
+        {% else %}
         <div class="form-group">
           <label class="label" for="content">HTML Content</label>
           <textarea id="content" name="content" class="input" rows="16"
-            style="font-family:monospace;resize:vertical" required>{{ link.destination }}</textarea>
+            style="font-family:monospace;resize:vertical" required>{{ content }}</textarea>
         </div>
+        {% endif %}
         {% elif link.type == 'image' %}
         <div class="form-group">
           <label class="label">Image</label>

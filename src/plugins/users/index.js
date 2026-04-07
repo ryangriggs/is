@@ -1,7 +1,11 @@
 import fp from 'fastify-plugin'
+import path from 'path'
+import { readFile, writeFile, unlink } from 'fs/promises'
 import { hashPassword, verifyPassword, requireAuth, generateToken, hashTokenFast } from '../../core/auth.js'
 import config from '../../config.js'
 import { getAdForOwner } from '../../core/ads.js'
+
+const PASTE_DIR = path.join(process.cwd(), 'data', 'pastes')
 
 function usernameFromEmail(email) {
   return email.split('@')[0]
@@ -30,6 +34,50 @@ function claimPendingLink(db, req) {
     } catch (_) {}
     delete req.session.pendingClaimCode
   }
+}
+
+async function sendVerificationEmail(email, token) {
+  const verifyUrl = `https://${config.BASE_DOMAIN}/verify-email?token=${token}`
+
+  console.log(`[resend] Attempting verification email to: ${email}`)
+
+  if (!config.RESEND_API_KEY) {
+    console.log(`[resend] RESEND_API_KEY not set — verify URL: ${verifyUrl}`)
+    return { devUrl: verifyUrl }
+  }
+
+  const from = config.RESEND_FROM_EMAIL || `noreply@${config.BASE_DOMAIN}`
+
+  let res, body
+  try {
+    res = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${config.RESEND_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        from,
+        to: email,
+        subject: `Verify your ${config.SITE_NAME} email address`,
+        html: `<p>Thanks for signing up! Click the link below to verify your email address. This link expires in 24 hours.</p>
+               <p><a href="${verifyUrl}">${verifyUrl}</a></p>
+               <p>If you did not create an account, you can ignore this email.</p>`,
+      }),
+    })
+    body = await res.json()
+  } catch (err) {
+    console.error('[resend] Network error calling Resend API:', err.message)
+    throw err
+  }
+
+  if (!res.ok) {
+    console.error(`[resend] API error ${res.status}:`, JSON.stringify(body))
+    throw new Error(`Resend API returned ${res.status}: ${body?.message || JSON.stringify(body)}`)
+  }
+
+  console.log(`[resend] Verification email sent successfully. id=${body?.id}`)
+  return {}
 }
 
 async function sendResetEmail(email, token) {
@@ -154,19 +202,31 @@ async function usersPlugin(fastify) {
 
     const passwordHash = await hashPassword(password)
     const info = db.run(
-      `INSERT INTO users(username, email, display_name, password_hash, role, created_at) VALUES(?,?,?,?,?,?)`,
-      username, emailLc, display_name.trim() || null, passwordHash, 'user', Date.now()
+      `INSERT INTO users(username, email, display_name, password_hash, role, email_verified, created_at) VALUES(?,?,?,?,?,?,?)`,
+      username, emailLc, display_name.trim() || null, passwordHash, 'user', 0, Date.now()
     )
-    const user = db.get('SELECT * FROM users WHERE id = ?', info.lastInsertRowid)
 
-    const pendingCode = req.session.pendingClaimCode || null
-    await new Promise((res, rej) => req.session.regenerate(e => e ? rej(e) : res()))
-    if (pendingCode) req.session.pendingClaimCode = pendingCode
-    setSessionFromUser(req, user)
-    claimPendingLink(db, req)
+    // Generate verification token
+    const verifyToken = generateToken(40)
+    const verifyTokenHash = hashTokenFast(verifyToken)
+    const verifyExpires = Date.now() + 24 * 60 * 60 * 1000 // 24 hours
+    db.run(
+      'UPDATE users SET email_verify_token_hash = ?, email_verify_token_expires = ? WHERE id = ?',
+      verifyTokenHash, verifyExpires, info.lastInsertRowid
+    )
 
-    req.session.flash = { type: 'success', message: `Welcome! Your account is ready.` }
-    return reply.redirect('/dashboard')
+    let devUrl = null
+    try {
+      const result = await sendVerificationEmail(emailLc, verifyToken)
+      devUrl = result?.devUrl || null
+    } catch (err) {
+      console.error('[register] Failed to send verification email:', err.message)
+    }
+
+    // Store pending claim in session without logging user in
+    req.session.pendingVerifyEmail = emailLc
+
+    return reply.view('verify-email-sent.njk', { email: emailLc, devUrl })
   })
 
   // ----------------------------------------------------------------
@@ -211,6 +271,9 @@ async function usersPlugin(fastify) {
     if (user.is_blocked) {
       return reply.view('login.njk', { error: 'Your account has been suspended.', prefill: login, ad })
     }
+    if (!user.email_verified) {
+      return reply.view('login.njk', { unverifiedEmail: user.email, prefill: login, ad })
+    }
 
     db.run('UPDATE users SET last_login = ? WHERE id = ?', Date.now(), user.id)
 
@@ -231,6 +294,96 @@ async function usersPlugin(fastify) {
   fastify.post('/logout', async (req, reply) => {
     req.session.destroy()
     return reply.redirect('/')
+  })
+
+  // ----------------------------------------------------------------
+  // GET /verify-email  — confirm email address via token link
+  // ----------------------------------------------------------------
+  fastify.get('/verify-email', async (req, reply) => {
+    if (req.subdomain !== '') return reply.callNotFound()
+    const { token } = req.query
+    if (!token) return reply.redirect('/login')
+
+    const tokenHash = hashTokenFast(token)
+    const user = db.get(
+      'SELECT * FROM users WHERE email_verify_token_hash = ? AND email_verify_token_expires > ?',
+      tokenHash, Date.now()
+    )
+
+    if (!user) {
+      return reply.view('verify-email.njk', { error: 'This verification link is invalid or has expired.' })
+    }
+
+    // Mark verified, clear token
+    db.run(
+      'UPDATE users SET email_verified = 1, email_verify_token_hash = NULL, email_verify_token_expires = NULL WHERE id = ?',
+      user.id
+    )
+
+    // Log the user in
+    const pendingCode = req.session.pendingClaimCode || null
+    await new Promise((res, rej) => req.session.regenerate(e => e ? rej(e) : res()))
+    if (pendingCode) req.session.pendingClaimCode = pendingCode
+    setSessionFromUser(req, user)
+    claimPendingLink(db, req)
+
+    req.session.flash = { type: 'success', message: 'Email verified! Welcome to your account.' }
+    return reply.redirect('/dashboard')
+  })
+
+  // ----------------------------------------------------------------
+  // GET /resend-verification — form to request a new verification email
+  // ----------------------------------------------------------------
+  fastify.get('/resend-verification', async (req, reply) => {
+    if (req.subdomain !== '') return reply.callNotFound()
+    if (req.session.userId) return reply.redirect('/dashboard')
+    const email = req.session.pendingVerifyEmail || ''
+    return reply.view('verify-email-sent.njk', { email, resendForm: true })
+  })
+
+  // ----------------------------------------------------------------
+  // POST /resend-verification
+  // ----------------------------------------------------------------
+  fastify.post('/resend-verification', {
+    config: {
+      rateLimit: { max: 5, timeWindow: 600000, keyGenerator: req => req.ip }
+    }
+  }, async (req, reply) => {
+    if (req.subdomain !== '') return reply.callNotFound()
+    const { email = '' } = req.body || {}
+    const emailLc = email.trim().toLowerCase()
+
+    // Always show generic success to prevent enumeration
+    const success = (devUrl = null) => reply.view('verify-email-sent.njk', {
+      email: emailLc,
+      resent: true,
+      devUrl,
+    })
+
+    if (!emailLc) return success()
+
+    const user = db.get('SELECT * FROM users WHERE email = ? AND email_verified = 0', emailLc)
+    if (!user) return success()
+
+    const verifyToken = generateToken(40)
+    const verifyTokenHash = hashTokenFast(verifyToken)
+    const verifyExpires = Date.now() + 24 * 60 * 60 * 1000
+
+    db.run(
+      'UPDATE users SET email_verify_token_hash = ?, email_verify_token_expires = ? WHERE id = ?',
+      verifyTokenHash, verifyExpires, user.id
+    )
+
+    let devUrl = null
+    try {
+      const result = await sendVerificationEmail(emailLc, verifyToken)
+      devUrl = result?.devUrl || null
+    } catch (err) {
+      console.error('[resend-verification] Failed to send email:', err.message)
+    }
+
+    req.session.pendingVerifyEmail = emailLc
+    return success(devUrl)
   })
 
   // ----------------------------------------------------------------
@@ -423,17 +576,26 @@ async function usersPlugin(fastify) {
     const sortCol = SORTABLE[sort]
     const dir = req.query.dir === 'asc' ? 'ASC' : 'DESC'
 
+    const VALID_TYPES = new Set(['url', 'text', 'html', 'image', 'bookmark'])
+    const typeFilter = VALID_TYPES.has(req.query.type) ? req.query.type : null
+
+    const baseWhere = typeFilter ? 'l.owner_id = ? AND l.type = ?' : 'l.owner_id = ?'
+    const baseParams = typeFilter ? [req.session.userId, typeFilter] : [req.session.userId]
+
     const userLinks = db.all(`
       SELECT l.*, COUNT(t.id) as visit_count
       FROM links l
       LEFT JOIN tracking t ON t.link_id = l.id
-      WHERE l.owner_id = ?
+      WHERE ${baseWhere}
       GROUP BY l.id
       ORDER BY ${sortCol} ${dir}
       LIMIT ? OFFSET ?
-    `, req.session.userId, perPage, offset)
+    `, ...baseParams, perPage, offset)
 
-    const total = db.get('SELECT COUNT(*) as n FROM links WHERE owner_id = ?', req.session.userId).n
+    const total = db.get(
+      `SELECT COUNT(*) as n FROM links WHERE ${baseWhere.replace(/l\./g, '')}`,
+      ...baseParams
+    ).n
 
     const todayStart = new Date().setHours(0, 0, 0, 0)
     const stats = db.get(`
@@ -466,6 +628,7 @@ async function usersPlugin(fastify) {
         total,
       },
       sort, dir,
+      typeFilter: typeFilter || 'all',
     })
   })
 
@@ -474,10 +637,17 @@ async function usersPlugin(fastify) {
   // ----------------------------------------------------------------
   fastify.post('/dashboard/delete/:id', { preHandler: requireAuth }, async (req, reply) => {
     if (req.subdomain !== '') return reply.callNotFound()
+    const link = db.get('SELECT type, destination FROM links WHERE id = ? AND owner_id = ?',
+      Number(req.params.id), req.session.userId)
     db.run('DELETE FROM links WHERE id = ? AND owner_id = ?',
       Number(req.params.id), req.session.userId)
+    if (link && (link.type === 'text' || link.type === 'html')) {
+      unlink(path.join(PASTE_DIR, link.destination)).catch(() => {})
+    }
     req.session.flash = { type: 'success', message: 'Link deleted.' }
-    return reply.redirect('/dashboard')
+    const back = req.body?._back
+    const safeback = (back && /^\?[a-zA-Z0-9=&%_-]*$/.test(back)) ? back : ''
+    return reply.redirect('/dashboard' + safeback)
   })
 
   // ----------------------------------------------------------------
@@ -487,7 +657,11 @@ async function usersPlugin(fastify) {
     const link = db.get('SELECT * FROM links WHERE id = ? AND owner_id = ?', req.params.id, req.session.userId)
     if (!link) { reply.code(404); return reply.view('errors/404.njk', {}) }
     if (link.type === 'bookmark') return reply.redirect(`/b/${link.code}`)
-    return reply.view('dashboard-edit.njk', { link })
+    let content = null
+    if ((link.type === 'text' || link.type === 'html') && !link.is_encrypted) {
+      content = await readFile(path.join(PASTE_DIR, link.destination), 'utf8').catch(() => '')
+    }
+    return reply.view('dashboard-edit.njk', { link, content })
   })
 
   fastify.post('/dashboard/edit/:id', { preHandler: requireAuth }, async (req, reply) => {
@@ -504,11 +678,18 @@ async function usersPlugin(fastify) {
       }
       db.run('UPDATE links SET destination = ?, title = ? WHERE id = ?', dest, title || null, link.id)
     } else if (link.type === 'text' || link.type === 'html') {
-      if (!content?.trim()) {
-        req.session.flash = { type: 'error', message: 'Content cannot be empty.' }
-        return reply.redirect(`/dashboard/edit/${link.id}`)
+      if (link.is_encrypted) {
+        // Cannot edit encrypted content server-side; only title is editable
+        db.run('UPDATE links SET title = ? WHERE id = ?', title || null, link.id)
+      } else {
+        if (!content?.trim()) {
+          req.session.flash = { type: 'error', message: 'Content cannot be empty.' }
+          return reply.redirect(`/dashboard/edit/${link.id}`)
+        }
+        await writeFile(path.join(PASTE_DIR, link.destination), content, 'utf8')
+        const byteSize = Buffer.byteLength(content, 'utf8')
+        db.run('UPDATE links SET title = ?, file_size = ? WHERE id = ?', title || null, byteSize, link.id)
       }
-      db.run('UPDATE links SET destination = ?, title = ? WHERE id = ?', content, title || null, link.id)
     } else {
       db.run('UPDATE links SET title = ? WHERE id = ?', title || null, link.id)
     }

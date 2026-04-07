@@ -7,7 +7,15 @@
     <h1 class="auth-title">Welcome back</h1>
     <p class="auth-subtitle">Log in to manage your links.</p>
 
-    {% if error %}
+    {% if unverifiedEmail %}
+    <div class="alert alert-warning mb-3">
+      Please verify your email address before logging in.
+    </div>
+    <form method="POST" action="/resend-verification" class="mb-3">
+      <input type="hidden" name="email" value="{{ unverifiedEmail }}">
+      <button type="submit" class="btn btn-secondary btn-block">Resend verification email</button>
+    </form>
+    {% elif error %}
     <div class="alert alert-error mb-3">{{ error }}</div>
     {% endif %}
 

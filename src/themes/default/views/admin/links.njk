@@ -127,6 +127,8 @@ th.resizable { position: relative; }
                 <img class="link-thumb" src="/uploads/{{ link.destination }}" alt="">
               </a>
               <a href="/uploads/{{ link.destination }}" target="_blank" rel="noopener" class="img-text-link">View image ↗</a>
+            {% elif link.type == 'text' or link.type == 'html' %}
+              <span class="text-muted">{{ link.title or '—' }}</span>
             {% else %}
               <span title="{{ link.destination }}">{{ link.destination | truncate(60) if link.destination else '—' }}</span>
             {% endif %}

@@ -59,16 +59,12 @@
         <form method="POST" action="/manage/{{ link.code }}">
           <input type="hidden" name="token" value="{{ token }}">
           <input type="hidden" name="action" value="update">
+          {% if link.type == 'url' %}
           <div class="form-group">
             <label class="label">Destination URL</label>
-            <input
-              type="url"
-              name="destination"
-              class="input"
-              value="{{ link.destination }}"
-              required
-            >
+            <input type="url" name="destination" class="input" value="{{ link.destination }}" required>
           </div>
+          {% endif %}
           <div class="form-group">
             <label class="label">Title (optional)</label>
             <input type="text" name="title" class="input" value="{{ link.title }}" placeholder="My link">

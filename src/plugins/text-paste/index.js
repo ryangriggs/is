@@ -44,6 +44,7 @@ async function textPastePlugin(fastify) {
       ;({ link, plainToken } = await createLink(db, hooks, {
         type: 'text',
         destination: filename,
+        rawContent: content,
         title: title.trim() || null,
         isPrivate: is_private === '1',
         isEncrypted: is_encrypted === '1',

@@ -1,0 +1,48 @@
+{% extends "layouts/base.njk" %}
+{% block title %}Verify Your Email — {{ siteName }}{% endblock %}
+{% block content %}
+<div class="auth-wrap">
+  <div class="auth-card">
+    <h1 class="auth-title">Check your inbox</h1>
+
+    {% if resent %}
+    <div class="alert alert-success mb-3">Verification email resent.</div>
+    {% endif %}
+
+    {% if email %}
+    <p class="auth-subtitle">We sent a verification link to <strong>{{ email }}</strong>. Click the link in that email to activate your account.</p>
+    {% else %}
+    <p class="auth-subtitle">Enter your email address below and we'll send you a new verification link.</p>
+    {% endif %}
+
+    <p class="text-sm text-muted mt-2">Didn't receive it? Check your spam folder, or request a new link below.</p>
+
+    {% if resendForm or not email %}
+    <form method="POST" action="/resend-verification" class="mt-3">
+      <div class="form-group">
+        <label class="label" for="email">Email Address</label>
+        <input id="email" type="email" name="email" class="input"
+          value="{{ email }}" required autocomplete="email" autofocus>
+      </div>
+      <button type="submit" class="btn btn-secondary btn-block">Resend verification email</button>
+    </form>
+    {% else %}
+    <form method="POST" action="/resend-verification" class="mt-3">
+      <input type="hidden" name="email" value="{{ email }}">
+      <button type="submit" class="btn btn-secondary btn-block">Resend verification email</button>
+    </form>
+    {% endif %}
+
+    {% if devUrl %}
+    <div class="alert alert-warning mt-3" style="word-break:break-all;">
+      <strong>Dev mode</strong> — no email sent. <a href="{{ devUrl }}">Click here to verify</a><br>
+      <small>{{ devUrl }}</small>
+    </div>
+    {% endif %}
+
+    <p class="text-center text-sm text-muted mt-3">
+      <a href="/login">Back to login</a>
+    </p>
+  </div>
+</div>
+{% endblock %}
