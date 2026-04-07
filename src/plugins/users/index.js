@@ -1,7 +1,7 @@
 import fp from 'fastify-plugin'
 import path from 'path'
 import { readFile, writeFile, unlink } from 'fs/promises'
-import { hashPassword, verifyPassword, requireAuth, generateToken, hashTokenFast } from '../../core/auth.js'
+import { hashPassword, verifyPassword, requireAuth, generateToken, hashTokenFast, setSessionFromUser, claimPendingLink } from '../../core/auth.js'
 import config from '../../config.js'
 import { getAdForOwner } from '../../core/ads.js'
 
@@ -14,27 +14,6 @@ function usernameFromEmail(email) {
     .slice(0, 20) || 'user'
 }
 
-function setSessionFromUser(req, user) {
-  req.session.userId = user.id
-  req.session.username = user.username
-  req.session.role = user.role
-  req.session.displayName = user.display_name || null
-  req.session.email = user.email || null
-  req.session.subscriptionTier = user.subscription_tier || 'free'
-}
-
-function claimPendingLink(db, req) {
-  const code = req.session.pendingClaimCode
-  if (code && req.session.userId) {
-    try {
-      db.run(
-        'UPDATE links SET owner_id = ? WHERE code = ? AND owner_id IS NULL',
-        req.session.userId, code
-      )
-    } catch (_) {}
-    delete req.session.pendingClaimCode
-  }
-}
 
 async function sendVerificationEmail(email, token) {
   const verifyUrl = `https://${config.BASE_DOMAIN}/verify-email?token=${token}`
@@ -80,13 +59,22 @@ async function sendVerificationEmail(email, token) {
   return {}
 }
 
-async function sendResetEmail(email, token) {
+async function sendResetEmail(email, token, { googleOnly = false } = {}) {
   const resetUrl = `https://${config.BASE_DOMAIN}/reset-password?token=${token}`
 
   console.log(`[resend] Attempting password reset email to: ${email}`)
 
+  const subject = `Reset your ${config.SITE_NAME} password`
+  const html = googleOnly
+    ? `<p>We received a password reset request for this account.</p>
+       <p>This account was created using <strong>Google Sign-In</strong>. You can continue using Google to log in, or click the link below to set a password as an alternative login method. This link expires in 1 hour.</p>
+       <p><a href="${resetUrl}">${resetUrl}</a></p>
+       <p>If you did not request this, you can safely ignore this email.</p>`
+    : `<p>Click the link below to reset your password. This link expires in 1 hour.</p>
+       <p><a href="${resetUrl}">${resetUrl}</a></p>
+       <p>If you did not request a password reset, you can ignore this email.</p>`
+
   if (!config.RESEND_API_KEY) {
-    // Dev mode: log the link since there's no email provider to deliver it
     console.log(`[resend] RESEND_API_KEY not set — reset URL: ${resetUrl}`)
     return
   }
@@ -102,14 +90,7 @@ async function sendResetEmail(email, token) {
         'Authorization': `Bearer ${config.RESEND_API_KEY}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        from,
-        to: email,
-        subject: `Reset your ${config.SITE_NAME} password`,
-        html: `<p>Click the link below to reset your password. This link expires in 1 hour.</p>
-               <p><a href="${resetUrl}">${resetUrl}</a></p>
-               <p>If you did not request a password reset, you can ignore this email.</p>`,
-      }),
+      body: JSON.stringify({ from, to: email, subject, html }),
     })
     body = await res.json()
   } catch (err) {
@@ -202,8 +183,8 @@ async function usersPlugin(fastify) {
 
     const passwordHash = await hashPassword(password)
     const info = db.run(
-      `INSERT INTO users(username, email, display_name, password_hash, role, email_verified, created_at) VALUES(?,?,?,?,?,?,?)`,
-      username, emailLc, display_name.trim() || null, passwordHash, 'user', 0, Date.now()
+      `INSERT INTO users(username, email, display_name, password_hash, role, created_at) VALUES(?,?,?,?,?,?)`,
+      username, emailLc, display_name.trim() || null, passwordHash, 'user', Date.now()
     )
 
     // Generate verification token
@@ -266,6 +247,10 @@ async function usersPlugin(fastify) {
     )
 
     if (!user || !(await verifyPassword(password, user.password_hash))) {
+      // Special case: account exists but has no password (Google-only)
+      if (user && !user.password_hash && user.google_id) {
+        return reply.view('login.njk', { googleOnlyEmail: user.email, prefill: login, ad })
+      }
       return reply.view('login.njk', { error: 'Invalid email or password.', prefill: login, ad })
     }
     if (user.is_blocked) {
@@ -276,6 +261,9 @@ async function usersPlugin(fastify) {
     }
 
     db.run('UPDATE users SET last_login = ? WHERE id = ?', Date.now(), user.id)
+
+    // TODO: 2FA check point — if user has 2FA enabled, set req.session.pending2faUserId
+    //       and redirect to /2fa/verify instead of completing login here.
 
     const pendingCode = req.session.pendingClaimCode || null
     await new Promise((res, rej) => req.session.regenerate(e => e ? rej(e) : res()))
@@ -427,7 +415,7 @@ async function usersPlugin(fastify) {
     )
 
     try {
-      await sendResetEmail(emailLc, token)
+      await sendResetEmail(emailLc, token, { googleOnly: !user.password_hash && !!user.google_id })
     } catch (err) {
       console.error('[forgot-password] Failed to send email:', err.message)
     }
@@ -483,7 +471,7 @@ async function usersPlugin(fastify) {
 
     await new Promise((res, rej) => req.session.regenerate(e => e ? rej(e) : res()))
     setSessionFromUser(req, user)
-    req.session.flash = { type: 'success', message: 'Password updated. You are now logged in.' }
+    req.session.flash = { type: 'success', message: 'Password set. You are now logged in.' }
     return reply.redirect('/dashboard')
   })
 
@@ -521,13 +509,17 @@ async function usersPlugin(fastify) {
 
     // Validate new password if provided
     if (!error && new_password) {
-      if (!current_password) {
-        error = 'Enter your current password to set a new one.'
-      } else if (!(await verifyPassword(current_password, user.password_hash))) {
-        error = 'Current password is incorrect.'
-      } else if (new_password.length < 8) {
+      if (user.password_hash) {
+        // Existing password users must confirm current password
+        if (!current_password) {
+          error = 'Enter your current password to set a new one.'
+        } else if (!(await verifyPassword(current_password, user.password_hash))) {
+          error = 'Current password is incorrect.'
+        }
+      }
+      if (!error && new_password.length < 8) {
         error = 'New password must be at least 8 characters.'
-      } else if (new_password !== new_password2) {
+      } else if (!error && new_password !== new_password2) {
         error = 'New passwords do not match.'
       }
     }
@@ -559,6 +551,25 @@ async function usersPlugin(fastify) {
     req.session.email = newEmail
 
     req.session.flash = { type: 'success', message: 'Profile updated.' }
+    return reply.redirect('/profile')
+  })
+
+  // ----------------------------------------------------------------
+  // POST /profile/unlink-google
+  // ----------------------------------------------------------------
+  fastify.post('/profile/unlink-google', { preHandler: requireAuth }, async (req, reply) => {
+    if (req.subdomain !== '') return reply.callNotFound()
+    const user = db.get('SELECT * FROM users WHERE id = ?', req.session.userId)
+    if (!user?.google_id) {
+      req.session.flash = { type: 'error', message: 'No Google account is linked.' }
+      return reply.redirect('/profile')
+    }
+    if (!user.password_hash) {
+      req.session.flash = { type: 'error', message: 'Set a password before unlinking Google, otherwise you will be locked out of your account.' }
+      return reply.redirect('/profile')
+    }
+    db.run('UPDATE users SET google_id = NULL WHERE id = ?', user.id)
+    req.session.flash = { type: 'success', message: 'Google account unlinked. Use your password to log in.' }
     return reply.redirect('/profile')
   })
 

@@ -3,13 +3,27 @@ CREATE TABLE IF NOT EXISTS users (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   username TEXT UNIQUE NOT NULL,
   email TEXT UNIQUE,
-  password_hash TEXT NOT NULL,
+  password_hash TEXT,                              -- NULL for Google-only accounts
+  display_name TEXT,
   role TEXT NOT NULL DEFAULT 'user',
   is_blocked INTEGER NOT NULL DEFAULT 0,
   subscription_tier TEXT NOT NULL DEFAULT 'free',
+  google_id TEXT UNIQUE,
+  email_verified INTEGER NOT NULL DEFAULT 0,
+  email_verify_token_hash TEXT,
+  email_verify_token_expires INTEGER,
+  reset_token_hash TEXT,
+  reset_token_expires INTEGER,
+  stripe_customer_id TEXT,
+  stripe_subscription_id TEXT,
+  stripe_subscription_status TEXT,
+  stripe_current_period_end INTEGER,
+  stripe_subscription_interval TEXT,
   created_at INTEGER NOT NULL DEFAULT (strftime('%s','now') * 1000),
   last_login INTEGER
 );
+
+CREATE INDEX IF NOT EXISTS idx_users_google_id ON users(google_id) WHERE google_id IS NOT NULL;
 
 CREATE TABLE IF NOT EXISTS links (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -22,7 +36,10 @@ CREATE TABLE IF NOT EXISTS links (
   password_hash TEXT,
   is_active INTEGER NOT NULL DEFAULT 1,
   is_private INTEGER NOT NULL DEFAULT 0,
+  is_encrypted INTEGER NOT NULL DEFAULT 0,
+  burn_on_read INTEGER NOT NULL DEFAULT 0,
   expires_at INTEGER,
+  file_size INTEGER,
   created_at INTEGER NOT NULL DEFAULT (strftime('%s','now') * 1000),
   created_ip TEXT,
   meta TEXT
@@ -51,6 +68,8 @@ CREATE TABLE IF NOT EXISTS api_tokens (
   created_at INTEGER NOT NULL DEFAULT (strftime('%s','now') * 1000)
 );
 
+CREATE INDEX IF NOT EXISTS idx_api_tokens_hash ON api_tokens(token_hash);
+
 CREATE TABLE IF NOT EXISTS tracking (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   link_id INTEGER NOT NULL REFERENCES links(id) ON DELETE CASCADE,
@@ -61,6 +80,7 @@ CREATE TABLE IF NOT EXISTS tracking (
 );
 
 CREATE INDEX IF NOT EXISTS idx_tracking_link ON tracking(link_id);
+CREATE INDEX IF NOT EXISTS idx_tracking_link_visited ON tracking(link_id, visited_at);
 CREATE INDEX IF NOT EXISTS idx_tracking_visited ON tracking(visited_at);
 
 CREATE TABLE IF NOT EXISTS reports (
@@ -77,10 +97,13 @@ CREATE INDEX IF NOT EXISTS idx_reports_status ON reports(status);
 CREATE TABLE IF NOT EXISTS blocked_ips (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   cidr TEXT NOT NULL,
+  type TEXT NOT NULL DEFAULT 'block',
   reason TEXT,
   blocked_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
   created_at INTEGER NOT NULL DEFAULT (strftime('%s','now') * 1000)
 );
+
+CREATE INDEX IF NOT EXISTS idx_blocked_ips_cidr ON blocked_ips(cidr);
 
 CREATE TABLE IF NOT EXISTS settings (
   key TEXT PRIMARY KEY,
@@ -110,6 +133,7 @@ CREATE TABLE IF NOT EXISTS bookmark_items (
   description TEXT,
   folder TEXT,
   sort_order INTEGER NOT NULL DEFAULT 0,
+  shortlink_code TEXT,
   created_at INTEGER NOT NULL DEFAULT (strftime('%s','now') * 1000)
 );
 
@@ -130,6 +154,7 @@ CREATE TABLE IF NOT EXISTS scan_words (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   word TEXT NOT NULL,
   scope TEXT NOT NULL DEFAULT 'url',
+  hits INTEGER NOT NULL DEFAULT 0,
   active INTEGER NOT NULL DEFAULT 1,
   created_at INTEGER NOT NULL DEFAULT (strftime('%s','now') * 1000)
 );

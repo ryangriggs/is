@@ -48,6 +48,9 @@ const config = Object.freeze({
   RESEND_API_KEY: optional('RESEND_API_KEY', ''),
   RESEND_FROM_EMAIL: optional('RESEND_FROM_EMAIL', ''),
 
+  GOOGLE_CLIENT_ID: optional('GOOGLE_CLIENT_ID', ''),
+  GOOGLE_CLIENT_SECRET: optional('GOOGLE_CLIENT_SECRET', ''),
+
   get IS_PROD() { return this.NODE_ENV === 'production' },
   get IS_DEV() { return this.NODE_ENV === 'development' },
 })

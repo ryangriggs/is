@@ -41,35 +41,16 @@ export async function initDb() {
     )
     sqlite.exec(sql)
 
-    // Additive column migrations — try/catch because SQLite has no ADD COLUMN IF NOT EXISTS
+    // Additive column migrations for account_tiers (table created below, not in SQL file)
     const addColumns = [
-      'ALTER TABLE dns_records ADD COLUMN ttl INTEGER NOT NULL DEFAULT 300',
-      "ALTER TABLE blocked_ips ADD COLUMN type TEXT NOT NULL DEFAULT 'block'",
-      'ALTER TABLE users ADD COLUMN display_name TEXT',
-      'ALTER TABLE users ADD COLUMN reset_token_hash TEXT',
-      'ALTER TABLE users ADD COLUMN reset_token_expires INTEGER',
-      'ALTER TABLE scan_words ADD COLUMN hits INTEGER NOT NULL DEFAULT 0',
-      'ALTER TABLE links ADD COLUMN file_size INTEGER',
-      'ALTER TABLE bookmark_items ADD COLUMN shortlink_code TEXT',
       'ALTER TABLE account_tiers ADD COLUMN price REAL NOT NULL DEFAULT 0',
       'ALTER TABLE account_tiers ADD COLUMN description TEXT',
       'ALTER TABLE account_tiers ADD COLUMN is_enabled INTEGER NOT NULL DEFAULT 1',
       'ALTER TABLE account_tiers ADD COLUMN allow_watermark INTEGER NOT NULL DEFAULT 1',
-      'ALTER TABLE users ADD COLUMN stripe_customer_id TEXT',
-      'ALTER TABLE users ADD COLUMN stripe_subscription_id TEXT',
-      'ALTER TABLE users ADD COLUMN stripe_subscription_status TEXT',
-      'ALTER TABLE users ADD COLUMN stripe_current_period_end INTEGER',
-      'ALTER TABLE users ADD COLUMN stripe_subscription_interval TEXT',
       'ALTER TABLE account_tiers ADD COLUMN stripe_price_id_monthly TEXT',
       'ALTER TABLE account_tiers ADD COLUMN stripe_price_id_yearly TEXT',
       'ALTER TABLE account_tiers ADD COLUMN price_yearly REAL NOT NULL DEFAULT 0',
       "ALTER TABLE account_tiers ADD COLUMN allowed_image_types TEXT NOT NULL DEFAULT 'image/jpeg,image/png,image/gif'",
-      'ALTER TABLE links ADD COLUMN is_encrypted INTEGER NOT NULL DEFAULT 0',
-      'ALTER TABLE links ADD COLUMN burn_on_read INTEGER NOT NULL DEFAULT 0',
-      // Email verification — existing users default to verified (1) so they are not locked out
-      'ALTER TABLE users ADD COLUMN email_verified INTEGER NOT NULL DEFAULT 1',
-      'ALTER TABLE users ADD COLUMN email_verify_token_hash TEXT',
-      'ALTER TABLE users ADD COLUMN email_verify_token_expires INTEGER',
     ]
     for (const stmt of addColumns) {
       try { sqlite.prepare(stmt).run() } catch (_) { /* column already exists */ }
@@ -134,10 +115,6 @@ export async function initDb() {
       created_at INTEGER NOT NULL
     )`)
 
-    // Missing indexes — added here so existing installs pick them up on next start
-    sqlite.exec(`CREATE INDEX IF NOT EXISTS idx_api_tokens_hash ON api_tokens(token_hash)`)
-    sqlite.exec(`CREATE INDEX IF NOT EXISTS idx_blocked_ips_cidr ON blocked_ips(cidr)`)
-    sqlite.exec(`CREATE INDEX IF NOT EXISTS idx_tracking_link_visited ON tracking(link_id, visited_at)`)
 
     // Seed default account tiers (only if none exist yet)
     const tierCount = sqlite.prepare('SELECT COUNT(*) as n FROM account_tiers').get()

@@ -32,6 +32,27 @@ export function hashTokenFast(plain) {
   return createHmac('sha256', config.SESSION_SECRET).update(plain).digest('hex')
 }
 
+// --- Session helpers (shared across auth plugins) ---
+
+export function setSessionFromUser(req, user) {
+  req.session.userId = user.id
+  req.session.username = user.username
+  req.session.role = user.role
+  req.session.displayName = user.display_name || null
+  req.session.email = user.email || null
+  req.session.subscriptionTier = user.subscription_tier || 'free'
+}
+
+export function claimPendingLink(db, req) {
+  const code = req.session.pendingClaimCode
+  if (code && req.session.userId) {
+    try {
+      db.run('UPDATE links SET owner_id = ? WHERE code = ? AND owner_id IS NULL', req.session.userId, code)
+    } catch (_) {}
+    delete req.session.pendingClaimCode
+  }
+}
+
 // --- Route guards (used as preHandler in route options) ---
 
 export async function requireAuth(req, reply) {
