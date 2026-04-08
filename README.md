@@ -71,6 +71,76 @@ Copy `.env.example` to `.env` and edit:
 
 ---
 
+## Google Sign-In
+
+Google Sign-In is optional. Leave `GOOGLE_CLIENT_ID` blank and the Google buttons are hidden entirely.
+
+### 1. Create a Google OAuth app
+
+1. Go to the [Google Cloud Console](https://console.cloud.google.com/) and create a new project (or select an existing one)
+2. In the left sidebar go to **APIs & Services → OAuth consent screen**
+3. Choose **External** (allows any Google account to sign in) and click **Create**
+4. Fill in the required fields:
+   - **App name** — your site name (e.g. `is.am`)
+   - **User support email** — your email address
+   - **Developer contact information** — your email address
+5. Click **Save and Continue** through the Scopes and Test Users screens (no changes needed)
+6. Click **Back to Dashboard**
+
+### 2. Create OAuth credentials
+
+1. Go to **APIs & Services → Credentials → Create Credentials → OAuth client ID**
+2. Set **Application type** to **Web application**
+3. Set a name (e.g. `is.am web`)
+4. Under **Authorised redirect URIs**, click **Add URI** and enter:
+   ```
+   https://yourdomain.com/auth/google/callback
+   ```
+   For local development also add:
+   ```
+   http://localhost:3000/auth/google/callback
+   ```
+5. Click **Create**
+6. Copy the **Client ID** and **Client Secret** from the dialog
+
+### 3. Add to your .env
+
+```env
+GOOGLE_CLIENT_ID=your-client-id.apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET=your-client-secret
+```
+
+Restart the app. The **Continue with Google** button will appear on the login and register pages.
+
+### How it works
+
+- **New user via Google** — an account is created automatically using the Google display name and email. No password is set; `password_hash` is `NULL`.
+- **Existing account with matching email** — the Google ID is linked to the existing account on first Google login. No action required from the user.
+- **Linking / unlinking** — users can connect or disconnect Google from **Profile → Linked Accounts**. Unlinking is only permitted if a password is already set (to prevent lockout).
+- **Password fallback** — Google-only users can add a password at any time via **Profile → Set a Password** or via **Forgot Password**. The reset email will note that Google Sign-In is available and still works.
+- **Email verification** — accounts created or verified via Google are marked as email-verified automatically (Google has already confirmed the address).
+
+### Publish the app (remove test-only restriction)
+
+By default a new OAuth app is in **Testing** mode, which limits sign-in to up to 100 manually added test users. To allow anyone to sign in:
+
+1. Go to **APIs & Services → OAuth consent screen**
+2. Click **Publish App** → **Confirm**
+
+The app will show a Google consent screen to users on first sign-in regardless of publishing status.
+
+> **Note:** If your app requests only `openid`, `profile`, and `email` (which is all this app uses) Google's verification process is straightforward and usually does not require a formal review.
+
+### Troubleshooting
+
+**`redirect_uri_mismatch`** — The callback URL in Google's console does not exactly match what the app sends. Check that the URI registered in step 2 matches your `BASE_DOMAIN` precisely, including `https://` and no trailing slash.
+
+**`Access blocked: app is in testing mode`** — Add the user's Google account to the **Test users** list in the OAuth consent screen, or publish the app.
+
+**Users can sign in but are not redirected correctly** — Check that `BASE_DOMAIN` in `.env` is set to your public domain (not `localhost`) in production.
+
+---
+
 ## Stripe Subscription Payments
 
 Stripe is optional. Leave `STRIPE_SECRET_KEY` blank and the payment UI is hidden entirely.
