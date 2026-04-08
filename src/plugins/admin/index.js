@@ -807,6 +807,67 @@ async function adminPlugin(fastify) {
     const current = db.get("SELECT value FROM settings WHERE key = 'active_theme'")?.value || 'default'
     return reply.send({ themes, current })
   })
+
+  // ----------------------------------------------------------------
+  // GET /admin/test-email?to=someone@example.com
+  // Sends a test email and returns the full Resend API response as JSON.
+  // ----------------------------------------------------------------
+  fastify.get('/admin/test-email', { preHandler: requireAdmin }, async (req, reply) => {
+    const to = req.query.to || config.ADMIN_EMAIL
+    if (!to) {
+      return reply.code(400).send({ error: 'Provide ?to=email or set ADMIN_EMAIL in config.' })
+    }
+
+    const result = {
+      config: {
+        RESEND_API_KEY_set: !!config.RESEND_API_KEY,
+        RESEND_API_KEY_length: config.RESEND_API_KEY?.length ?? 0,
+        RESEND_FROM_EMAIL: config.RESEND_FROM_EMAIL || `(not set — would use noreply@${config.BASE_DOMAIN})`,
+        BASE_DOMAIN: config.BASE_DOMAIN,
+        SITE_NAME: config.SITE_NAME,
+      },
+      to,
+      sent: false,
+      response: null,
+      error: null,
+    }
+
+    if (!config.RESEND_API_KEY) {
+      result.error = 'RESEND_API_KEY is not set — emails will not be sent.'
+      return reply.send(result)
+    }
+
+    const from = config.RESEND_FROM_EMAIL || `noreply@${config.BASE_DOMAIN}`
+    const payload = {
+      from,
+      to,
+      subject: `[${config.SITE_NAME}] Test email`,
+      html: `<p>This is a test email from ${config.SITE_NAME}. If you received this, email delivery is working.</p>`,
+    }
+
+    try {
+      const res = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${config.RESEND_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      })
+      const rawText = await res.text()
+      let body
+      try { body = JSON.parse(rawText) } catch { body = rawText }
+
+      result.httpStatus = res.status
+      result.response = body
+      result.sent = res.ok
+      if (!res.ok) result.error = body?.message || body?.error || rawText
+    } catch (err) {
+      result.error = `Network error: ${err.message}`
+    }
+
+    return reply.send(result)
+  })
 }
 
 export default fp(adminPlugin, { name: 'admin' })

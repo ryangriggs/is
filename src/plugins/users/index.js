@@ -15,95 +15,93 @@ function usernameFromEmail(email) {
 }
 
 
+async function sendEmail({ to, subject, html }) {
+  console.log(`[resend] ---- sendEmail ----`)
+  console.log(`[resend]   to:      ${to}`)
+  console.log(`[resend]   subject: ${subject}`)
+  console.log(`[resend]   RESEND_API_KEY set: ${!!config.RESEND_API_KEY} (length: ${config.RESEND_API_KEY?.length ?? 0})`)
+
+  if (!config.RESEND_API_KEY) {
+    console.log(`[resend]   No API key — email not sent (dev mode)`)
+    return { ok: false, devMode: true }
+  }
+
+  const from = config.RESEND_FROM_EMAIL || `noreply@${config.BASE_DOMAIN}`
+  console.log(`[resend]   from: ${from}`)
+
+  const payload = { from, to, subject, html }
+  console.log(`[resend]   payload: ${JSON.stringify({ from, to, subject })}`)
+
+  let res, body, rawText
+  try {
+    res = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${config.RESEND_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    })
+    rawText = await res.text()
+    try { body = JSON.parse(rawText) } catch { body = rawText }
+  } catch (err) {
+    console.error(`[resend]   Network error: ${err.message}`)
+    throw err
+  }
+
+  console.log(`[resend]   HTTP status: ${res.status}`)
+  console.log(`[resend]   Response: ${JSON.stringify(body)}`)
+
+  if (!res.ok) {
+    const msg = body?.message || body?.error || rawText
+    console.error(`[resend]   FAILED — ${res.status}: ${msg}`)
+    throw new Error(`Resend API ${res.status}: ${msg}`)
+  }
+
+  console.log(`[resend]   OK — email id: ${body?.id}`)
+  return { ok: true, id: body?.id }
+}
+
 async function sendVerificationEmail(email, token) {
   const verifyUrl = `https://${config.BASE_DOMAIN}/verify-email?token=${token}`
-
-  console.log(`[resend] Attempting verification email to: ${email}`)
+  console.log(`[resend] sendVerificationEmail → ${email}`)
 
   if (!config.RESEND_API_KEY) {
     console.log(`[resend] RESEND_API_KEY not set — verify URL: ${verifyUrl}`)
     return { devUrl: verifyUrl }
   }
 
-  const from = config.RESEND_FROM_EMAIL || `noreply@${config.BASE_DOMAIN}`
-
-  let res, body
-  try {
-    res = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${config.RESEND_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        from,
-        to: email,
-        subject: `Verify your ${config.SITE_NAME} email address`,
-        html: `<p>Thanks for signing up! Click the link below to verify your email address. This link expires in 24 hours.</p>
-               <p><a href="${verifyUrl}">${verifyUrl}</a></p>
-               <p>If you did not create an account, you can ignore this email.</p>`,
-      }),
-    })
-    body = await res.json()
-  } catch (err) {
-    console.error('[resend] Network error calling Resend API:', err.message)
-    throw err
-  }
-
-  if (!res.ok) {
-    console.error(`[resend] API error ${res.status}:`, JSON.stringify(body))
-    throw new Error(`Resend API returned ${res.status}: ${body?.message || JSON.stringify(body)}`)
-  }
-
-  console.log(`[resend] Verification email sent successfully. id=${body?.id}`)
+  await sendEmail({
+    to: email,
+    subject: `Verify your ${config.SITE_NAME} email address`,
+    html: `<p>Thanks for signing up! Click the link below to verify your email address. This link expires in 24 hours.</p>
+           <p><a href="${verifyUrl}">${verifyUrl}</a></p>
+           <p>If you did not create an account, you can ignore this email.</p>`,
+  })
   return {}
 }
 
 async function sendResetEmail(email, token, { googleOnly = false } = {}) {
   const resetUrl = `https://${config.BASE_DOMAIN}/reset-password?token=${token}`
-
-  console.log(`[resend] Attempting password reset email to: ${email}`)
-
-  const subject = `Reset your ${config.SITE_NAME} password`
-  const html = googleOnly
-    ? `<p>We received a password reset request for this account.</p>
-       <p>This account was created using <strong>Google Sign-In</strong>. You can continue using Google to log in, or click the link below to set a password as an alternative login method. This link expires in 1 hour.</p>
-       <p><a href="${resetUrl}">${resetUrl}</a></p>
-       <p>If you did not request this, you can safely ignore this email.</p>`
-    : `<p>Click the link below to reset your password. This link expires in 1 hour.</p>
-       <p><a href="${resetUrl}">${resetUrl}</a></p>
-       <p>If you did not request a password reset, you can ignore this email.</p>`
+  console.log(`[resend] sendResetEmail → ${email} (googleOnly: ${googleOnly})`)
 
   if (!config.RESEND_API_KEY) {
     console.log(`[resend] RESEND_API_KEY not set — reset URL: ${resetUrl}`)
     return
   }
 
-  const from = config.RESEND_FROM_EMAIL || `noreply@${config.BASE_DOMAIN}`
-  console.log(`[resend] Sending via Resend API from: ${from}`)
-
-  let res, body
-  try {
-    res = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${config.RESEND_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ from, to: email, subject, html }),
-    })
-    body = await res.json()
-  } catch (err) {
-    console.error('[resend] Network error calling Resend API:', err.message)
-    throw err
-  }
-
-  if (!res.ok) {
-    console.error(`[resend] API error ${res.status}:`, JSON.stringify(body))
-    throw new Error(`Resend API returned ${res.status}: ${body?.message || JSON.stringify(body)}`)
-  }
-
-  console.log(`[resend] Email sent successfully. id=${body?.id}`)
+  await sendEmail({
+    to: email,
+    subject: `Reset your ${config.SITE_NAME} password`,
+    html: googleOnly
+      ? `<p>We received a password reset request for this account.</p>
+         <p>This account was created using <strong>Google Sign-In</strong>. You can continue using Google to log in, or click the link below to set a password as an alternative login method. This link expires in 1 hour.</p>
+         <p><a href="${resetUrl}">${resetUrl}</a></p>
+         <p>If you did not request this, you can safely ignore this email.</p>`
+      : `<p>Click the link below to reset your password. This link expires in 1 hour.</p>
+         <p><a href="${resetUrl}">${resetUrl}</a></p>
+         <p>If you did not request a password reset, you can ignore this email.</p>`,
+  })
 }
 
 async function usersPlugin(fastify) {
