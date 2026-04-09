@@ -41,6 +41,14 @@ export async function initDb() {
     )
     sqlite.exec(sql)
 
+    // Additive column migrations for users
+    const addUserColumns = [
+      'ALTER TABLE users ADD COLUMN notify_new_accounts INTEGER NOT NULL DEFAULT 0',
+    ]
+    for (const stmt of addUserColumns) {
+      try { sqlite.prepare(stmt).run() } catch (_) { /* column already exists */ }
+    }
+
     // Additive column migrations for account_tiers (table created below, not in SQL file)
     const addColumns = [
       'ALTER TABLE account_tiers ADD COLUMN price REAL NOT NULL DEFAULT 0',

@@ -75,6 +75,20 @@
     </div>
   </div>
 
+  {% if user.role == 'admin' %}
+  <div class="card mt-3">
+    <h2 style="font-size:1rem;font-weight:600;margin:0 0 1rem">Admin Notifications</h2>
+    <form method="POST" action="/profile/notifications">
+      <label style="display:flex;align-items:center;gap:.6rem;cursor:pointer">
+        <input type="checkbox" name="notify_new_accounts" value="1"
+          {% if profileUser.notify_new_accounts %}checked{% endif %}>
+        <span>Email me when a new account is created</span>
+      </label>
+      <button type="submit" class="btn btn-primary btn-sm" style="margin-top:1rem">Save</button>
+    </form>
+  </div>
+  {% endif %}
+
   <div class="card mt-3">
     <h2 style="font-size:1rem;font-weight:600;margin:0 0 1rem">Subscription</h2>
 

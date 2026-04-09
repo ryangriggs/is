@@ -1,5 +1,6 @@
 import oauthPlugin from '@fastify/oauth2'
 import { requireAuth, setSessionFromUser, claimPendingLink } from '../../core/auth.js'
+import { notifyAdminsNewAccount } from '../../core/email.js'
 import config from '../../config.js'
 
 function buildCallbackUri() {
@@ -169,6 +170,7 @@ async function googleAuthPlugin(fastify) {
         username, googleEmailLc, displayName, 'user', googleId, Date.now()
       )
       user = db.get('SELECT * FROM users WHERE id = ?', info.lastInsertRowid)
+      if (user) notifyAdminsNewAccount(db, user)
     }
 
     if (!user) {

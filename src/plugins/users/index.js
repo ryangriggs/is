@@ -2,6 +2,7 @@ import fp from 'fastify-plugin'
 import path from 'path'
 import { readFile, writeFile, unlink } from 'fs/promises'
 import { hashPassword, verifyPassword, requireAuth, generateToken, hashTokenFast, setSessionFromUser, claimPendingLink } from '../../core/auth.js'
+import { sendEmail, notifyAdminsNewAccount } from '../../core/email.js'
 import config from '../../config.js'
 import { getAdForOwner } from '../../core/ads.js'
 
@@ -15,52 +16,6 @@ function usernameFromEmail(email) {
 }
 
 
-async function sendEmail({ to, subject, html }) {
-  console.log(`[resend] ---- sendEmail ----`)
-  console.log(`[resend]   to:      ${to}`)
-  console.log(`[resend]   subject: ${subject}`)
-  console.log(`[resend]   RESEND_API_KEY set: ${!!config.RESEND_API_KEY} (length: ${config.RESEND_API_KEY?.length ?? 0})`)
-
-  if (!config.RESEND_API_KEY) {
-    console.log(`[resend]   No API key — email not sent (dev mode)`)
-    return { ok: false, devMode: true }
-  }
-
-  const from = config.RESEND_FROM_EMAIL || `noreply@${config.BASE_DOMAIN}`
-  console.log(`[resend]   from: ${from}`)
-
-  const payload = { from, to, subject, html }
-  console.log(`[resend]   payload: ${JSON.stringify({ from, to, subject })}`)
-
-  let res, body, rawText
-  try {
-    res = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${config.RESEND_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(payload),
-    })
-    rawText = await res.text()
-    try { body = JSON.parse(rawText) } catch { body = rawText }
-  } catch (err) {
-    console.error(`[resend]   Network error: ${err.message}`)
-    throw err
-  }
-
-  console.log(`[resend]   HTTP status: ${res.status}`)
-  console.log(`[resend]   Response: ${JSON.stringify(body)}`)
-
-  if (!res.ok) {
-    const msg = body?.message || body?.error || rawText
-    console.error(`[resend]   FAILED — ${res.status}: ${msg}`)
-    throw new Error(`Resend API ${res.status}: ${msg}`)
-  }
-
-  console.log(`[resend]   OK — email id: ${body?.id}`)
-  return { ok: true, id: body?.id }
-}
 
 async function sendVerificationEmail(email, token) {
   const verifyUrl = `https://${config.BASE_DOMAIN}/verify-email?token=${token}`
@@ -201,6 +156,10 @@ async function usersPlugin(fastify) {
     } catch (err) {
       console.error('[register] Failed to send verification email:', err.message)
     }
+
+    // Notify admins (fire-and-forget)
+    const newUser = db.get('SELECT * FROM users WHERE id = ?', info.lastInsertRowid)
+    if (newUser) notifyAdminsNewAccount(db, newUser)
 
     // Store pending claim in session without logging user in
     req.session.pendingVerifyEmail = emailLc
@@ -568,6 +527,18 @@ async function usersPlugin(fastify) {
     }
     db.run('UPDATE users SET google_id = NULL WHERE id = ?', user.id)
     req.session.flash = { type: 'success', message: 'Google account unlinked. Use your password to log in.' }
+    return reply.redirect('/profile')
+  })
+
+  // ----------------------------------------------------------------
+  // POST /profile/notifications — admin-only notification preferences
+  // ----------------------------------------------------------------
+  fastify.post('/profile/notifications', { preHandler: requireAuth }, async (req, reply) => {
+    if (req.subdomain !== '') return reply.callNotFound()
+    if (req.session.role !== 'admin') return reply.redirect('/profile')
+    const notifyNewAccounts = req.body?.notify_new_accounts === '1' ? 1 : 0
+    db.run('UPDATE users SET notify_new_accounts = ? WHERE id = ?', notifyNewAccounts, req.session.userId)
+    req.session.flash = { type: 'success', message: 'Notification preferences saved.' }
     return reply.redirect('/profile')
   })
 

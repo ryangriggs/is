@@ -19,6 +19,7 @@ CREATE TABLE IF NOT EXISTS users (
   stripe_subscription_status TEXT,
   stripe_current_period_end INTEGER,
   stripe_subscription_interval TEXT,
+  notify_new_accounts INTEGER NOT NULL DEFAULT 0,
   created_at INTEGER NOT NULL DEFAULT (strftime('%s','now') * 1000),
   last_login INTEGER
 );
