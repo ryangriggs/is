@@ -1,5 +1,6 @@
 import { encode, isReserved, normalizeCode } from './shortcode.js'
 import { hashToken, generateToken } from './auth.js'
+import { getSetting } from './settings-cache.js'
 
 // Shared link creation logic used by all content plugins.
 // Returns { link, plainToken } where plainToken is set for anonymous creators.
@@ -27,9 +28,12 @@ export async function createLink(db, hooks, { type, destination, title, meta, is
 
   const link = db.transaction(() => {
     let id, code
-    // Insert placeholder rows to burn IDs whose codes are reserved route paths.
+    const minLen = parseInt(getSetting('min_shortcode_length') || '0', 10) || 0
+
+    // Insert placeholder rows to burn IDs whose codes are reserved route paths
+    // or shorter than the configured minimum length.
     // encode() is a pure bijective base conversion — no collisions possible —
-    // so we simply increment past any reserved ID by marking it as consumed.
+    // so we simply increment past any unwanted ID by marking it as consumed.
     do {
       const tmp = '__tmp_' + Date.now().toString(36) + Math.random().toString(36).slice(2)
       const info = db.run(
@@ -38,13 +42,13 @@ export async function createLink(db, hooks, { type, destination, title, meta, is
       )
       id = info.lastInsertRowid
       code = normalizeCode(encode(id))
-      if (isReserved(code)) {
+      if (isReserved(code) || (minLen > 0 && code.length < minLen)) {
         // Brand this placeholder with the reserved code so it's permanently consumed
         db.run('UPDATE links SET code = ? WHERE id = ?', code, id)
       }
       // If code is taken by a legacy row (old escape logic left colliding codes),
       // the placeholder keeps its tmp code and we loop to the next ID
-    } while (isReserved(code) || db.get('SELECT id FROM links WHERE code = ? AND id != ?', code, id))
+    } while (isReserved(code) || (minLen > 0 && code.length < minLen) || db.get('SELECT id FROM links WHERE code = ? AND id != ?', code, id))
 
     // Update the winning row with the actual link data
     db.run(

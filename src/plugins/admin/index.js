@@ -503,6 +503,15 @@ async function adminPlugin(fastify) {
         )
       }
     }
+    // Numeric: min_shortcode_length (0 = disabled, otherwise clamp 1–20)
+    const rawMinLen = parseInt(req.body.min_shortcode_length || '0', 10)
+    const minShortcodeLength = (!isNaN(rawMinLen) && rawMinLen >= 1) ? Math.min(rawMinLen, 20) : 0
+    db.run(
+      `INSERT INTO settings(key, value, updated_at) VALUES(?,?,?)
+       ON CONFLICT(key) DO UPDATE SET value=excluded.value, updated_at=excluded.updated_at`,
+      'min_shortcode_length', String(minShortcodeLength), Date.now()
+    )
+
     invalidateSettingsCache()
     req.session.flash = { type: 'success', message: 'Settings saved.' }
     return reply.redirect('/admin/settings')

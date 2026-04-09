@@ -125,6 +125,7 @@
       </button>
       <div class="settings-nav-links" id="settings-nav-links">
         <a href="#s-site">Site</a>
+        <a href="#s-links">Links</a>
         <a href="#s-watermark">Watermark</a>
         <a href="#s-ads">Ads</a>
         <a href="#s-stripe">Stripe</a>
@@ -195,6 +196,21 @@
             </div>
           </div>
           <button type="submit" class="btn btn-primary btn-sm">Save Site Settings</button>
+        </div>
+
+        {# ── Links ── #}
+        <div class="card mb-4" id="s-links">
+          <h2 class="card-title mb-3">Links</h2>
+          <div class="form-group">
+            <label class="label">Minimum Shortcode Length</label>
+            <input type="number" name="min_shortcode_length" class="input"
+              value="{{ settings.min_shortcode_length or '0' }}" min="0" max="20" style="max-width:100px">
+            <p class="text-xs text-muted mt-1">
+              Generated shortcodes will be at least this many characters long. Set to <code>0</code> to disable.
+              IDs that would produce shorter codes are permanently burned — safe to raise at any time.
+            </p>
+          </div>
+          <button type="submit" class="btn btn-primary btn-sm">Save Links</button>
         </div>
 
         {# ── Ads ── #}
