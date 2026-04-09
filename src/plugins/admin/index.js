@@ -696,7 +696,7 @@ async function adminPlugin(fastify) {
     if (req.subdomain !== '') return reply.callNotFound()
     const { name, label, description, price, price_yearly, stripe_price_id_monthly, stripe_price_id_yearly,
       max_links_total, max_images_total, max_text_total, max_links_per_hour,
-      max_ddns_entries, max_file_size_mb, allow_raw_html, show_ads, allow_ad_campaigns, is_enabled, allow_watermark } = req.body || {}
+      max_file_size_mb, allow_raw_html, show_ads, allow_ad_campaigns, is_enabled, allow_watermark } = req.body || {}
     if (!name?.trim()) {
       req.session.flash = { type: 'error', message: 'Name required.' }
       return reply.redirect('/admin/account-tiers')
@@ -704,16 +704,16 @@ async function adminPlugin(fastify) {
     const allowedImageTypes = [].concat(req.body.allowed_image_types || []).join(',') || 'image/jpeg,image/png,image/gif'
     db.run(
       `INSERT INTO account_tiers(name,label,description,price,price_yearly,stripe_price_id_monthly,stripe_price_id_yearly,
-         max_links_total,max_images_total,max_text_total,max_links_per_hour,max_ddns_entries,max_file_size_mb,
+         max_links_total,max_images_total,max_text_total,max_links_per_hour,max_file_size_mb,
          allow_raw_html,show_ads,allow_ad_campaigns,is_enabled,allow_watermark,allowed_image_types,created_at)
-       VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+       VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
        ON CONFLICT(name) DO UPDATE SET label=excluded.label, description=excluded.description,
          price=excluded.price, price_yearly=excluded.price_yearly,
          stripe_price_id_monthly=excluded.stripe_price_id_monthly,
          stripe_price_id_yearly=excluded.stripe_price_id_yearly,
          max_links_total=excluded.max_links_total,
          max_images_total=excluded.max_images_total, max_text_total=excluded.max_text_total,
-         max_links_per_hour=excluded.max_links_per_hour, max_ddns_entries=excluded.max_ddns_entries,
+         max_links_per_hour=excluded.max_links_per_hour,
          max_file_size_mb=excluded.max_file_size_mb, allow_raw_html=excluded.allow_raw_html,
          show_ads=excluded.show_ads, allow_ad_campaigns=excluded.allow_ad_campaigns,
          is_enabled=excluded.is_enabled, allow_watermark=excluded.allow_watermark,
@@ -723,7 +723,6 @@ async function adminPlugin(fastify) {
       stripe_price_id_monthly?.trim() || null, stripe_price_id_yearly?.trim() || null,
       Number(max_links_total) || 0, Number(max_images_total) || 0, Number(max_text_total) || 0,
       Number(max_links_per_hour) || 0,
-      (max_ddns_entries === '' || max_ddns_entries == null) ? 5 : Number(max_ddns_entries),
       Number(max_file_size_mb) || 10,
       allow_raw_html === '1' ? 1 : 0, show_ads === '1' ? 1 : 0, allow_ad_campaigns === '1' ? 1 : 0,
       is_enabled === '1' ? 1 : 0, allow_watermark === '1' ? 1 : 0,

@@ -73,7 +73,6 @@ export async function initDb() {
       max_images_total INTEGER NOT NULL DEFAULT 0,
       max_text_total INTEGER NOT NULL DEFAULT 0,
       max_links_per_hour INTEGER NOT NULL DEFAULT 0,
-      max_ddns_entries INTEGER NOT NULL DEFAULT 5,
       max_file_size_mb INTEGER NOT NULL DEFAULT 10,
       allow_raw_html INTEGER NOT NULL DEFAULT 1,
       show_ads INTEGER NOT NULL DEFAULT 0,
@@ -127,16 +126,16 @@ export async function initDb() {
     // Seed default account tiers (only if none exist yet)
     const tierCount = sqlite.prepare('SELECT COUNT(*) as n FROM account_tiers').get()
     if (tierCount.n === 0) {
-      sqlite.prepare(`INSERT INTO account_tiers(name,label,max_links_per_hour,max_ddns_entries,max_file_size_mb,allow_raw_html,show_ads,allow_ad_campaigns) VALUES(?,?,?,?,?,?,?,?)`)
-        .run('free', 'Free', 10, 3, 10, 1, 1, 0)
-      sqlite.prepare(`INSERT INTO account_tiers(name,label,max_links_per_hour,max_ddns_entries,max_file_size_mb,allow_raw_html,show_ads,allow_ad_campaigns) VALUES(?,?,?,?,?,?,?,?)`)
-        .run('paid', 'Paid', 100, 50, 100, 1, 0, 1)
+      sqlite.prepare(`INSERT INTO account_tiers(name,label,max_links_per_hour,max_file_size_mb,allow_raw_html,show_ads,allow_ad_campaigns) VALUES(?,?,?,?,?,?,?)`)
+        .run('free', 'Free', 10, 10, 1, 1, 0)
+      sqlite.prepare(`INSERT INTO account_tiers(name,label,max_links_per_hour,max_file_size_mb,allow_raw_html,show_ads,allow_ad_campaigns) VALUES(?,?,?,?,?,?,?)`)
+        .run('paid', 'Paid', 100, 100, 1, 0, 1)
     }
     // Ensure built-in anonymous tier always exists (may be missing on older installs)
     const anonTier = sqlite.prepare("SELECT id FROM account_tiers WHERE name = 'anonymous'").get()
     if (!anonTier) {
-      sqlite.prepare(`INSERT INTO account_tiers(name,label,max_links_per_hour,max_links_total,max_images_total,max_text_total,max_ddns_entries,max_file_size_mb,allow_raw_html,show_ads,allow_ad_campaigns) VALUES(?,?,?,?,?,?,?,?,?,?,?)`)
-        .run('anonymous', 'Anonymous (not logged in)', 5, 10, 3, 5, 0, 5, 0, 1, 0)
+      sqlite.prepare(`INSERT INTO account_tiers(name,label,max_links_per_hour,max_links_total,max_images_total,max_text_total,max_file_size_mb,allow_raw_html,show_ads,allow_ad_campaigns) VALUES(?,?,?,?,?,?,?,?,?,?)`)
+        .run('anonymous', 'Anonymous (not logged in)', 5, 10, 3, 5, 5, 0, 1, 0)
     }
 
     _db = createSqliteDb(sqlite)

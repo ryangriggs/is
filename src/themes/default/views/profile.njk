@@ -75,7 +75,7 @@
     </div>
   </div>
 
-  {% if user.role == 'admin' %}
+  {% if profileUser.role == 'admin' %}
   <div class="card mt-3">
     <h2 style="font-size:1rem;font-weight:600;margin:0 0 1rem">Admin Notifications</h2>
     <form method="POST" action="/profile/notifications">
