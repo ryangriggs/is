@@ -52,22 +52,47 @@ Copy `.env.example` to `.env` and edit:
 
 | Variable | Description | Default |
 |---|---|---|
+| **Core** | | |
+| `NODE_ENV` | `development` or `production` | `development` |
 | `BASE_DOMAIN` | Your domain | `is.am` |
 | `PORT` | Port the app listens on | `3000` |
-| `SESSION_SECRET` | Long random string for session signing | — |
+| `SESSION_SECRET` | Long random string for session signing — change this in production | — |
+| **Database** | | |
 | `DB_TYPE` | `sqlite` or `mysql` | `sqlite` |
 | `SQLITE_PATH` | Path to SQLite database file | `./data/isam.db` |
-| `DNS_ENABLED` | Enable built-in authoritative DNS server | `false` |
-| `DNS_PORT` | UDP port for DNS server | `5300` |
-| `SHORTLINK_CHARS` | Characters used in short codes (lowercase recommended) | `abcdefghijklmnopqrstuvwxyz0123456789` |
-| `IMAGE_MAX_BYTES` | Max image upload size in bytes | `10485760` (10 MB) |
-| `SITE_NAME` | Branding name | `is.am` |
-| `SITE_TAGLINE` | Branding tagline | — |
-| `ADMIN_EMAIL` | Admin account email | — |
-| `ADMIN_PASSWORD` | Set to pre-configure admin password; leave blank to auto-generate | — |
+| `MYSQL_HOST` | MySQL host (when `DB_TYPE=mysql`) | `127.0.0.1` |
+| `MYSQL_PORT` | MySQL port | `3306` |
+| `MYSQL_USER` | MySQL user | `isam` |
+| `MYSQL_PASSWORD` | MySQL password | — |
+| `MYSQL_DATABASE` | MySQL database name | `isam` |
+| **Branding** | | |
+| `SITE_NAME` | Site name shown in the UI and emails | `is.am` |
+| `SITE_TAGLINE` | Tagline shown on the homepage | — |
+| `SITE_LOGO_PATH` | Path to a custom logo file (relative to static root) | — |
+| `ADMIN_EMAIL` | Email address for the auto-created admin account | — |
+| `ADMIN_PASSWORD` | Pre-set admin password; leave blank to auto-generate on first run | — |
 | `THEME` | Theme folder name inside `src/themes/` | `default` |
-| `RESEND_API_KEY` | Resend API key for transactional email | — |
-| `RESEND_FROM_EMAIL` | From address for outgoing email | — |
+| **Shortlinks** | | |
+| `SHORTLINK_CHARS` | Characters used to generate short codes (lowercase recommended) | `abcdefghijklmnopqrstuvwxyz0123456789` |
+| `IMAGE_MAX_BYTES` | Maximum image upload size in bytes | `10485760` (10 MB) |
+| **Security & rate limiting** | | |
+| `BCRYPT_ROUNDS` | bcrypt cost factor for password hashing | `10` |
+| `RATE_LIMIT_CREATION_MAX` | Max link creations per window (anonymous) | `10` |
+| `RATE_LIMIT_CREATION_WINDOW_MS` | Window for creation rate limit in ms | `60000` |
+| `RATE_LIMIT_REGISTER_MAX` | Max registration attempts per window | `5` |
+| `RATE_LIMIT_REGISTER_WINDOW_MS` | Window for registration rate limit in ms | `600000` |
+| `ANON_TOKEN_COOKIE_DAYS` | Lifetime of anonymous session cookie in days | `30` |
+| **Email (Resend)** | | |
+| `RESEND_API_KEY` | Resend API key for transactional email (verification, password reset) | — |
+| `RESEND_FROM_EMAIL` | From address for outgoing email | `noreply@BASE_DOMAIN` |
+| **Google Sign-In** | | |
+| `GOOGLE_CLIENT_ID` | Google OAuth client ID — leave blank to disable Google login | — |
+| `GOOGLE_CLIENT_SECRET` | Google OAuth client secret | — |
+| **Dynamic DNS** | | |
+| `DNS_ENABLED` | Enable the built-in authoritative DNS server | `false` |
+| `DNS_PORT` | UDP port the DNS server listens on | `5300` |
+| `DNS_UPSTREAM` | Upstream resolver for non-local queries | `8.8.8.8` |
+| `DYN_SUBDOMAIN` | Subdomain used for dynamic DNS delegation (records resolve as `name.DYN_SUBDOMAIN.domain`) | `dyn` |
 
 ---
 

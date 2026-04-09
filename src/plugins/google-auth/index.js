@@ -3,9 +3,12 @@ import { requireAuth, setSessionFromUser, claimPendingLink } from '../../core/au
 import config from '../../config.js'
 
 function buildCallbackUri() {
-  if (config.IS_PROD) return `https://${config.BASE_DOMAIN}/auth/google/callback`
-  const port = config.PORT !== 80 && config.PORT !== 443 ? `:${config.PORT}` : ''
-  return `http://${config.BASE_DOMAIN}${port}/auth/google/callback`
+  const isLocalhost = config.BASE_DOMAIN === 'localhost' || config.BASE_DOMAIN.startsWith('localhost:')
+  if (isLocalhost) {
+    const port = config.PORT !== 80 && config.PORT !== 443 ? `:${config.PORT}` : ''
+    return `http://localhost${port}/auth/google/callback`
+  }
+  return `https://${config.BASE_DOMAIN}/auth/google/callback`
 }
 
 function usernameFromEmail(email) {
@@ -21,13 +24,16 @@ async function googleAuthPlugin(fastify) {
     return
   }
 
+  const callbackUri = buildCallbackUri()
+  fastify.log.info(`[google-auth] Callback URI: ${callbackUri}`)
+
   await fastify.register(oauthPlugin, {
     name: 'googleOAuth2',
     credentials: {
       client: { id: config.GOOGLE_CLIENT_ID, secret: config.GOOGLE_CLIENT_SECRET },
       auth: oauthPlugin.GOOGLE_CONFIGURATION,
     },
-    callbackUri: buildCallbackUri(),
+    callbackUri,
     scope: ['openid', 'profile', 'email'],
   })
 
