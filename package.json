@@ -1,10 +1,11 @@
 {
   "name": "is.am",
-  "version": "1.0.55",
+  "version": "1.0.56",
   "description": "URL shortener, pastebin, bookmarks, and dynamic DNS hub",
   "type": "module",
   "main": "src/server.js",
   "scripts": {
+    "prepare": "git config core.hooksPath .githooks || true",
     "start": "node --experimental-sqlite src/server.js",
     "dev": "node --experimental-sqlite --watch src/server.js"
   },
