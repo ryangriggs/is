@@ -3,38 +3,180 @@
 
 {% block head %}
 <style>
-.links-table-wrap { overflow-x: auto; }
+/* ── Table container ──────────────────────────────────────────── */
+.links-wrap {
+  display: flex;
+  flex-direction: column;
+  /* JS will set precise height; CSS provides a reasonable fallback */
+  height: calc(100vh - 300px);
+  min-height: 250px;
+  overflow: auto;
+  border: 1px solid var(--color-border, var(--border));
+  border-radius: 8px;
+  position: relative;
+  /* native touch-scrolling on iOS */
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ── Table ───────────────────────────────────────────────────── */
 #links-table {
   width: 100%;
+  min-width: 540px;
   table-layout: fixed;
   border-collapse: collapse;
+  flex: 1;
 }
 #links-table th, #links-table td {
-  padding: 7px 10px;
-  border-bottom: 1px solid var(--border);
-  vertical-align: top;
-  overflow: hidden;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--color-border, var(--border));
+  vertical-align: middle;
 }
-#links-table th { white-space: nowrap; }
-#links-table td { word-break: break-word; }
-#links-table .col-actions { white-space: nowrap; }
+#links-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--bg-card, var(--color-bg-card, #fff));
+  white-space: nowrap;
+  font-size: .8rem;
+  font-weight: 600;
+  border-bottom: 2px solid var(--color-border, var(--border));
+}
+#links-table tbody tr:last-child td { border-bottom: none; }
+#links-table tbody tr:hover td { background: var(--color-bg-hover, rgba(0,0,0,.03)); }
+
+/* ── Inactive rows ────────────────────────────────────────────── */
+tr.row-inactive td { background: var(--color-bg-muted, #f5f5f5) !important; }
+tr.row-inactive .col-code-link {
+  text-decoration: line-through;
+  opacity: .45;
+}
+
+/* ── Code column ─────────────────────────────────────────────── */
+.col-code-link { font-family: monospace; font-size: .85rem; }
+
+/* ── Destination column ──────────────────────────────────────── */
+.col-dest-cell {
+  max-width: 0;       /* required for text-overflow in table cells */
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: .8rem;
+  color: var(--color-text-muted, var(--text-muted));
+}
+
+/* ── Sort links ──────────────────────────────────────────────── */
 .sort-link { color: inherit; text-decoration: none; display: inline-flex; align-items: center; gap: 3px; user-select: none; }
-.sort-link:hover { color: var(--primary); }
+.sort-link:hover { color: var(--color-primary, var(--primary)); }
 .sort-icon { font-size: .7rem; opacity: .45; }
-.sort-icon.active { opacity: 1; color: var(--primary); }
-th.resizable { position: relative; }
-.resize-handle { position: absolute; right: 0; top: 0; bottom: 0; width: 5px; cursor: col-resize; }
-.resize-handle:hover, .resize-handle.dragging { background: var(--primary); opacity: .4; }
-/* link-thumb rules live in theme.css */
-.img-text-link { font-size:.8rem; }
-#links-tbody.show-images .img-text-link { display:none; }
-.pager { display: flex; align-items: center; gap: .35rem; flex-wrap: wrap; margin-top: 1rem; font-size: .875rem; }
-.pg, .pager a { display: inline-flex; align-items: center; justify-content: center; min-width: 32px; height: 32px; padding: 0 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg-card); color: var(--text); text-decoration: none; }
-.pager a:hover { border-color: var(--primary); color: var(--primary); }
-.pg.current { background: var(--primary); color: #fff; border-color: var(--primary); font-weight: 600; }
-.pg.disabled, a.pg-disabled { opacity: .35; pointer-events: none; cursor: default; }
-.pager-goto input { width: 52px; height: 32px; text-align: center; border: 1px solid var(--border); border-radius: 6px; background: var(--bg-card); color: var(--text); padding: 0 4px; }
-.pager-perpage select { height: 32px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg-card); color: var(--text); padding: 0 6px; }
+.sort-icon.active { opacity: 1; color: var(--color-primary, var(--primary)); }
+
+/* ── Owner avatar button ─────────────────────────────────────── */
+.owner-btn {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  background: var(--color-primary, var(--primary));
+  color: #fff;
+  border: none;
+  cursor: pointer;
+  font-size: .7rem;
+  font-weight: 700;
+  display: inline-flex; align-items: center; justify-content: center;
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+.owner-btn:hover { opacity: .85; }
+.owner-btn.blocked { background: var(--color-danger, #dc2626); }
+
+/* ── Type icon badges ────────────────────────────────────────── */
+.ti {
+  display: inline-block; min-width: 34px; height: 17px;
+  border-radius: 3px; font-size: 9px; font-weight: 700;
+  text-align: center; line-height: 17px; font-family: monospace;
+  letter-spacing: .02em;
+}
+.ti-url      { background: #dbeafe; color: #1d4ed8; }
+.ti-text     { background: #dcfce7; color: #166534; }
+.ti-html     { background: #fef3c7; color: #92400e; }
+.ti-image    { background: #f3e8ff; color: #6b21a8; }
+.ti-bookmark { background: #ffedd5; color: #9a3412; }
+.ti-file     { background: #f1f5f9; color: #475569; }
+
+/* ── Row menu button ─────────────────────────────────────────── */
+.row-menu-btn {
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  cursor: pointer;
+  color: var(--color-text-muted, var(--text-muted));
+  font-size: 1rem;
+  padding: 1px 7px;
+  line-height: 1.4;
+  letter-spacing: .05em;
+}
+.row-menu-btn:hover {
+  border-color: var(--color-border, var(--border));
+  color: var(--color-text, var(--text));
+}
+
+/* ── Floating popups ─────────────────────────────────────────── */
+.float-popup {
+  position: fixed;
+  background: var(--bg-card, var(--color-bg-card, #fff));
+  border: 1px solid var(--color-border, var(--border));
+  border-radius: 8px;
+  box-shadow: 0 6px 24px rgba(0,0,0,.15);
+  z-index: 9999;
+  padding: 12px 14px;
+  font-size: .825rem;
+  min-width: 210px;
+  max-width: 300px;
+}
+.float-popup[hidden] { display: none !important; }
+.fp-section { border-top: 1px solid var(--color-border, var(--border)); margin-top: 8px; padding-top: 8px; }
+.fp-btn { display: block; width: 100%; text-align: left; background: none; border: none; padding: 5px 8px; border-radius: 5px; cursor: pointer; font-size: .8rem; color: var(--color-text, var(--text)); }
+.fp-btn:hover { background: var(--color-bg-hover, rgba(0,0,0,.06)); }
+.fp-btn-danger { color: var(--color-danger, #dc2626); }
+.fp-btn-danger:hover { background: #fef2f2; }
+
+/* ── Type pills / image toggle ───────────────────────────────── */
+.type-pills { display: flex; flex-wrap: wrap; gap: .3rem; }
+.type-pill {
+  border: 1px solid var(--color-border, var(--border));
+  background: var(--bg-card, #fff);
+  color: var(--color-text-muted, var(--text-muted));
+  border-radius: 99px; padding: 2px 10px; font-size: .75rem; cursor: pointer;
+}
+.type-pill.active {
+  background: var(--color-primary, var(--primary));
+  border-color: var(--color-primary, var(--primary));
+  color: #fff;
+}
+.slide-toggle { position: relative; display: inline-block; width: 32px; height: 18px; }
+.slide-toggle input { opacity: 0; width: 0; height: 0; }
+.slide-knob {
+  position: absolute; inset: 0; background: var(--color-border, #ccc);
+  border-radius: 99px; transition: .2s;
+}
+.slide-knob:before {
+  content: ''; position: absolute; left: 2px; top: 2px;
+  width: 14px; height: 14px; background: #fff; border-radius: 50%; transition: .2s;
+}
+.slide-toggle input:checked + .slide-knob { background: var(--color-primary, var(--primary)); }
+.slide-toggle input:checked + .slide-knob:before { transform: translateX(14px); }
+
+/* image thumbs */
+.link-thumb { max-width: 48px; max-height: 36px; border-radius: 3px; vertical-align: middle; }
+.img-text-link { font-size: .78rem; }
+#links-tbody.show-images .img-text-link { display: none; }
+
+/* ── Pager ───────────────────────────────────────────────────── */
+.pager { display: flex; align-items: center; gap: .35rem; flex-wrap: wrap; margin-top: .75rem; font-size: .875rem; }
+.pg, .pager a { display: inline-flex; align-items: center; justify-content: center; min-width: 32px; height: 32px; padding: 0 8px; border: 1px solid var(--color-border, var(--border)); border-radius: 6px; background: var(--bg-card, #fff); color: var(--color-text, var(--text)); text-decoration: none; }
+.pager a:hover { border-color: var(--color-primary, var(--primary)); color: var(--color-primary, var(--primary)); }
+.pg.current { background: var(--color-primary, var(--primary)); color: #fff; border-color: var(--color-primary, var(--primary)); font-weight: 600; }
+.pg.disabled, a.pg-disabled { opacity: .35; pointer-events: none; }
+.pager-goto input { width: 52px; height: 32px; text-align: center; border: 1px solid var(--color-border, var(--border)); border-radius: 6px; background: var(--bg-card, #fff); color: var(--color-text, var(--text)); padding: 0 4px; }
+.pager-perpage select { height: 32px; border: 1px solid var(--color-border, var(--border)); border-radius: 6px; background: var(--bg-card, #fff); color: var(--color-text, var(--text)); padding: 0 6px; }
 </style>
 {% endblock %}
 
@@ -77,129 +219,123 @@ th.resizable { position: relative; }
     </div>
   </form>
 
-  <div class="links-table-wrap">
+  {# ── Table ──────────────────────────────────────────────────── #}
+  <div class="links-wrap" id="links-wrap">
     <table id="links-table">
       <colgroup>
-        <col id="col-code"    style="width:110px">
-        <col id="col-dest"    style="width:220px">
-        <col id="col-owner"   style="width:110px">
-        <col id="col-type"    style="width:70px">
-        <col id="col-ip"      style="width:135px">
-        <col id="col-date"    style="width:95px">
-        <col id="col-visits"  style="width:55px">
-        <col id="col-size"    style="width:60px">
-        <col id="col-status"  style="width:65px">
-        <col id="col-actions" style="width:90px">
+        <col style="width:100px">
+        <col><!-- destination: flexible -->
+        <col style="width:42px">
+        <col style="width:42px">
+        <col style="width:88px">
+        <col style="width:48px">
+        <col style="width:42px">
       </colgroup>
       <thead>
         <tr>
-          {% macro sth(label, col, thid) %}
-          <th class="resizable" id="{{ thid }}">
+          {% macro sth(label, col) %}
+          <th>
             <a class="sort-link" href="?q={{ query.q | urlencode }}&sort={{ col }}&dir={{ 'desc' if (query.sort == col and query.dir == 'asc') else 'asc' }}&page=1&perPage={{ perPage }}">
               {{ label }}<span class="sort-icon {% if query.sort == col %}active{% endif %}">{% if query.sort == col %}{{ '↓' if query.dir == 'desc' else '↑' }}{% else %}↕{% endif %}</span>
             </a>
-            <div class="resize-handle"></div>
           </th>
           {% endmacro %}
-          {{ sth('Code',    'code',       'th-code') }}
-          <th class="resizable" id="th-dest">Destination<div class="resize-handle"></div></th>
-          {{ sth('Owner',   'username',   'th-owner') }}
-          {{ sth('Type',    'type',       'th-type') }}
-          {{ sth('Creator IP','created_ip','th-ip') }}
-          {{ sth('Created', 'created_at', 'th-date') }}
-          {{ sth('Visits',  'visit_count','th-visits') }}
-          {{ sth('Size',    'file_size',  'th-size') }}
-          {{ sth('Status',  'is_active',  'th-status') }}
-          <th class="col-actions">Actions</th>
+          {{ sth('Code',    'code') }}
+          <th>Destination</th>
+          <th style="text-align:center" title="Owner">Usr</th>
+          {{ sth('Type',   'type') }}
+          {{ sth('Created','created_at') }}
+          {{ sth('Visits', 'visit_count') }}
+          <th></th>
         </tr>
       </thead>
       <tbody id="links-tbody">
         {% if links.length == 0 %}
-        <tr><td colspan="9" class="text-center text-muted" style="padding:32px">No links found.</td></tr>
+        <tr><td colspan="7" style="text-align:center;padding:32px;color:var(--color-text-muted)">No links found.</td></tr>
         {% endif %}
-        {% for link in links %}
-        <tr data-type="{{ link.type }}">
-          <td><a href="https://{{ baseDomain }}/{{ link.code }}" target="_blank" rel="noopener" style="font-family:monospace;font-size:.85rem">{{ link.code }}</a></td>
 
+        {% for link in links %}
+        <tr data-type="{{ link.type }}"{% if not link.isActive %} class="row-inactive"{% endif %}>
+
+          {# Code #}
           <td>
+            <a href="https://{{ baseDomain }}/{{ link.code }}" target="_blank" rel="noopener"
+               class="col-code-link">{{ link.code }}</a>
+          </td>
+
+          {# Destination (overflow hidden; full value in title tooltip) #}
+          <td class="col-dest-cell">
             {% if link.type == 'image' %}
-              <a href="/uploads/{{ link.destination }}" target="_blank" rel="noopener">
-                <img class="link-thumb" src="/uploads/{{ link.destination }}" alt="">
-              </a>
-              <a href="/uploads/{{ link.destination }}" target="_blank" rel="noopener" class="img-text-link">View image ↗</a>
+              <span title="{{ link.destination }}">
+                <img class="link-thumb" src="/uploads/{{ link.destination }}" alt="" style="display:none">
+                <span class="img-text-link">{{ link.destination }}</span>
+              </span>
             {% elif link.type == 'text' or link.type == 'html' %}
-              <span class="text-muted">{{ link.title or '—' }}</span>
+              <span title="{{ link.title or link.destination }}">{{ link.title or '(paste)' }}</span>
             {% else %}
-              <span title="{{ link.destination }}">{{ link.destination | truncate(60) if link.destination else '—' }}</span>
+              <span title="{{ link.destination }}">{{ link.destination or '—' }}</span>
             {% endif %}
           </td>
 
-          <td class="text-sm">
-            {% if link.username %}
-              <a href="/admin/users?q={{ link.username | urlencode }}">{{ link.username }}</a>
-              {% if link.ownerIsBlocked %}
-                <form method="POST" action="/admin/users/{{ link.owner_id }}/unblock" style="display:inline">
-                  <button class="btn btn-ghost btn-sm" title="Unblock user" style="padding:1px 5px;font-size:.75rem">✅</button>
-                </form>
-              {% else %}
-                <form method="POST" action="/admin/users/{{ link.owner_id }}/block" style="display:inline">
-                  <button class="btn btn-ghost btn-sm" data-confirm="Block {{ link.username }}?" title="Block user" style="padding:1px 5px;font-size:.75rem">🚫</button>
-                </form>
-              {% endif %}
-            {% else %}<span class="text-muted">—</span>{% endif %}
+          {# Owner avatar #}
+          <td style="text-align:center;padding:4px">
+            {% if link.owner_id %}
+            <button class="owner-btn{% if link.ownerIsBlocked %} blocked{% endif %}"
+              title="{{ link.username }}"
+              data-owner-id="{{ link.owner_id }}"
+              data-username="{{ link.username | e }}"
+              data-email="{{ link.ownerEmail | e if link.ownerEmail else '' }}"
+              data-name="{{ link.ownerName | e if link.ownerName else (link.username | e) }}"
+              data-tier="{{ link.ownerTier | e }}"
+              data-links="{{ link.ownerLinkCount }}"
+              data-ip="{{ link.created_ip | e if link.created_ip else '' }}"
+              data-ip-blocked="{{ 'true' if link.creatorIpBlocked else 'false' }}"
+              data-owner-blocked="{{ 'true' if link.ownerIsBlocked else 'false' }}"
+            >{{ (link.username or '?')[0] | upper }}</button>
+            {% else %}
+            <span style="color:var(--color-text-muted);font-size:.75rem">—</span>
+            {% endif %}
           </td>
 
-          <td><span class="badge badge-neutral" style="font-size:.75rem">{{ link.type }}</span></td>
-
-          <td style="font-family:monospace;font-size:.78rem">
-            {% if link.created_ip %}
-              {{ link.created_ip }}
-              {% if link.creatorIpBlocked %}
-                <form method="POST" action="/admin/ip/unblock" style="display:inline">
-                  <input type="hidden" name="ip" value="{{ link.created_ip }}">
-                  <input type="hidden" name="redirect" value="/admin/links">
-                  <button class="btn btn-ghost btn-sm" title="Unblock" style="padding:1px 4px;font-size:.75rem">✅</button>
-                </form>
-              {% else %}
-                <form method="POST" action="/admin/ip/block" style="display:inline">
-                  <input type="hidden" name="ip" value="{{ link.created_ip }}">
-                  <input type="hidden" name="redirect" value="/admin/links">
-                  <button class="btn btn-ghost btn-sm" data-confirm="Block {{ link.created_ip }}?" title="Block" style="padding:1px 4px;font-size:.75rem">🚫</button>
-                </form>
-              {% endif %}
-            {% else %}—{% endif %}
+          {# Type icon #}
+          <td style="text-align:center;padding:4px">
+            {% set tc = link.type %}
+            <span class="ti ti-{{ tc }}" title="{{ tc }}">
+              {%- if tc == 'url' -%}URL
+              {%- elif tc == 'text' -%}TXT
+              {%- elif tc == 'html' -%}HTM
+              {%- elif tc == 'image' -%}IMG
+              {%- elif tc == 'bookmark' -%}BKM
+              {%- else -%}{{ tc | upper | truncate(4, true, '') }}
+              {%- endif -%}
+            </span>
           </td>
 
-          <td class="text-muted text-sm">{{ link.createdAt | date }}</td>
-          <td class="text-sm">{{ link.visitCount or 0 }}</td>
-          <td class="text-sm text-muted">
-            {% if link.file_size %}
-              {{ (link.file_size / 1024) | round(1) }}KB
-            {% else %}—{% endif %}
-          </td>
-          <td>
-            {% if link.isActive %}<span class="badge badge-success">Active</span>
-            {% else %}<span class="badge badge-danger">Off</span>{% endif %}
+          {# Date — JS fills in full timestamp as title #}
+          <td class="text-sm" style="color:var(--color-text-muted)" data-ts="{{ link.created_at }}">
+            {{ link.createdAt | date }}
           </td>
 
-          <td class="col-actions">
-            <div class="td-actions-inner">
-              <form method="POST" action="/admin/links/{{ link.id }}/toggle" style="display:inline">
-                <button class="btn btn-ghost btn-sm" title="{{ 'Deactivate' if link.isActive else 'Activate' }}">{{ '⏸' if link.isActive else '▶️' }}</button>
-              </form>
-              <form method="POST" action="/admin/links/{{ link.id }}/delete" style="display:inline">
-                <button class="btn btn-danger btn-sm" data-confirm="Delete permanently?" title="Delete">🗑</button>
-              </form>
-            </div>
+          {# Visits #}
+          <td class="text-sm" style="text-align:right">{{ link.visitCount or 0 }}</td>
+
+          {# Actions "..." #}
+          <td style="text-align:center;padding:4px">
+            <button class="row-menu-btn"
+              data-link-id="{{ link.id }}"
+              data-link-active="{{ 'true' if link.isActive else 'false' }}"
+              title="Actions">···</button>
           </td>
+
         </tr>
         {% endfor %}
       </tbody>
     </table>
   </div>
 
+  {# ── Pagination ─────────────────────────────────────────────── #}
   {% if pagination.totalPages > 0 %}
-  <div class="pager">
+  <div class="pager links-pager">
     {% if pagination.page > 1 %}
       <a href="?q={{ query.q | urlencode }}&sort={{ query.sort }}&dir={{ query.dir }}&page=1&perPage={{ perPage }}" title="First">«</a>
       <a href="?q={{ query.q | urlencode }}&sort={{ query.sort }}&dir={{ query.dir }}&page={{ pagination.page - 1 }}&perPage={{ perPage }}" title="Prev">‹</a>
@@ -229,11 +365,10 @@ th.resizable { position: relative; }
     {% endif %}
 
     <span class="pager-goto" style="display:flex;align-items:center;gap:.3rem;margin-left:.4rem">
-      <span class="text-muted text-sm">Go to</span>
+      <span style="font-size:.8rem;color:var(--color-text-muted)">Go to</span>
       <input type="number" id="goto-page" min="1" max="{{ pagination.totalPages }}" value="{{ pagination.page }}">
-      <span class="text-muted text-sm">of {{ pagination.totalPages }}</span>
+      <span style="font-size:.8rem;color:var(--color-text-muted)">of {{ pagination.totalPages }}</span>
     </span>
-
     <span class="pager-perpage" style="margin-left:.4rem">
       <select id="per-page-select">
         {% for n in [25, 50, 100, 250, 500] %}
@@ -244,12 +379,45 @@ th.resizable { position: relative; }
   </div>
   {% endif %}
 </div>
+
+{# ── Owner popup ────────────────────────────────────────────────── #}
+<div id="owner-popup" class="float-popup" hidden>
+  <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+    <div id="op-avatar" style="width:32px;height:32px;border-radius:50%;background:var(--color-primary,#4f46e5);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.85rem;flex-shrink:0"></div>
+    <div>
+      <div id="op-name" style="font-weight:600;font-size:.875rem"></div>
+      <div id="op-username" style="font-size:.75rem;color:var(--color-text-muted)"></div>
+    </div>
+  </div>
+  <div style="font-size:.78rem;color:var(--color-text-muted);margin-bottom:6px">
+    <div id="op-email"></div>
+    <div style="display:flex;gap:1rem;margin-top:3px">
+      <span>Plan: <strong id="op-tier"></strong></span>
+      <span><strong id="op-links"></strong> links</span>
+    </div>
+  </div>
+  <div id="op-ip-section" class="fp-section" style="font-size:.78rem">
+    <span style="color:var(--color-text-muted)">Source IP:</span>
+    <code id="op-ip" style="font-size:.78rem"></code>
+    <span id="op-ip-actions" style="display:inline-block;margin-left:4px"></span>
+  </div>
+  <div id="op-actions" class="fp-section"></div>
+  <div class="fp-section" style="font-size:.78rem">
+    <a id="op-manage-link" href="#" style="color:var(--color-primary)">User Management →</a>
+  </div>
+</div>
+
+{# ── Row actions popup ──────────────────────────────────────────── #}
+<div id="row-menu" class="float-popup" hidden style="min-width:160px;padding:6px">
+  <div id="rm-actions"></div>
+</div>
 {% endblock %}
 
 {% block scripts %}
 <script>
 (function () {
   const BASE = '/admin/links'
+
   function setCookie(k, v, days) {
     const d = new Date(); d.setTime(d.getTime() + days * 86400000)
     document.cookie = k + '=' + encodeURIComponent(v) + ';expires=' + d.toUTCString() + ';path=/'
@@ -258,43 +426,73 @@ th.resizable { position: relative; }
     const m = document.cookie.match('(?:^|;)\\s*' + k + '=([^;]*)')
     return m ? decodeURIComponent(m[1]) : null
   }
+  function esc(s) {
+    return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')
+  }
+  function applyConfirm(root) {
+    root.querySelectorAll('[data-confirm]').forEach(el => {
+      el.addEventListener('click', e => { if (!confirm(el.dataset.confirm)) e.preventDefault() })
+    })
+  }
 
+  // ── Fit table to viewport ────────────────────────────────────
+  const wrap = document.getElementById('links-wrap')
+  const pager = document.querySelector('.links-pager')
+  function fitHeight() {
+    if (!wrap) return
+    const top = wrap.getBoundingClientRect().top
+    const ph = pager ? pager.offsetHeight + 16 : 60
+    wrap.style.height = Math.max(250, window.innerHeight - top - ph - 20) + 'px'
+  }
+  requestAnimationFrame(fitHeight)
+  window.addEventListener('resize', fitHeight)
+
+  // ── Timestamp tooltips ───────────────────────────────────────
+  document.querySelectorAll('td[data-ts]').forEach(td => {
+    const ts = Number(td.dataset.ts)
+    if (ts) td.title = new Date(ts).toLocaleString()
+  })
+
+  // ── Image thumbs in destination cell ─────────────────────────
+  const tbody = document.getElementById('links-tbody')
+  const imgToggle = document.getElementById('img-toggle')
+  if (imgToggle && tbody) {
+    const applyImages = on => {
+      tbody.classList.toggle('show-images', on)
+      tbody.querySelectorAll('.link-thumb').forEach(img => { img.style.display = on ? '' : 'none' })
+    }
+    imgToggle.checked = getCookie('admin_links_images') === '1'
+    applyImages(imgToggle.checked)
+    imgToggle.addEventListener('change', () => {
+      applyImages(imgToggle.checked)
+      setCookie('admin_links_images', imgToggle.checked ? '1' : '0', 365)
+    })
+  }
+
+  // ── Navigation helper ────────────────────────────────────────
   const params = new URLSearchParams(location.search)
-
   function nav(overrides) {
     const p = new URLSearchParams(location.search)
     Object.entries(overrides).forEach(([k, v]) => p.set(k, v))
     location.href = BASE + '?' + p.toString()
   }
 
-  // Per-page
+  // ── Per-page ─────────────────────────────────────────────────
   const ppSel = document.getElementById('per-page-select')
   if (ppSel) ppSel.addEventListener('change', () => {
     setCookie('admin_links_perpage', ppSel.value, 365)
     nav({ perPage: ppSel.value, page: 1 })
   })
 
-  // Go to page
+  // ── Go-to page ───────────────────────────────────────────────
   const gotoEl = document.getElementById('goto-page')
   if (gotoEl) {
-    const go = () => { const p = Math.max(1, parseInt(gotoEl.value)||1); const cur = parseInt(params.get('page')||'1'); if (p !== cur) nav({ page: p }) }
+    const go = () => { const p = Math.max(1, parseInt(gotoEl.value) || 1); if (p !== (parseInt(params.get('page')) || 1)) nav({ page: p }) }
     gotoEl.addEventListener('keydown', e => { if (e.key === 'Enter') go() })
     gotoEl.addEventListener('blur', go)
   }
 
-  // Image toggle (slide switch)
-  const tbody = document.getElementById('links-tbody')
-  const imgToggle = document.getElementById('img-toggle')
-  if (imgToggle && tbody) {
-    imgToggle.checked = getCookie('admin_links_images') === '1'
-    if (imgToggle.checked) tbody.classList.add('show-images')
-    imgToggle.addEventListener('change', () => {
-      tbody.classList.toggle('show-images', imgToggle.checked)
-      setCookie('admin_links_images', imgToggle.checked ? '1' : '0', 365)
-    })
-  }
-
-  // Type filter pills
+  // ── Type filter pills ────────────────────────────────────────
   const allRows = Array.from(document.querySelectorAll('#links-tbody tr[data-type]'))
   const pills = document.querySelectorAll('#type-pills .type-pill')
   let activeTypes = new Set(['all'])
@@ -311,7 +509,6 @@ th.resizable { position: relative; }
       row.style.display = show ? '' : 'none'
       if (show) visibleCount++
     })
-    // If a stale cookie hides everything, fall back to showing all
     if (visibleCount === 0 && allRows.length > 0) {
       activeTypes = new Set(['all'])
       allRows.forEach(row => { row.style.display = '' })
@@ -319,7 +516,6 @@ th.resizable { position: relative; }
     pills.forEach(p => p.classList.toggle('active', activeTypes.has(p.dataset.type)))
     setCookie('admin_links_types', JSON.stringify([...activeTypes]), 365)
   }
-
   pills.forEach(pill => {
     pill.addEventListener('click', () => {
       const t = pill.dataset.type
@@ -327,49 +523,145 @@ th.resizable { position: relative; }
         activeTypes = new Set(['all'])
       } else {
         activeTypes.delete('all')
-        if (activeTypes.has(t)) {
-          activeTypes.delete(t)
-          if (activeTypes.size === 0) activeTypes.add('all')
-        } else {
-          activeTypes.add(t)
-        }
+        if (activeTypes.has(t)) { activeTypes.delete(t); if (activeTypes.size === 0) activeTypes.add('all') }
+        else activeTypes.add(t)
       }
       applyTypeFilter()
     })
   })
   applyTypeFilter()
 
-  // Column resize
-  const colMap = {
-    'th-code':'col-code','th-dest':'col-dest','th-owner':'col-owner','th-type':'col-type',
-    'th-ip':'col-ip','th-date':'col-date','th-visits':'col-visits','th-size':'col-size','th-status':'col-status'
+  // ── Popup positioning ────────────────────────────────────────
+  function positionPopup(popup, evt) {
+    popup.hidden = false
+    const pw = popup.offsetWidth, ph = popup.offsetHeight
+    const vw = window.innerWidth, vh = window.innerHeight
+    let left = evt.clientX + 10, top = evt.clientY + 10
+    if (left + pw > vw - 8) left = evt.clientX - pw - 8
+    if (top + ph > vh - 8) top = evt.clientY - ph - 8
+    popup.style.left = Math.max(8, left) + 'px'
+    popup.style.top  = Math.max(8, top)  + 'px'
   }
-  const savedW = JSON.parse(getCookie('admin_links_cols') || '{}')
-  Object.entries(savedW).forEach(([thId, w]) => {
-    const col = document.getElementById(colMap[thId]); if (col) col.style.width = w + 'px'
+
+  // ── Owner popup ──────────────────────────────────────────────
+  const ownerPopup = document.getElementById('owner-popup')
+  document.addEventListener('click', e => {
+    const btn = e.target.closest('.owner-btn')
+    if (btn) {
+      e.stopPropagation()
+      const d = btn.dataset
+
+      // Basic info
+      document.getElementById('op-avatar').textContent = (d.username || '?')[0].toUpperCase()
+      document.getElementById('op-avatar').style.background = d.ownerBlocked === 'true'
+        ? 'var(--color-danger,#dc2626)' : 'var(--color-primary,#4f46e5)'
+      document.getElementById('op-name').textContent = d.name || d.username || '—'
+      document.getElementById('op-username').textContent = d.username ? '@' + d.username : ''
+      document.getElementById('op-email').textContent = d.email || '—'
+      document.getElementById('op-tier').textContent = d.tier || 'free'
+      document.getElementById('op-links').textContent = d.links || '0'
+
+      // IP section
+      const ipSection = document.getElementById('op-ip-section')
+      if (d.ip) {
+        document.getElementById('op-ip').textContent = d.ip
+        const ipBlocked = d.ipBlocked === 'true'
+        const ipAct = document.getElementById('op-ip-actions')
+        ipAct.innerHTML = ''
+        const f = document.createElement('form')
+        f.method = 'POST'
+        f.action = ipBlocked ? '/admin/ip/unblock' : '/admin/ip/block'
+        f.style.display = 'inline'
+        f.innerHTML = `<input type="hidden" name="ip" value="${esc(d.ip)}">
+          <input type="hidden" name="redirect" value="/admin/links">
+          <button class="btn btn-ghost btn-sm" style="padding:1px 6px;font-size:.72rem">${ipBlocked ? 'Unblock IP' : 'Block IP'}</button>`
+        ipAct.appendChild(f)
+        ipSection.style.display = ''
+      } else {
+        ipSection.style.display = 'none'
+      }
+
+      // User actions
+      const actEl = document.getElementById('op-actions')
+      actEl.innerHTML = ''
+      if (d.ownerId) {
+        const ownerBlocked = d.ownerBlocked === 'true'
+        const f1 = document.createElement('form')
+        f1.method = 'POST'
+        f1.action = ownerBlocked ? `/admin/users/${esc(d.ownerId)}/unblock` : `/admin/users/${esc(d.ownerId)}/block`
+        f1.innerHTML = `<button class="fp-btn">${ownerBlocked ? 'Enable User' : 'Disable User'}</button>`
+        actEl.appendChild(f1)
+
+        const f2 = document.createElement('form')
+        f2.method = 'POST'
+        f2.action = `/admin/users/${esc(d.ownerId)}/delete`
+        f2.innerHTML = `<button class="fp-btn fp-btn-danger" data-confirm="Delete user ${esc(d.username)}? This cannot be undone.">Delete User</button>`
+        actEl.appendChild(f2)
+
+        document.getElementById('op-manage-link').href =
+          '/admin/users?q=' + encodeURIComponent(d.email || d.username || '')
+      }
+
+      applyConfirm(ownerPopup)
+      positionPopup(ownerPopup, e)
+      return
+    }
+
+    if (!ownerPopup.hidden && !ownerPopup.contains(e.target)) ownerPopup.hidden = true
   })
 
-  let rs = null
-  document.querySelectorAll('.resize-handle').forEach(h => {
-    h.addEventListener('mousedown', e => {
-      e.preventDefault()
-      rs = { th: h.closest('th'), h, x0: e.clientX, w0: h.closest('th').offsetWidth }
-      h.classList.add('dragging')
-    })
+  // ── Row actions menu ─────────────────────────────────────────
+  const rowMenu = document.getElementById('row-menu')
+  document.addEventListener('click', e => {
+    const btn = e.target.closest('.row-menu-btn')
+    if (btn) {
+      e.stopPropagation()
+      const linkId = esc(btn.dataset.linkId)
+      const isActive = btn.dataset.linkActive === 'true'
+      const el = document.getElementById('rm-actions')
+      el.innerHTML = ''
+
+      // Suspend / Enable
+      const f1 = document.createElement('form')
+      f1.method = 'POST'
+      f1.action = `/admin/links/${linkId}/toggle`
+      f1.innerHTML = `<button class="fp-btn">${isActive ? 'Suspend Link' : 'Enable Link'}</button>`
+      el.appendChild(f1)
+
+      // Edit
+      const editA = document.createElement('a')
+      editA.href = `/dashboard/edit/${linkId}`
+      editA.className = 'fp-btn'
+      editA.style.display = 'block'
+      editA.textContent = 'Edit Link'
+      el.appendChild(editA)
+
+      // Delete
+      const f2 = document.createElement('form')
+      f2.method = 'POST'
+      f2.action = `/admin/links/${linkId}/delete`
+      f2.innerHTML = `<button class="fp-btn fp-btn-danger" data-confirm="Delete this link permanently?">Delete</button>`
+      el.appendChild(f2)
+
+      applyConfirm(rowMenu)
+      positionPopup(rowMenu, e)
+      return
+    }
+
+    if (!rowMenu.hidden && !rowMenu.contains(e.target)) rowMenu.hidden = true
   })
-  document.addEventListener('mousemove', e => {
-    if (!rs) return
-    const nw = Math.max(40, rs.w0 + e.clientX - rs.x0)
-    const col = document.getElementById(colMap[rs.th.id]); if (col) col.style.width = nw + 'px'
+
+  // Close popups on Escape
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') { ownerPopup.hidden = true; rowMenu.hidden = true }
   })
-  document.addEventListener('mouseup', () => {
-    if (!rs) return
-    rs.h.classList.remove('dragging')
-    const w = {}
-    Object.keys(colMap).forEach(id => { const col = document.getElementById(colMap[id]); if (col) w[id] = col.offsetWidth })
-    setCookie('admin_links_cols', JSON.stringify(w), 365)
-    rs = null
+
+  // Scroll inside the table should not close popups
+  if (wrap) wrap.addEventListener('scroll', () => {
+    ownerPopup.hidden = true
+    rowMenu.hidden = true
   })
+
 })()
 </script>
 {% endblock %}

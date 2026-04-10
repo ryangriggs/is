@@ -129,23 +129,30 @@ async function adminPlugin(fastify) {
     if (q) {
       const like = `%${q}%`
       rows = db.all(`
-        SELECT l.*, u.username, u.is_blocked as owner_is_blocked, COUNT(t.id) as visit_count
+        SELECT l.*, u.username, u.email as owner_email, u.display_name as owner_display_name,
+               u.subscription_tier as owner_tier, u.is_blocked as owner_is_blocked,
+               COUNT(t.id) as visit_count,
+               (SELECT COUNT(*) FROM links sl WHERE sl.owner_id = l.owner_id AND sl.type != 'reserved') as owner_link_count
         FROM links l
         LEFT JOIN users u ON u.id = l.owner_id
         LEFT JOIN tracking t ON t.link_id = l.id
-        WHERE l.code LIKE ? OR (l.type NOT IN ('text','html') AND l.destination LIKE ?) OR u.username LIKE ?
+        WHERE l.type != 'reserved' AND (l.code LIKE ? OR (l.type NOT IN ('text','html') AND l.destination LIKE ?) OR u.username LIKE ?)
         GROUP BY l.id ORDER BY ${sortCol} ${dir} LIMIT ? OFFSET ?
       `, like, like, like, perPage, offset)
-      totalRow = db.get(`SELECT COUNT(*) as n FROM links l LEFT JOIN users u ON u.id = l.owner_id WHERE l.code LIKE ? OR (l.type NOT IN ('text','html') AND l.destination LIKE ?) OR u.username LIKE ?`, like, like, like)
+      totalRow = db.get(`SELECT COUNT(*) as n FROM links l LEFT JOIN users u ON u.id = l.owner_id WHERE l.type != 'reserved' AND (l.code LIKE ? OR (l.type NOT IN ('text','html') AND l.destination LIKE ?) OR u.username LIKE ?)`, like, like, like)
     } else {
       rows = db.all(`
-        SELECT l.*, u.username, u.is_blocked as owner_is_blocked, COUNT(t.id) as visit_count
+        SELECT l.*, u.username, u.email as owner_email, u.display_name as owner_display_name,
+               u.subscription_tier as owner_tier, u.is_blocked as owner_is_blocked,
+               COUNT(t.id) as visit_count,
+               (SELECT COUNT(*) FROM links sl WHERE sl.owner_id = l.owner_id AND sl.type != 'reserved') as owner_link_count
         FROM links l
         LEFT JOIN users u ON u.id = l.owner_id
         LEFT JOIN tracking t ON t.link_id = l.id
+        WHERE l.type != 'reserved'
         GROUP BY l.id ORDER BY ${sortCol} ${dir} LIMIT ? OFFSET ?
       `, perPage, offset)
-      totalRow = db.get(`SELECT COUNT(*) as n FROM links`)
+      totalRow = db.get(`SELECT COUNT(*) as n FROM links WHERE type != 'reserved'`)
     }
 
     const blockedIps = new Set(
@@ -158,6 +165,10 @@ async function adminPlugin(fastify) {
         isActive: Boolean(l.is_active), visitCount: l.visit_count,
         creatorIpBlocked: l.created_ip ? blockedIps.has(l.created_ip) : false,
         ownerIsBlocked: Boolean(l.owner_is_blocked),
+        ownerEmail: l.owner_email || null,
+        ownerName: l.owner_display_name || l.username || null,
+        ownerTier: l.owner_tier || 'free',
+        ownerLinkCount: l.owner_link_count || 0,
       })),
       pagination: { page, totalPages: Math.ceil(totalRow.n / perPage), total: totalRow.n },
       query: { q, sort, dir: dir.toLowerCase() },
