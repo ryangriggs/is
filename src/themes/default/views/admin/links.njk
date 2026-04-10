@@ -86,6 +86,7 @@ tr.row-inactive .col-code-link {
 }
 .owner-btn:hover { opacity: .85; }
 .owner-btn.blocked { background: var(--color-danger, #dc2626); }
+.owner-btn.owner-anon { background: var(--color-text-dim, #64748b); }
 
 /* ── Type icon badges ────────────────────────────────────────── */
 .ti {
@@ -121,10 +122,10 @@ tr.row-inactive .col-code-link {
 /* ── Floating popups ─────────────────────────────────────────── */
 .float-popup {
   position: fixed;
-  background: var(--bg-card, var(--color-bg-card, #fff));
-  border: 1px solid var(--color-border, var(--border));
+  background: var(--bg-surface, #1e293b);
+  border: 1px solid var(--color-border, rgba(255,255,255,.12));
   border-radius: 8px;
-  box-shadow: 0 6px 24px rgba(0,0,0,.15);
+  box-shadow: 0 8px 32px rgba(0,0,0,.55);
   z-index: 9999;
   padding: 12px 14px;
   font-size: .825rem;
@@ -133,10 +134,10 @@ tr.row-inactive .col-code-link {
 }
 .float-popup[hidden] { display: none !important; }
 .fp-section { border-top: 1px solid var(--color-border, var(--border)); margin-top: 8px; padding-top: 8px; }
-.fp-btn { display: block; width: 100%; text-align: left; background: none; border: none; padding: 5px 8px; border-radius: 5px; cursor: pointer; font-size: .8rem; color: var(--color-text, var(--text)); }
-.fp-btn:hover { background: var(--color-bg-hover, rgba(0,0,0,.06)); }
-.fp-btn-danger { color: var(--color-danger, #dc2626); }
-.fp-btn-danger:hover { background: #fef2f2; }
+.fp-btn { display: block; width: 100%; text-align: left; background: none; border: none; padding: 5px 8px; border-radius: 5px; cursor: pointer; font-size: .8rem; color: var(--color-text, #e2e8f0); text-decoration: none; }
+.fp-btn:hover { background: rgba(255,255,255,.07); }
+.fp-btn-danger { color: var(--color-danger, #f87171); }
+.fp-btn-danger:hover { background: rgba(248,113,113,.1); }
 
 /* ── Type pills / image toggle ───────────────────────────────── */
 .type-pills { display: flex; flex-wrap: wrap; gap: .3rem; }
@@ -293,7 +294,12 @@ tr.row-inactive .col-code-link {
               data-owner-blocked="{{ 'true' if link.ownerIsBlocked else 'false' }}"
             >{{ (link.username or '?')[0] | upper }}</button>
             {% else %}
-            <span style="color:var(--color-text-muted);font-size:.75rem">—</span>
+            <button class="owner-btn owner-anon"
+              title="Anonymous"
+              data-anon="true"
+              data-ip="{{ link.created_ip | e if link.created_ip else '' }}"
+              data-ip-blocked="{{ 'true' if link.creatorIpBlocked else 'false' }}"
+            >A</button>
             {% endif %}
           </td>
 
@@ -391,7 +397,7 @@ tr.row-inactive .col-code-link {
   </div>
   <div style="font-size:.78rem;color:var(--color-text-muted);margin-bottom:6px">
     <div id="op-email"></div>
-    <div style="display:flex;gap:1rem;margin-top:3px">
+    <div id="op-meta" style="display:flex;gap:1rem;margin-top:3px">
       <span>Plan: <strong id="op-tier"></strong></span>
       <span><strong id="op-links"></strong> links</span>
     </div>
@@ -550,16 +556,23 @@ tr.row-inactive .col-code-link {
     if (btn) {
       e.stopPropagation()
       const d = btn.dataset
+      const isAnon = d.anon === 'true'
 
       // Basic info
-      document.getElementById('op-avatar').textContent = (d.username || '?')[0].toUpperCase()
-      document.getElementById('op-avatar').style.background = d.ownerBlocked === 'true'
-        ? 'var(--color-danger,#dc2626)' : 'var(--color-primary,#4f46e5)'
-      document.getElementById('op-name').textContent = d.name || d.username || '—'
-      document.getElementById('op-username').textContent = d.username ? '@' + d.username : ''
-      document.getElementById('op-email').textContent = d.email || '—'
-      document.getElementById('op-tier').textContent = d.tier || 'free'
-      document.getElementById('op-links').textContent = d.links || '0'
+      document.getElementById('op-avatar').textContent = isAnon ? 'A' : (d.username || '?')[0].toUpperCase()
+      document.getElementById('op-avatar').style.background = isAnon
+        ? 'var(--color-text-dim,#64748b)'
+        : (d.ownerBlocked === 'true' ? 'var(--color-danger,#dc2626)' : 'var(--color-primary,#4f46e5)')
+      document.getElementById('op-name').textContent = isAnon ? 'Anonymous' : (d.name || d.username || '—')
+      document.getElementById('op-username').textContent = isAnon ? 'Not logged in' : (d.username ? '@' + d.username : '')
+      document.getElementById('op-email').textContent = isAnon ? '' : (d.email || '—')
+
+      const metaEl = document.getElementById('op-meta')
+      const tierEl = document.getElementById('op-tier')
+      const linksEl = document.getElementById('op-links')
+      if (tierEl) tierEl.textContent = isAnon ? '' : (d.tier || 'free')
+      if (linksEl) linksEl.textContent = isAnon ? '' : (d.links || '0')
+      if (metaEl) metaEl.style.display = isAnon ? 'none' : ''
 
       // IP section
       const ipSection = document.getElementById('op-ip-section')
@@ -581,10 +594,10 @@ tr.row-inactive .col-code-link {
         ipSection.style.display = 'none'
       }
 
-      // User actions
+      // User actions (not shown for anon)
       const actEl = document.getElementById('op-actions')
       actEl.innerHTML = ''
-      if (d.ownerId) {
+      if (!isAnon && d.ownerId) {
         const ownerBlocked = d.ownerBlocked === 'true'
         const f1 = document.createElement('form')
         f1.method = 'POST'
@@ -601,6 +614,10 @@ tr.row-inactive .col-code-link {
         document.getElementById('op-manage-link').href =
           '/admin/users?q=' + encodeURIComponent(d.email || d.username || '')
       }
+
+      // Show/hide manage link for anon
+      const manageSection = document.getElementById('op-manage-link').closest('.fp-section')
+      if (manageSection) manageSection.style.display = isAnon ? 'none' : ''
 
       applyConfirm(ownerPopup)
       positionPopup(ownerPopup, e)
