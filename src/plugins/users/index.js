@@ -746,6 +746,7 @@ async function usersPlugin(fastify) {
   fastify.get('/pricing', async (req, reply) => {
     if (req.subdomain !== '') return reply.callNotFound()
     const tiers = db.all("SELECT * FROM account_tiers WHERE is_enabled = 1 AND name != 'anonymous' ORDER BY price ASC")
+    const anonymousTier = db.get("SELECT * FROM account_tiers WHERE name = 'anonymous'")
     let currentTier = req.session.subscriptionTier || (req.session.userId ? 'free' : null)
     let subscriptionInterval = null
     if (req.session.userId) {
@@ -758,7 +759,7 @@ async function usersPlugin(fastify) {
       }
     }
     const ad = getAdForOwner(req.session.userId || null, db)
-    return reply.view('pricing.njk', { tiers, currentTier, subscriptionInterval, ad })
+    return reply.view('pricing.njk', { tiers, anonymousTier, currentTier, subscriptionInterval, ad })
   })
 
   // POST /pricing/change — user requests a tier change (manual/admin-side flow for now)

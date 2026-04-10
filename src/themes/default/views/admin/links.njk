@@ -304,13 +304,25 @@ th.resizable { position: relative; }
   // Type filter pills
   const allRows = Array.from(document.querySelectorAll('#links-tbody tr[data-type]'))
   const pills = document.querySelectorAll('#type-pills .type-pill')
-  let activeTypes = new Set(JSON.parse(getCookie('admin_links_types') || '["all"]'))
+  let activeTypes = new Set(['all'])
+  try {
+    const saved = JSON.parse(getCookie('admin_links_types') || '["all"]')
+    if (Array.isArray(saved) && saved.length > 0) activeTypes = new Set(saved)
+  } catch (_) {}
 
   function applyTypeFilter() {
     const showAll = activeTypes.has('all') || activeTypes.size === 0
+    let visibleCount = 0
     allRows.forEach(row => {
-      row.style.display = showAll || activeTypes.has(row.dataset.type) ? '' : 'none'
+      const show = showAll || activeTypes.has(row.dataset.type)
+      row.style.display = show ? '' : 'none'
+      if (show) visibleCount++
     })
+    // If a stale cookie hides everything, fall back to showing all
+    if (visibleCount === 0 && allRows.length > 0) {
+      activeTypes = new Set(['all'])
+      allRows.forEach(row => { row.style.display = '' })
+    }
     pills.forEach(p => p.classList.toggle('active', activeTypes.has(p.dataset.type)))
     setCookie('admin_links_types', JSON.stringify([...activeTypes]), 365)
   }

@@ -14,6 +14,37 @@
 
   {% include "partials/ad-banner.njk" %}
 
+  {% if anonymousTier %}
+  <div class="card mb-4" style="border:1px solid var(--color-border);opacity:.85">
+    <div style="display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:.5rem;margin-bottom:1rem">
+      <div>
+        <h2 style="margin:0 0 .25rem;font-size:1rem;font-weight:600">Without an account</h2>
+        <p style="margin:0;font-size:.8rem;color:var(--color-text-muted)">Limits apply per IP address</p>
+      </div>
+      <span style="font-size:1.1rem;font-weight:700;color:var(--color-text-muted)">No sign-up</span>
+    </div>
+    <div style="display:flex;flex-wrap:wrap;gap:.35rem .75rem;font-size:.8rem;color:var(--color-text-muted)">
+      {% if anonymousTier.max_links_per_hour > 0 %}
+      <span>· {{ anonymousTier.max_links_per_hour }} links/hour</span>
+      {% endif %}
+      {% if anonymousTier.max_links_total > 0 %}
+      <span>· Up to {{ anonymousTier.max_links_total }} total links</span>
+      {% endif %}
+      {% if anonymousTier.max_images_total > 0 %}
+      <span>· Up to {{ anonymousTier.max_images_total }} images</span>
+      {% endif %}
+      {% if anonymousTier.max_text_total > 0 %}
+      <span>· Up to {{ anonymousTier.max_text_total }} text pastes</span>
+      {% endif %}
+      <span>· Up to {{ anonymousTier.max_file_size_mb }} MB uploads</span>
+      {% if not anonymousTier.allow_raw_html %}
+      <span>· No HTML pastes</span>
+      {% endif %}
+      <span>· Ad-supported</span>
+    </div>
+  </div>
+  {% endif %}
+
   <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:1.5rem;align-items:start">
 
     {% for tier in tiers %}
