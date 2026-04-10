@@ -10,7 +10,7 @@ let _current = null
 function getCurrentVersion() {
   if (_current) return _current
   try {
-    const data = JSON.parse(readFileSync(join(__dirname, '../../version.json'), 'utf8'))
+    const data = JSON.parse(readFileSync(join(__dirname, '../../package.json'), 'utf8'))
     _current = data.version || '0.0.0'
   } catch { _current = '0.0.0' }
   return _current
@@ -22,12 +22,14 @@ export function reloadCurrentVersion() {
   return getCurrentVersion()
 }
 
+// Compare two x.y.z version strings treating each segment as an integer.
+// Returns 1 if a > b, -1 if a < b, 0 if equal.
 function compareVersions(a, b) {
-  const pa = a.split('.').map(Number)
-  const pb = b.split('.').map(Number)
+  const pa = String(a || '0.0.0').split('.').map(s => parseInt(s, 10) || 0)
+  const pb = String(b || '0.0.0').split('.').map(s => parseInt(s, 10) || 0)
   for (let i = 0; i < 3; i++) {
-    if ((pa[i] || 0) > (pb[i] || 0)) return 1
-    if ((pa[i] || 0) < (pb[i] || 0)) return -1
+    if (pa[i] > pb[i]) return 1
+    if (pa[i] < pb[i]) return -1
   }
   return 0
 }
@@ -36,7 +38,7 @@ function repoToRawUrl(repoUrl) {
   const clean = (repoUrl || '').replace(/\.git$/, '').replace(/\/$/, '')
   const match = clean.match(/github\.com\/([^/]+\/[^/]+)/)
   if (!match) return null
-  return `https://raw.githubusercontent.com/${match[1]}/main/version.json`
+  return `https://raw.githubusercontent.com/${match[1]}/main/package.json`
 }
 
 export async function checkForUpdates(repoUrl, { force = false, maxAgeHours = 24 } = {}) {
@@ -45,15 +47,22 @@ export async function checkForUpdates(repoUrl, { force = false, maxAgeHours = 24
     if (ageMs < maxAgeHours * 3600 * 1000) return _cache
   }
 
-  const rawUrl = repoToRawUrl(repoUrl || 'https://github.com/ryangriggs/is')
-  if (!rawUrl) {
+  const baseUrl = repoToRawUrl(repoUrl || 'https://github.com/ryangriggs/is')
+  if (!baseUrl) {
     console.log('[updater] Invalid repo URL, skipping check')
     return null
   }
 
-  console.log(`[updater] Checking for updates at: ${rawUrl}`)
+  // Append a cache-busting timestamp so GitHub's CDN always returns the latest file
+  const rawUrl = `${baseUrl}?cb=${Date.now()}`
+
+  console.log(`[updater] Checking for updates at: ${baseUrl}`)
   try {
-    const res = await fetch(rawUrl, { signal: AbortSignal.timeout(10000), cache: 'no-store' })
+    const res = await fetch(rawUrl, {
+      signal: AbortSignal.timeout(10000),
+      cache: 'no-store',
+      headers: { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' },
+    })
     if (!res.ok) {
       console.log(`[updater] Remote check failed: HTTP ${res.status}`)
       return null

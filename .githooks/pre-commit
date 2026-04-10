@@ -1,16 +1,7 @@
 #!/bin/sh
-# Auto-increment patch version in version.json on every commit.
+# Auto-increment patch version (x.y.Z) in package.json on every commit.
+# Major (x) and minor (y) must be updated manually.
 # Install: git config core.hooksPath .githooks
-
-node -e "
-const fs = require('fs');
-const file = 'version.json';
-const pkg = JSON.parse(fs.readFileSync(file, 'utf8'));
-const parts = pkg.version.split('.').map(Number);
-parts[2]++;
-pkg.version = parts.join('.');
-fs.writeFileSync(file, JSON.stringify(pkg, null, 2) + '\n');
-console.log('[hook] version bumped to ' + pkg.version);
-"
-
-git add version.json
+cd "$(git rev-parse --show-toplevel)" || exit 1
+node scripts/increment-version.js || exit 1
+git add package.json

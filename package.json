@@ -1,6 +1,6 @@
 {
   "name": "is.am",
-  "version": "1.0.0",
+  "version": "1.0.55",
   "description": "URL shortener, pastebin, bookmarks, and dynamic DNS hub",
   "type": "module",
   "main": "src/server.js",

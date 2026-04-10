@@ -18,7 +18,9 @@
       "Bash(python3 -m json.tool)",
       "Bash(ls \"C:/temp/is.am/.env\"*)",
       "Bash(ls \"C:/temp/is.am\"/*.md)",
-      "Bash(grep -E \"\\\\.\\(md|txt|json\\)$\")"
+      "Bash(grep -E \"\\\\.\\(md|txt|json\\)$\")",
+      "Bash(git:*)",
+      "Bash(sh .githooks/pre-commit)"
     ]
   }
 }

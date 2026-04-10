@@ -25,7 +25,7 @@ import { initWriteBuffer } from './core/write-buffer.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
-const { version } = JSON.parse(readFileSync(path.join(__dirname, '..', 'version.json'), 'utf8'))
+const { version } = JSON.parse(readFileSync(path.join(__dirname, '..', 'package.json'), 'utf8'))
 
 function dateFilter(ts) {
   if (!ts) return '—'
