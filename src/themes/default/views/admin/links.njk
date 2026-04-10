@@ -259,14 +259,7 @@ th.resizable { position: relative; }
     return m ? decodeURIComponent(m[1]) : null
   }
 
-  // Save/restore full state
   const params = new URLSearchParams(location.search)
-  if (!params.has('q') && !params.has('sort') && !params.has('page') && !params.has('perPage')) {
-    const saved = getCookie('admin_links_state')
-    if (saved) { location.replace(BASE + '?' + saved); return }
-  } else {
-    setCookie('admin_links_state', params.toString(), 30)
-  }
 
   function nav(overrides) {
     const p = new URLSearchParams(location.search)
