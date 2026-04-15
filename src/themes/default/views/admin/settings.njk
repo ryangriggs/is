@@ -182,6 +182,14 @@
             </select>
           </div>
           <div class="form-group">
+            <label class="label">Registration CAPTCHA</label>
+            <label style="display:flex;align-items:center;gap:.5rem;font-weight:400;cursor:pointer">
+              <input type="checkbox" name="register_captcha_enabled" value="true" {% if settings.register_captcha_enabled == 'true' %}checked{% endif %}>
+              Require ALTCHA proof-of-work CAPTCHA on the registration form
+            </label>
+            <p class="text-xs text-muted mt-1">Adds an automatic CAPTCHA challenge to the sign-up form. No user account or external service required.</p>
+          </div>
+          <div class="form-group">
             <label class="label">Homepage Statistics</label>
             <div style="display:flex;flex-direction:column;gap:.4rem">
               <label style="display:flex;align-items:center;gap:.5rem;font-weight:400;cursor:pointer">

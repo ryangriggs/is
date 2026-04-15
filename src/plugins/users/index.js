@@ -5,6 +5,7 @@ import { hashPassword, verifyPassword, requireAuth, generateToken, hashTokenFast
 import { sendEmail, notifyAdminsNewAccount } from '../../core/email.js'
 import config from '../../config.js'
 import { getAdForOwner } from '../../core/ads.js'
+import { verifySolution } from 'altcha-lib'
 
 const PASTE_DIR = path.join(process.cwd(), 'data', 'pastes')
 
@@ -69,8 +70,10 @@ async function usersPlugin(fastify) {
     if (req.subdomain !== '') return reply.callNotFound()
     if (req.session.userId) return reply.redirect('/dashboard')
     const setting = db.get(`SELECT value FROM settings WHERE key = 'registration_open'`)
+    const captchaSetting = db.get(`SELECT value FROM settings WHERE key = 'register_captcha_enabled'`)
+    const captchaEnabled = captchaSetting?.value === 'true'
     const ad = getAdForOwner(null, db)
-    return reply.view('register.njk', { registrationClosed: setting?.value === 'false', ad })
+    return reply.view('register.njk', { registrationClosed: setting?.value === 'false', captchaEnabled, ad })
   })
 
   // ----------------------------------------------------------------
@@ -93,25 +96,42 @@ async function usersPlugin(fastify) {
       return reply.view('register.njk', { registrationClosed: true })
     }
 
-    const { email = '', display_name = '', password = '', password2 = '' } = req.body || {}
+    const captchaSetting = db.get(`SELECT value FROM settings WHERE key = 'register_captcha_enabled'`)
+    const captchaEnabled = captchaSetting?.value === 'true'
+
+    const { email = '', display_name = '', password = '', password2 = '', altcha = '' } = req.body || {}
+
+    if (captchaEnabled) {
+      const valid = altcha && await verifySolution(altcha, config.SESSION_SECRET).catch(() => false)
+      if (!valid) {
+        return reply.view('register.njk', {
+          error: 'Please complete the CAPTCHA.',
+          prefill: { email, display_name },
+          captchaEnabled,
+        })
+      }
+    }
     const emailLc = email.trim().toLowerCase()
 
     if (!emailLc || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailLc)) {
       return reply.view('register.njk', {
         error: 'Please enter a valid email address.',
         prefill: { email, display_name },
+        captchaEnabled,
       })
     }
     if (!password || password.length < 8) {
       return reply.view('register.njk', {
         error: 'Password must be at least 8 characters.',
         prefill: { email, display_name },
+        captchaEnabled,
       })
     }
     if (password !== password2) {
       return reply.view('register.njk', {
         error: 'Passwords do not match.',
         prefill: { email, display_name },
+        captchaEnabled,
       })
     }
 
@@ -123,6 +143,7 @@ async function usersPlugin(fastify) {
       return reply.view('register.njk', {
         error: 'An account with that email already exists.',
         prefill: { email, display_name },
+        captchaEnabled,
       })
     }
 

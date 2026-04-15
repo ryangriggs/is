@@ -1,5 +1,10 @@
 {% extends "layouts/base.njk" %}
 {% block title %}Create Account — {{ siteName }}{% endblock %}
+{% block scripts %}
+{% if captchaEnabled %}
+<script type="module" src="https://cdn.jsdelivr.net/npm/altcha/dist/altcha.min.js" async defer></script>
+{% endif %}
+{% endblock %}
 {% block content %}
 {% include "partials/ad-banner.njk" %}
 <div class="auth-wrap">
@@ -43,6 +48,11 @@
         <input id="password2" type="password" name="password2" class="input"
           required autocomplete="new-password">
       </div>
+      {% if captchaEnabled %}
+      <div class="form-group">
+        <altcha-widget challengeurl="/altcha-challenge" style="color-scheme:inherit"></altcha-widget>
+      </div>
+      {% endif %}
       <button type="submit" class="btn btn-primary btn-block btn-lg">Create Account</button>
     </form>
     {% endif %}
