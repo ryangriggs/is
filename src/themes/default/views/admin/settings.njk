@@ -190,6 +190,15 @@
             <p class="text-xs text-muted mt-1">Adds an automatic CAPTCHA challenge to the sign-up form. No user account or external service required.</p>
           </div>
           <div class="form-group">
+            <label class="label">Unverified Account Sweep</label>
+            <div style="display:flex;align-items:center;gap:.5rem">
+              <input type="number" name="unverified_sweep_days" class="input" style="max-width:90px"
+                value="{{ settings.unverified_sweep_days or '0' }}" min="0" max="365">
+              <span class="text-sm text-muted">days</span>
+            </div>
+            <p class="text-xs text-muted mt-1">Delete accounts that have not verified their email after this many days. Set to <code>0</code> to disable. Runs once daily at startup + every 24 hours.</p>
+          </div>
+          <div class="form-group">
             <label class="label">Homepage Statistics</label>
             <div style="display:flex;flex-direction:column;gap:.4rem">
               <label style="display:flex;align-items:center;gap:.5rem;font-weight:400;cursor:pointer">

@@ -279,6 +279,26 @@ export async function buildApp() {
   setTimeout(cleanupExpiredLinks, 15000)
   setInterval(cleanupExpiredLinks, 3600 * 1000)
 
+  // Sweep unverified accounts that are older than the configured threshold
+  const sweepUnverifiedAccounts = () => {
+    try {
+      const days = parseInt(db.get("SELECT value FROM settings WHERE key = 'unverified_sweep_days'")?.value || '0', 10)
+      if (!days || days < 1) return
+      const cutoff = Date.now() - days * 24 * 60 * 60 * 1000
+      const result = db.run(
+        'DELETE FROM users WHERE email_verified = 0 AND created_at < ?',
+        cutoff
+      )
+      if (result.changes > 0) {
+        console.log(`[sweep] Deleted ${result.changes} unverified account(s) older than ${days} day(s).`)
+      }
+    } catch (err) {
+      console.error('[sweep] Unverified account sweep failed:', err.message)
+    }
+  }
+  setTimeout(sweepUnverifiedAccounts, 30000)          // First run 30s after startup
+  setInterval(sweepUnverifiedAccounts, 24 * 3600 * 1000) // Then daily
+
   // Schedule periodic update checks
   const doUpdateCheck = async () => {
     try {

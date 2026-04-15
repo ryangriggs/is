@@ -229,6 +229,7 @@ async function adminPlugin(fastify) {
       users: rows.map(u => ({
         ...u, createdAt: u.created_at,
         isBlocked: Boolean(u.is_blocked),
+        emailVerified: Boolean(u.email_verified),
         subscriptionTier: u.subscription_tier,
         linkCount: u.link_count,
       })),
@@ -521,6 +522,14 @@ async function adminPlugin(fastify) {
       `INSERT INTO settings(key, value, updated_at) VALUES(?,?,?)
        ON CONFLICT(key) DO UPDATE SET value=excluded.value, updated_at=excluded.updated_at`,
       'min_shortcode_length', String(minShortcodeLength), Date.now()
+    )
+    // Numeric: unverified_sweep_days (0 = disabled)
+    const rawSweepDays = parseInt(req.body.unverified_sweep_days || '0', 10)
+    const sweepDays = (!isNaN(rawSweepDays) && rawSweepDays >= 1) ? rawSweepDays : 0
+    db.run(
+      `INSERT INTO settings(key, value, updated_at) VALUES(?,?,?)
+       ON CONFLICT(key) DO UPDATE SET value=excluded.value, updated_at=excluded.updated_at`,
+      'unverified_sweep_days', String(sweepDays), Date.now()
     )
 
     invalidateSettingsCache()

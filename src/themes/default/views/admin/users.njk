@@ -53,6 +53,8 @@
           <td>
             {% if u.isBlocked %}
               <span class="badge badge-danger">Blocked</span>
+            {% elif not u.emailVerified %}
+              <span class="badge badge-warning">Unverified</span>
             {% else %}
               <span class="badge badge-success">Active</span>
             {% endif %}
